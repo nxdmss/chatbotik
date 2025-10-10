@@ -17,6 +17,7 @@ from pydantic import BaseModel, ValidationError
 from models import Product, AdminAction
 from logger_config import setup_logging, bot_logger
 from error_handlers import validate_admin_access, ValidationError as BotValidationError
+from database import db
 
 # Настраиваем логирование
 setup_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
@@ -136,17 +137,35 @@ async def webapp():
 
 @app.get('/webapp/products.json')
 async def products_json():
-    """API для получения списка товаров"""
+    """API для получения списка товаров из базы данных"""
     try:
-        products_file = os.path.join(os.path.dirname(__file__), 'shop', 'products.json')
-        if not os.path.exists(products_file):
-            logger.warning("Products file not found", file_path=products_file)
-            return JSONResponse([])
-        
-        return FileResponse(products_file)
+        products = db.get_products(active_only=True)
+        logger.info(f"Serving {len(products)} products from database")
+        return JSONResponse(products)
     except Exception as e:
-        logger.error("Error serving products", error=str(e))
+        logger.error("Error serving products from database", error=str(e))
         raise HTTPException(status_code=500, detail="Error loading products")
+
+@app.post('/webapp/orders')
+async def create_order(order_data: Dict[str, Any]):
+    """API для создания заказа"""
+    try:
+        user_id = order_data.get('user_id')
+        products = order_data.get('products', [])
+        total_amount = order_data.get('total_amount', 0)
+        
+        if not user_id or not products:
+            raise HTTPException(status_code=400, detail="Missing required fields")
+        
+        order_id = db.add_order(user_id, products, total_amount)
+        if order_id:
+            logger.info(f"Order {order_id} created for user {user_id}")
+            return JSONResponse({"order_id": order_id, "status": "created"})
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create order")
+    except Exception as e:
+        logger.error("Error creating order", error=str(e))
+        raise HTTPException(status_code=500, detail="Error creating order")
 
 @app.get('/webapp/admins.json', response_model=AdminResponse)
 async def admins_json():

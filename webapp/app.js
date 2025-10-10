@@ -414,6 +414,28 @@ class MobileShopApp {
     // Сохраняем заказ локально
     this.saveOrder(order);
 
+    // Отправляем заказ на сервер
+    try {
+      const response = await fetch('/webapp/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: this.userInfo?.id || 0,
+          products: items,
+          total_amount: total
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Заказ создан на сервере:', result);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка создания заказа на сервере:', error);
+    }
+
     // Отправляем в бота
     const payload = {
       action: 'checkout',

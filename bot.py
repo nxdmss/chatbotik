@@ -18,6 +18,7 @@ from aiogram.types import (
     PreCheckoutQuery,
     WebAppInfo,
 )
+
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -36,6 +37,7 @@ from error_handlers import (
     safe_send_photo, validate_user_input, validate_admin_access, 
     validate_order_data, ValidationError, SecurityError, BusinessLogicError
 )
+from database import db
 
 from shop.catalog import PRODUCTS, get_product, format_price, add_product as catalog_add_product
 from shop.cart import get_cart, cart_total
@@ -47,6 +49,9 @@ from shop.cart import get_cart, cart_total
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMINS = [x.strip() for x in os.getenv("ADMINS", "").split(",") if x.strip()]
+
+# Мигрируем данные из JSON в базу данных при запуске
+db.migrate_from_json()
 
 if not BOT_TOKEN:
     raise ValueError("❌ BOT_TOKEN не найден в .env!")
@@ -157,6 +162,58 @@ def clear_admin_msgs(admin_id: str) -> None:
             json.dump(msgs, f, ensure_ascii=False, indent=2)
     except Exception as e:
         bot_logger.log_error(e, {"action": "clear_admin_msgs", "admin_id": admin_id})
+
+# ======================
+# 🔹 Функции аутентификации и уведомлений
+# ======================
+
+@handle_errors
+async def register_user(message: Message) -> bool:
+    """Регистрирует пользователя в базе данных"""
+    user = message.from_user
+    return db.add_user(
+        telegram_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name
+    )
+
+@handle_errors
+async def is_user_admin(user_id: int) -> bool:
+    """Проверяет, является ли пользователь админом"""
+    user = db.get_user(user_id)
+    return user and user.get('is_admin', False)
+
+@handle_errors
+async def send_notification_to_admins(message_text: str, order_data: Dict = None):
+    """Отправляет уведомление всем админам"""
+    for admin_id in ADMINS:
+        try:
+            if order_data:
+                text = f"🔔 **Новое уведомление**\n\n{message_text}\n\n"
+                text += f"📦 **Детали заказа:**\n"
+                text += f"💰 Сумма: {order_data.get('total_amount', 0)} ₽\n"
+                text += f"👤 Пользователь: {order_data.get('user_name', 'Неизвестно')}\n"
+                text += f"📅 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+            else:
+                text = f"🔔 **Уведомление**\n\n{message_text}"
+            
+            await safe_send_message(bot, int(admin_id), text)
+        except Exception as e:
+            bot_logger.error(f"Ошибка отправки уведомления админу {admin_id}: {e}")
+
+@handle_errors
+async def send_order_notification(order_id: int, user_id: int, status: str):
+    """Отправляет уведомление о статусе заказа пользователю"""
+    status_messages = {
+        'paid': "✅ Ваш заказ оплачен! Мы начинаем сборку.",
+        'shipped': "🚚 Ваш заказ отправлен! Отслеживайте доставку.",
+        'delivered': "🎉 Заказ доставлен! Спасибо за покупку!",
+        'cancelled': "❌ Заказ отменен. Обратитесь к поддержке."
+    }
+    
+    message = status_messages.get(status, f"📦 Статус заказа #{order_id}: {status}")
+    await safe_send_message(bot, user_id, message)
 
 # ======================
 # 🔹 Клавиатуры
@@ -283,6 +340,9 @@ async def start(msg: Message):
     """Обработчик команды /start"""
     user_id = str(msg.chat.id)
     data["user_states"].pop(user_id, None)
+    
+    # Регистрируем пользователя в базе данных
+    await register_user(msg)
     
     bot_logger.log_user_action(user_id, "start_command")
     
