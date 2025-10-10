@@ -210,31 +210,31 @@ body {
 }
 
 .product-info {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
 }
 
 .product-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
-  line-height: 1.4;
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.3;
 }
 
 .product-price {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--primary-color);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .product-sizes {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .size-label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   margin-bottom: var(--spacing-xs);
   font-weight: 500;
@@ -262,13 +262,15 @@ body {
 .quantity-controls {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  padding: 0 var(--spacing-sm);
 }
 
 .qty-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border-color);
   background: var(--surface-bg);
   color: var(--text-primary);
@@ -276,11 +278,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
+  margin: 0 var(--spacing-xs);
 }
 
 .qty-btn:hover {
@@ -295,11 +298,12 @@ body {
 }
 
 .qty-display {
-  min-width: 40px;
+  min-width: 36px;
   text-align: center;
   font-weight: 600;
   color: var(--text-primary);
   font-size: 16px;
+  padding: 0 var(--spacing-xs);
 }
 
 /* ===== КНОПКИ ===== */
@@ -445,10 +449,19 @@ body {
 
 .product-actions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   flex-wrap: wrap;
-  padding: var(--spacing-sm);
-  margin-top: var(--spacing-md);
+  padding: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.product-actions .btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 0;
+  min-height: 36px;
 }
 
 /* ===== КОРЗИНА ===== */
