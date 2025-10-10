@@ -7,17 +7,3 @@ channel = "stable-24_05"
 
 [deployment]
 run = ["sh", "-c", "python run.py"]
-
-[env]
-PYTHONPATH = "${PYTHONPATH}:${PWD}"
-PYTHONUNBUFFERED = "1"
-
-[gitHubImport]
-requiredFiles = [".replit", "replit.nix", "requirements.txt", "run.py"]
-
-[ports]
-8000 = { run = "python server.py" }
-8001 = { run = "python bot.py" }
-
-[unitTest]
-language = "python3"
