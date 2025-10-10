@@ -130,7 +130,7 @@ async def index():
 async def webapp():
     """WebApp страница"""
     try:
-    return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
+        return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
     except Exception as e:
         logger.error("Error serving webapp page", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
