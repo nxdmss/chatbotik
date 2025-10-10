@@ -214,12 +214,42 @@ body {
     height: 120px;
     font-size: 28px;
   }
+  
+  .quantity-controls {
+    max-width: 100px;
+  }
+  
+  .qty-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  
+  .qty-display {
+    min-width: 36px;
+    font-size: 14px;
+  }
 }
 
 @media (max-width: 480px) {
   .product-image {
     height: 100px;
     font-size: 24px;
+  }
+  
+  .quantity-controls {
+    max-width: 90px;
+  }
+  
+  .qty-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+  
+  .qty-display {
+    min-width: 32px;
+    font-size: 13px;
   }
 }
 
@@ -276,10 +306,13 @@ body {
 .quantity-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: var(--spacing-sm);
   margin: var(--spacing-sm) 0;
   padding: 0 var(--spacing-sm);
+  max-width: 120px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .qty-btn {
@@ -297,7 +330,8 @@ body {
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
-  margin: 0 var(--spacing-xs);
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .qty-btn:hover {
@@ -312,12 +346,16 @@ body {
 }
 
 .qty-display {
-  min-width: 36px;
+  min-width: 40px;
   text-align: center;
   font-weight: 600;
   color: var(--text-primary);
   font-size: 16px;
   padding: 0 var(--spacing-xs);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ===== КНОПКИ ===== */
