@@ -1,314 +1,685 @@
-// WebApp main JS for shop
-let PRODUCTS = [];
+// ===== МОБИЛЬНОЕ ПРИЛОЖЕНИЕ МАГАЗИНА =====
 
-async function fetchProducts(){
-  try{
-    const res = await fetch('/webapp/products.json');
-    if(res.ok){ PRODUCTS = await res.json(); return; }
-  }catch(e){}
-  // fallback to default
-  PRODUCTS = [
-    {id:'p1', title:'Кроссовки Sprint', price:4990, sizes:[38,39,40,41], img:''},
-    {id:'p2', title:'Кеды Classic', price:3490, sizes:[36,37,38,39,40], img:''},
-    {id:'p3', title:'Ботинки Trail', price:7990, sizes:[40,41,42,43], img:''}
-  ];
-}
+class MobileShopApp {
+  constructor() {
+    this.PRODUCTS = [];
+    this.cart = this.loadCart();
+    this.currentPage = 'catalog';
+    this.userInfo = null;
+    this.isAdmin = false;
+    
+    this.CART_KEY = 'mobile_shop_cart_v2';
+    this.ORDERS_KEY = 'mobile_shop_orders_v1';
+    
+    this.init();
+  }
 
-const productsEl = document.getElementById('products');
-const searchInput = document.getElementById('search');
-const cartList = document.getElementById('cart-list');
-const totalEl = document.getElementById('total');
-const checkoutBtn = document.getElementById('checkout');
-const clearBtn = document.getElementById('clear');
-const adminFormRoot = document.createElement('div');
-adminFormRoot.style.margin = '12px 0';
-
-// show admin form if ?admin=1
-function isAdminView(){
-  try{
-    // allow admin mode via ?admin=1 OR server-side ADMINS check using Telegram initData
-    if(new URLSearchParams(window.location.search).get('admin') === '1') return true;
-    return false;
-  }catch(e){return false}
-}
-
-// check if current user is admin by querying server /webapp/admins.json and comparing to Telegram init data
-async function isUserAdmin(){
-  // first, try URL param
-  if(isAdminView()) return true;
-  // try server-provided admins list
-  try{
-    const r = await fetch('/webapp/admins.json');
-    if(!r.ok) return false;
-    const admins = await r.json(); // array of strings
-    // try to extract user id from Telegram WebApp initDataUnsafe
-    if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe){
-      const user = window.Telegram.WebApp.initDataUnsafe.user;
-      const uid = user && (user.id || user.user_id || user.id_str);
-      if(uid && admins.map(String).includes(String(uid))) return true;
-    }
-  }catch(e){ }
-  return false;
-}
-
-function renderAdminForm(){
-  adminFormRoot.innerHTML = `
-    <h3>Админ: добавить товар</h3>
-    <div style="display:flex;flex-direction:column;gap:8px;max-width:420px">
-      <input id="adm_title" placeholder="Название товара" />
-      <input id="adm_price" placeholder="Цена (руб)" />
-      <input id="adm_sizes" placeholder="Размеры через запятую, например: 38,39,40" />
-      <input id="adm_img" placeholder="URL фото (опционально)" />
-      <input id="adm_file" type="file" accept="image/*" />
-      <img id="adm_preview" src="" alt="preview" style="max-width:180px;display:none;border:1px solid #ddd;padding:4px;margin-top:6px" />
-      <button id="adm_add" class="btn">Добавить товар</button>
-    </div>
-  `;
-  // Insert admin form at top of products section
-  const section = document.querySelector('main section') || document.querySelector('main .grid section');
-  if(section) section.prepend(adminFormRoot);
-  const btn = document.getElementById('adm_add');
-  btn.addEventListener('click', async ()=>{
-    const title = document.getElementById('adm_title').value.trim();
-    const price = parseInt(document.getElementById('adm_price').value || '0');
-    const sizes = (document.getElementById('adm_sizes').value||'').split(',').map(s=>parseInt(s)).filter(Boolean);
-    let img = document.getElementById('adm_img').value.trim()||'';
-    const fileInput = document.getElementById('adm_file');
-    if(!title || !price) return alert('Введите название и цену');
-    // if file selected, upload it first
-    if(fileInput && fileInput.files && fileInput.files[0]){
-      const fd = new FormData();
-      fd.append('file', fileInput.files[0]);
-      try{
-        const r = await fetch('/webapp/upload', {method:'POST', body: fd});
-        if(r.ok){ const j = await r.json(); img = j.url; }
-      }catch(e){ console.warn('upload failed', e); }
-    }
-    const prod = {title, price, sizes, photo: img, currency: 'RUB'};
-    const payload = {action:'add_product', product: prod};
-    if(window.Telegram && window.Telegram.WebApp){
-      try{
-        window.Telegram.WebApp.sendData(JSON.stringify(payload));
-        alert('Запрос отправлен администратору бота.');
-      }catch(e){
-        // fallback: try server endpoint
-        console.warn('sendData failed', e);
-        const tryFallback = confirm('Не удалось отправить данные в бота через Telegram API. Попробовать отправить напрямую на сервер (требует admin=1)?');
-        if(tryFallback){
-          try{
-            const r = await fetch('/webapp/add_product?admin=1', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-            const j = await r.json();
-            if(r.ok && j.ok){ alert('Товар добавлен через сервер fallback.'); }
-            else alert('Fallback failed: ' + (j.error || r.status));
-          }catch(er){ alert('Fallback request failed: ' + er.message); }
-        }
+  // ===== ИНИЦИАЛИЗАЦИЯ =====
+  
+  async init() {
+    try {
+      // Настройка Telegram WebApp
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+        this.userInfo = window.Telegram.WebApp.initDataUnsafe?.user;
       }
-    } else {
-      // not inside Telegram — try direct server post when admin=1 param present
-      const forced = new URLSearchParams(window.location.search).get('admin') === '1';
-      if(forced){
-        try{
-          const r = await fetch('/webapp/add_product?admin=1', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-          const j = await r.json();
-          if(r.ok && j.ok){ alert('Товар добавлен через сервер.'); }
-          else alert('Добавление не удалось: ' + (j.error || r.status));
-        }catch(e){ alert('Ошибка при добавлении через сервер: ' + e.message); }
+      
+      // Загрузка данных
+      await this.fetchProducts();
+      await this.checkAdminStatus();
+      
+      // Настройка интерфейса
+      this.setupEventListeners();
+      this.renderCurrentPage();
+      this.updateCartBadge();
+      
+      console.log('✅ Приложение инициализировано');
+    } catch (error) {
+      console.error('❌ Ошибка инициализации:', error);
+    }
+  }
+
+  // ===== ЗАГРУЗКА ДАННЫХ =====
+  
+  async fetchProducts() {
+    try {
+      const response = await fetch('/webapp/products.json');
+      if (response.ok) {
+        this.PRODUCTS = await response.json();
       } else {
-        alert('Откройте админскую версию внутри Telegram (admin=1) чтобы добавить товар.');
+        throw new Error('Не удалось загрузить товары');
       }
+    } catch (error) {
+      console.warn('Используем тестовые товары:', error);
+      this.PRODUCTS = [
+        {id:'p1', title:'Кроссовки Sprint', price:4990, sizes:[38,39,40,41], photo:''},
+        {id:'p2', title:'Кеды Classic', price:3490, sizes:[36,37,38,39,40], photo:''},
+        {id:'p3', title:'Ботинки Trail', price:7990, sizes:[40,41,42,43], photo:''}
+      ];
     }
-  });
+  }
 
-  // preview when URL or file selected
-  const preview = document.getElementById('adm_preview');
-  const imgInput = document.getElementById('adm_img');
-  imgInput.addEventListener('input', ()=>{
-    const v = imgInput.value.trim();
-    if(v){ preview.src = v; preview.style.display = 'block'; } else { preview.src=''; preview.style.display='none'; }
-  });
-  const fileInputEl = document.getElementById('adm_file');
-  fileInputEl.addEventListener('change', ()=>{
-    const f = fileInputEl.files && fileInputEl.files[0];
-    if(!f) return;
-    const url = URL.createObjectURL(f);
-    preview.src = url; preview.style.display = 'block';
-  });
-}
-
-// cart: { key: {id, qty, size} }, key = id + '::' + size
-const CART_KEY = 'tupabotik_cart_v1';
-const cart = JSON.parse(localStorage.getItem(CART_KEY) || '{}');
-
-function money(v){ return v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + ' ₽'; }
-
-function renderProducts(){
-  productsEl.innerHTML = '';
-  // filter by search
-  const q = (searchInput && searchInput.value || '').toLowerCase().trim();
-  PRODUCTS.forEach(p=>{
-    if(q){
-      const hay = (p.title + ' ' + (p.sku||'') + ' ' + (p.tags||'')).toLowerCase();
-      if(!hay.includes(q)) return;
+  async checkAdminStatus() {
+    try {
+      // Проверяем URL параметр
+      if (new URLSearchParams(window.location.search).get('admin') === '1') {
+        this.isAdmin = true;
+        return;
+      }
+      
+      // Проверяем через API
+      const response = await fetch('/webapp/admins.json');
+      if (response.ok) {
+        const admins = await response.json();
+        const userId = this.userInfo?.id || this.userInfo?.user_id;
+        this.isAdmin = userId && admins.includes(String(userId));
+      }
+    } catch (error) {
+      console.warn('Не удалось проверить статус администратора:', error);
+      this.isAdmin = false;
     }
-    const card = document.createElement('div'); card.className='card';
-    const photoSrc = p.photo || p.img || 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=400 height=300><rect width=400 height=300 fill=%23eeeeee/></svg>';
-  // skip deleted items (hidden by default)
-  if(p.deleted) return;
-  const isDeleted = false;
-    card.innerHTML = `
-      <img src="${photoSrc}" alt="">
-      <div class="title">${p.title}</div>
-      <div class="price">${money(p.price)}</div>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-        <select class="size-select" data-id="${p.id}">
-          ${p.sizes.map(s=>`<option value="${s}">${s}</option>`).join('')}
+  }
+
+  // ===== КОРЗИНА =====
+  
+  loadCart() {
+    try {
+      return JSON.parse(localStorage.getItem(this.CART_KEY) || '{}');
+    } catch (error) {
+      console.warn('Ошибка загрузки корзины:', error);
+      return {};
+    }
+  }
+
+  saveCart() {
+    try {
+      localStorage.setItem(this.CART_KEY, JSON.stringify(this.cart));
+    } catch (error) {
+      console.warn('Ошибка сохранения корзины:', error);
+    }
+  }
+
+  addToCart(productId, size, quantity = 1) {
+    const product = this.PRODUCTS.find(p => p.id === productId);
+    if (!product) return;
+
+    const key = `${productId}::${size}`;
+    if (!this.cart[key]) {
+      this.cart[key] = {
+        id: productId,
+        title: product.title,
+        price: product.price,
+        size: size,
+        qty: 0
+      };
+    }
+    
+    this.cart[key].qty += quantity;
+    this.saveCart();
+    this.updateCartBadge();
+    
+    // Показываем уведомление
+    this.showNotification(`${product.title} добавлен в корзину`);
+  }
+
+  removeFromCart(key) {
+    delete this.cart[key];
+    this.saveCart();
+    this.updateCartBadge();
+  }
+
+  clearCart() {
+    this.cart = {};
+    this.saveCart();
+    this.updateCartBadge();
+    this.renderCartPage();
+  }
+
+  getCartTotal() {
+    return Object.values(this.cart).reduce((total, item) => total + (item.price * item.qty), 0);
+  }
+
+  getCartItemsCount() {
+    return Object.values(this.cart).reduce((count, item) => count + item.qty, 0);
+  }
+
+  // ===== НАВИГАЦИЯ =====
+  
+  showPage(pageName) {
+    // Скрываем все страницы
+    document.querySelectorAll('.page').forEach(page => {
+      page.classList.remove('active');
+    });
+    
+    // Показываем нужную страницу
+    const targetPage = document.getElementById(`${pageName}-page`);
+    if (targetPage) {
+      targetPage.classList.add('active');
+      this.currentPage = pageName;
+    }
+    
+    // Обновляем навигацию
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    
+    const activeNavItem = document.querySelector(`[data-page="${pageName}"]`);
+    if (activeNavItem) {
+      activeNavItem.classList.add('active');
+    }
+    
+    // Рендерим страницу
+    this.renderCurrentPage();
+  }
+
+  renderCurrentPage() {
+    switch (this.currentPage) {
+      case 'catalog':
+        this.renderCatalogPage();
+        break;
+      case 'cart':
+        this.renderCartPage();
+        break;
+      case 'profile':
+        this.renderProfilePage();
+        break;
+    }
+  }
+
+  // ===== СТРАНИЦА КАТАЛОГА =====
+  
+  renderCatalogPage() {
+    const productsEl = document.getElementById('products');
+    if (!productsEl) return;
+
+    const searchQuery = document.getElementById('search')?.value?.toLowerCase() || '';
+    
+    const filteredProducts = this.PRODUCTS.filter(product => {
+      if (product.deleted) return false;
+      if (!searchQuery) return true;
+      return product.title.toLowerCase().includes(searchQuery);
+    });
+
+    productsEl.innerHTML = filteredProducts.map(product => this.renderProductCard(product)).join('');
+    
+    // Добавляем обработчики событий
+    this.setupProductEventListeners();
+  }
+
+  renderProductCard(product) {
+    const photoSrc = product.photo || 
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width=400 height=300><rect width=400 height=300 fill=%23eeeeee/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill=%23999>Нет фото</text></svg>';
+    
+    return `
+      <div class="product-card" data-product-id="${product.id}">
+        <img src="${photoSrc}" alt="${product.title}" class="product-image">
+        <div class="product-title">${product.title}</div>
+        <div class="product-price">${this.formatPrice(product.price)}</div>
+        <div class="product-controls">
+          <select class="size-select" data-product-id="${product.id}">
+            ${product.sizes.map(size => `<option value="${size}">Размер ${size}</option>`).join('')}
         </select>
-        <div class="qty">
-          <button class="dec" data-id="${p.id}">-</button>
-          <div style="min-width:28px;text-align:center" data-qtyid="${p.id}">1</div>
-          <button class="inc" data-id="${p.id}">+</button>
+          <div class="qty-controls">
+            <button class="qty-btn qty-decrease" data-product-id="${product.id}">-</button>
+            <div class="qty-display" data-product-id="${product.id}">1</div>
+            <button class="qty-btn qty-increase" data-product-id="${product.id}">+</button>
+          </div>
+        </div>
+        <div class="product-actions">
+          <button class="btn btn-primary add-to-cart" data-product-id="${product.id}">
+            🛒 Добавить
+          </button>
+          <button class="btn btn-secondary quick-buy" data-product-id="${product.id}">
+            ⚡ Купить
+          </button>
+          ${this.isAdmin ? `<button class="btn btn-danger delete-product" data-product-id="${product.id}">🗑</button>` : ''}
         </div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px">
-        ${isDeleted?'<span style="color:#a00">(удалён)</span>':''}
-        <button class="btn add" data-id="${p.id}" ${isDeleted? 'disabled':''}>Добавить в корзину</button>
-        <button class="btn ghost" data-id="${p.id}" data-action="quickbuy" ${isDeleted? 'disabled':''}>Купить</button>
-        ${window._isAdmin? `<button class="btn danger del" data-id="${p.id}">Удалить</button>` : ''}
-      </div>
     `;
-    productsEl.appendChild(card);
-  });
-}
-
-function rebuildCart(){
-  cartList.innerHTML='';
-  let total=0;
-  Object.values(cart).forEach(item=>{
-    const row = document.createElement('div'); row.className='cart-item';
-    const title = document.createElement('div');
-    title.innerHTML = `<div>${item.title} <small style="color:var(--muted)">(${item.size})</small></div><div style="color:var(--muted)">x${item.qty}</div>`;
-    const price = document.createElement('div');
-    price.textContent = money(item.qty * item.price);
-    row.appendChild(title); row.appendChild(price);
-    cartList.appendChild(row);
-    total += item.qty * item.price;
-  });
-  totalEl.textContent = money(total);
-  return total;
-}
-
-function persistCart(){
-  try{ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }catch(e){}
-}
-
-// helpers to get quantity element for product
-function findQtyEl(pid){ return document.querySelector(`[data-qtyid='${pid}']`); }
-
-productsEl.addEventListener('click', (e)=>{
-  const add = e.target.closest('.add');
-  const quick = e.target.closest('[data-action="quickbuy"]');
-  const inc = e.target.closest('.inc');
-  const dec = e.target.closest('.dec');
-  if(inc||dec){
-    const id = (inc||dec).dataset.id; const qtyEl = findQtyEl(id);
-    let v = parseInt(qtyEl.textContent||'1');
-    if(inc) v++; else v = Math.max(1, v-1);
-    qtyEl.textContent = v;
-    return;
   }
-  if(add || quick){
-    const id = (add||quick).dataset.id;
-    const select = document.querySelector(`.size-select[data-id='${id}']`);
-    const size = select ? select.value : '';
-    const qtyEl = findQtyEl(id); const qty = parseInt(qtyEl.textContent||'1');
-    const key = id + '::' + size;
-    const prod = PRODUCTS.find(p=>p.id===id);
-    if(!prod) return;
-    if(!cart[key]){
-      cart[key] = {id:prod.id, title:prod.title, price:prod.price, qty:0, size};
+
+  setupProductEventListeners() {
+    // Кнопки количества
+    document.querySelectorAll('.qty-increase, .qty-decrease').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const productId = e.target.dataset.productId;
+        const qtyEl = document.querySelector(`[data-product-id="${productId}"].qty-display`);
+        let qty = parseInt(qtyEl.textContent);
+        
+        if (e.target.classList.contains('qty-increase')) {
+          qty = Math.min(qty + 1, 99);
+        } else {
+          qty = Math.max(qty - 1, 1);
+        }
+        
+        qtyEl.textContent = qty;
+      });
+    });
+
+    // Добавить в корзину
+    document.querySelectorAll('.add-to-cart').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const productId = e.target.dataset.productId;
+        const sizeSelect = document.querySelector(`[data-product-id="${productId}"].size-select`);
+        const qtyEl = document.querySelector(`[data-product-id="${productId}"].qty-display`);
+        
+        const size = parseInt(sizeSelect.value);
+        const qty = parseInt(qtyEl.textContent);
+        
+        this.addToCart(productId, size, qty);
+        qtyEl.textContent = '1'; // Сбрасываем количество
+      });
+    });
+
+    // Быстрая покупка
+    document.querySelectorAll('.quick-buy').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const productId = e.target.dataset.productId;
+        const sizeSelect = document.querySelector(`[data-product-id="${productId}"].size-select`);
+        const qtyEl = document.querySelector(`[data-product-id="${productId}"].qty-display`);
+        
+        const size = parseInt(sizeSelect.value);
+        const qty = parseInt(qtyEl.textContent);
+        
+        this.addToCart(productId, size, qty);
+        this.showPage('cart');
+        qtyEl.textContent = '1';
+      });
+    });
+
+    // Удаление товара (админ)
+    if (this.isAdmin) {
+      document.querySelectorAll('.delete-product').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const productId = e.target.dataset.productId;
+          this.deleteProduct(productId);
+        });
+      });
     }
-    // for quickbuy, replace qty, else add
-    if((add && !quick) || add) cart[key].qty += qty;
-    if(quick) cart[key].qty = qty;
-    // reset qty display to 1
-    if(qtyEl) qtyEl.textContent = '1';
-    rebuildCart();
-    persistCart();
-    if(quick){ doCheckout(); }
   }
-  // delete product (admin only)
-  const del = e.target.closest('.del');
-  if(del){
-    const id = del.dataset.id;
-    if(!window._isAdmin){ return alert('Только администратор может удалять товары'); }
-    if(!confirm('Удалить товар из каталога?')) return;
-    fetch('/webapp/delete_product?admin=1', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})})
-      .then(async r => {
-        const j = await r.json().catch(()=>({}));
-        if(r.ok) { alert('Товар удалён'); location.reload(); }
-        else alert('Ошибка удаления: ' + (j.error || r.status));
-      }).catch(e=>alert('Ошибка запроса: '+e.message));
+
+  // ===== СТРАНИЦА КОРЗИНЫ =====
+  
+  renderCartPage() {
+    const cartListEl = document.getElementById('cart-list');
+    const totalEl = document.getElementById('total');
+    
+    if (!cartListEl || !totalEl) return;
+
+    const cartItems = Object.entries(this.cart);
+    
+    if (cartItems.length === 0) {
+      cartListEl.innerHTML = `
+        <div class="text-center" style="padding: 40px 20px; color: var(--text-light);">
+          <div style="font-size: 48px; margin-bottom: 16px;">🛒</div>
+          <h3>Корзина пуста</h3>
+          <p>Добавьте товары из каталога</p>
+        </div>
+      `;
+      totalEl.textContent = '0 ₽';
+      return;
+    }
+
+    cartListEl.innerHTML = cartItems.map(([key, item]) => `
+      <div class="cart-item" data-key="${key}">
+        <div class="cart-item-info">
+          <div class="cart-item-title">${item.title}</div>
+          <div class="cart-item-details">Размер ${item.size} × ${item.qty}</div>
+        </div>
+        <div class="cart-item-price">${this.formatPrice(item.price * item.qty)}</div>
+        <button class="btn btn-danger" onclick="app.removeFromCart('${key}')" style="padding: 8px; margin-left: 8px;">×</button>
+      </div>
+    `).join('');
+
+    totalEl.textContent = this.formatPrice(this.getCartTotal());
   }
-  const restoreBtn = e.target.closest('[data-action="restore"]');
-  if(restoreBtn){
-    const id = restoreBtn.dataset.id;
-    if(!window._isAdmin) return alert('Только администратор может восстанавливать товары');
-    if(!confirm('Восстановить товар?')) return;
-    fetch('/webapp/restore_product?admin=1', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})})
-      .then(async r => {
-        const j = await r.json().catch(()=>({}));
-        if(r.ok) { alert('Товар восстановлен'); location.reload(); }
-        else alert('Ошибка восстановления: ' + (j.error || r.status));
-      }).catch(e=>alert('Ошибка запроса: '+e.message));
+
+  // ===== СТРАНИЦА ПРОФИЛЯ =====
+  
+  renderProfilePage() {
+    this.updateUserInfo();
+    this.updateProfileStats();
   }
+
+  updateUserInfo() {
+    const userNameEl = document.getElementById('user-name');
+    const userIdEl = document.getElementById('user-id');
+    
+    if (userNameEl) {
+      const name = this.userInfo?.first_name || 'Пользователь';
+      const lastName = this.userInfo?.last_name || '';
+      userNameEl.textContent = `${name} ${lastName}`.trim();
+    }
+    
+    if (userIdEl) {
+      const userId = this.userInfo?.id || this.userInfo?.user_id || 'Неизвестно';
+      userIdEl.textContent = `ID: ${userId}`;
+    }
+  }
+
+  updateProfileStats() {
+    const orders = this.loadOrders();
+    const totalOrders = orders.length;
+    const completedOrders = orders.filter(order => order.status === 'done').length;
+    const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+
+    const totalOrdersEl = document.getElementById('total-orders');
+    const completedOrdersEl = document.getElementById('completed-orders');
+    const totalSpentEl = document.getElementById('total-spent');
+
+    if (totalOrdersEl) totalOrdersEl.textContent = totalOrders;
+    if (completedOrdersEl) completedOrdersEl.textContent = completedOrders;
+    if (totalSpentEl) totalSpentEl.textContent = this.formatPrice(totalSpent);
+  }
+
+  loadOrders() {
+    try {
+      return JSON.parse(localStorage.getItem(this.ORDERS_KEY) || '[]');
+    } catch (error) {
+      console.warn('Ошибка загрузки заказов:', error);
+      return [];
+    }
+  }
+
+  saveOrder(order) {
+    try {
+      const orders = this.loadOrders();
+      orders.push(order);
+      localStorage.setItem(this.ORDERS_KEY, JSON.stringify(orders));
+    } catch (error) {
+      console.warn('Ошибка сохранения заказа:', error);
+    }
+  }
+
+  // ===== ОФОРМЛЕНИЕ ЗАКАЗА =====
+  
+  async checkout() {
+    const items = Object.values(this.cart);
+    if (items.length === 0) {
+      this.showNotification('Корзина пуста', 'warning');
+    return;
+    }
+
+    const total = this.getCartTotal();
+    const order = {
+      id: Date.now(),
+      items: items,
+      total: total,
+      status: 'new',
+      created_at: new Date().toISOString(),
+      from_webapp: true
+    };
+
+    // Сохраняем заказ локально
+    this.saveOrder(order);
+
+    // Отправляем в бота
+    const payload = {
+      action: 'checkout',
+      items: items.map(item => ({
+        id: item.id,
+        qty: item.qty,
+        size: item.size
+      })),
+      total: total
+    };
+
+    try {
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.sendData(JSON.stringify(payload));
+        this.showNotification('Заказ отправлен!', 'success');
+        this.clearCart();
+        this.showPage('profile');
+      } else {
+        throw new Error('Не в Telegram');
+      }
+    } catch (error) {
+      console.error('Ошибка отправки заказа:', error);
+      this.showNotification('Ошибка отправки заказа', 'error');
+    }
+  }
+
+  // ===== МОДАЛЬНЫЕ ОКНА =====
+  
+  showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.add('active');
+      this.renderModalContent(modalId);
+    }
+  }
+
+  hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.remove('active');
+    }
+  }
+
+  renderModalContent(modalId) {
+    switch (modalId) {
+      case 'orders-modal':
+        this.renderOrdersModal();
+        break;
+      case 'faq-modal':
+        // FAQ уже в HTML
+        break;
+    }
+  }
+
+  renderOrdersModal() {
+    const ordersListEl = document.getElementById('orders-list');
+    if (!ordersListEl) return;
+
+    const orders = this.loadOrders();
+    
+    if (orders.length === 0) {
+      ordersListEl.innerHTML = `
+        <div class="text-center" style="padding: 20px; color: var(--text-light);">
+          <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+          <h3>Нет заказов</h3>
+          <p>Ваши заказы появятся здесь</p>
+        </div>
+      `;
+      return;
+    }
+
+    ordersListEl.innerHTML = orders.map(order => `
+      <div class="order-item">
+        <div class="order-header">
+          <div class="order-id">Заказ #${order.id}</div>
+          <div class="order-status ${order.status}">${this.getStatusText(order.status)}</div>
+        </div>
+        <div class="order-details">
+          ${order.items.length} товаров на сумму ${this.formatPrice(order.total)}
+        </div>
+        <div class="order-total">
+          ${new Date(order.created_at).toLocaleDateString('ru-RU')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  getStatusText(status) {
+    const statusMap = {
+      'new': 'Новый',
+      'work': 'В работе',
+      'done': 'Завершён',
+      'paid': 'Оплачен'
+    };
+    return statusMap[status] || status;
+  }
+
+  // ===== АДМИН ФУНКЦИИ =====
+  
+  async deleteProduct(productId) {
+    if (!this.isAdmin) return;
+    
+    if (!confirm('Удалить товар из каталога?')) return;
+
+    try {
+      const response = await fetch('/webapp/delete_product?admin=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: productId })
+      });
+
+      if (response.ok) {
+        this.showNotification('Товар удалён', 'success');
+        this.renderCatalogPage();
+      } else {
+        throw new Error('Ошибка удаления');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления товара:', error);
+      this.showNotification('Ошибка удаления товара', 'error');
+    }
+  }
+
+  // ===== УТИЛИТЫ =====
+  
+  formatPrice(price) {
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+  }
+
+  updateCartBadge() {
+    const badge = document.getElementById('cart-badge');
+    const count = this.getCartItemsCount();
+    
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  showNotification(message, type = 'info') {
+    // Простое уведомление
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--accent)'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  }
+
+  // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
+  
+  setupEventListeners() {
+    // Навигация
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const page = e.currentTarget.dataset.page;
+        this.showPage(page);
+      });
+    });
+
+    // Поиск
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        this.renderCatalogPage();
+      });
+    }
+
+    // Очистка корзины
+    const clearCartBtn = document.getElementById('clear-cart');
+    if (clearCartBtn) {
+      clearCartBtn.addEventListener('click', () => {
+        if (confirm('Очистить корзину?')) {
+          this.clearCart();
+        }
+      });
+    }
+
+    // Оформление заказа
+    const checkoutBtn = document.getElementById('checkout');
+    if (checkoutBtn) {
+      checkoutBtn.addEventListener('click', () => {
+        this.checkout();
+      });
+    }
+
+    // Модальные окна
+    document.getElementById('my-orders-btn')?.addEventListener('click', () => {
+      this.showModal('orders-modal');
+    });
+
+    document.getElementById('faq-btn')?.addEventListener('click', () => {
+      this.showModal('faq-modal');
+    });
+
+    document.getElementById('contact-admin-btn')?.addEventListener('click', () => {
+      this.contactAdmin();
+    });
+
+    // Закрытие модальных окон
+    document.querySelectorAll('.modal-close').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const modal = e.target.closest('.modal');
+        if (modal) {
+          this.hideModal(modal.id);
+        }
+      });
+    });
+
+    // Закрытие по клику вне модального окна
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          this.hideModal(modal.id);
+        }
+      });
+    });
+  }
+
+  contactAdmin() {
+    if (window.Telegram && window.Telegram.WebApp) {
+      // Отправляем сообщение в бота
+      const payload = {
+        action: 'contact_admin',
+        message: 'Пользователь хочет связаться с администратором'
+      };
+      
+      try {
+      window.Telegram.WebApp.sendData(JSON.stringify(payload));
+        this.showNotification('Сообщение отправлено администратору', 'success');
+      } catch (error) {
+        console.error('Ошибка отправки сообщения:', error);
+        this.showNotification('Ошибка отправки сообщения', 'error');
+      }
+    } else {
+      this.showNotification('Откройте приложение в Telegram', 'warning');
+    }
+  }
+}
+
+// ===== ЗАПУСК ПРИЛОЖЕНИЯ =====
+
+let app;
+
+document.addEventListener('DOMContentLoaded', () => {
+  app = new MobileShopApp();
 });
 
-clearBtn.addEventListener('click', ()=>{ Object.keys(cart).forEach(k=>delete cart[k]); rebuildCart(); persistCart(); });
-
-// cart toggle
-const toggleCartBtn = document.getElementById('toggle_cart');
-if(toggleCartBtn){
-  toggleCartBtn.addEventListener('click', ()=>{
-    const sidebar = document.querySelector('.sidebar');
-    if(!sidebar) return;
-    sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
-  });
-}
-
-// search input
-if(searchInput){
-  searchInput.addEventListener('input', ()=>{ renderProducts(); });
-}
-
-function doCheckout(){
-  const items = Object.values(cart).map(i=>({id:i.id, qty:i.qty, size:i.size}));
-  const total = rebuildCart();
-  const payload = {action:'checkout', items, total};
-  if(window.Telegram && window.Telegram.WebApp){
-    try{
-      window.Telegram.WebApp.sendData(JSON.stringify(payload));
-      // попытка закрыть WebApp для удобства пользователя
-      try{ window.Telegram.WebApp.close(); }catch(e){}
-      // очистим локальную корзину после отправки
-      Object.keys(cart).forEach(k=>delete cart[k]); rebuildCart(); persistCart();
-    }catch(e){
-      alert('Не удалось отправить данные в бота.');
-    }
-  } else {
-    alert('Откройте этот магазин внутри Telegram, чтобы оформление прошло автоматически.');
-  }
-}
-
-checkoutBtn.addEventListener('click', doCheckout);
-
-// init flow
-(async ()=>{
-  await fetchProducts();
-  const admin = await isUserAdmin();
-  window._isAdmin = admin;
-  if(admin) renderAdminForm();
-  renderProducts();
-  rebuildCart();
-  // no show-deleted toggle (deleted items are hidden)
-  try{ if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.expand) window.Telegram.WebApp.expand(); }catch(e){}
-})();
+// Экспортируем для глобального доступа
+window.app = app;

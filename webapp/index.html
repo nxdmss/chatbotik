@@ -2,47 +2,163 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Магазин — Открыть в Telegram</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Магазин — Telegram</title>
   <link rel="stylesheet" href="/webapp/static/styles.css">
+  <link rel="manifest" href="/webapp/static/manifest.json">
+  <meta name="theme-color" content="#2469a8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body>
-  <header>
-    <div class="container">
-      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
-        <h1 style="margin:0">🛍 Магазин — Откройте в Telegram</h1>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="search" placeholder="Поиск товаров..." style="padding:6px 8px;border-radius:8px;border:none;min-width:220px" />
-          <button id="toggle_cart" class="btn" style="background:#fff;color:var(--accent);border:1px solid rgba(36,105,168,0.12)">Корзина</button>
+  <!-- Главный контейнер приложения -->
+  <div class="app-container">
+    
+    <!-- Страница Каталога -->
+    <div class="page active" id="catalog-page">
+      <header class="page-header">
+        <h1>🛍 Каталог</h1>
+        <div class="search-container">
+          <input id="search" placeholder="Поиск товаров..." class="search-input" />
+        </div>
+      </header>
+      
+      <main class="page-content">
+        <div class="products-grid" id="products"></div>
+      </main>
+    </div>
+
+    <!-- Страница Корзины -->
+    <div class="page" id="cart-page">
+      <header class="page-header">
+        <h1>🛒 Корзина</h1>
+        <button id="clear-cart" class="clear-btn">Очистить</button>
+      </header>
+      
+      <main class="page-content">
+        <div class="cart-container">
+          <div class="cart-list" id="cart-list"></div>
+          <div class="cart-total">
+            <div class="total-label">Итого</div>
+            <div class="total-amount" id="total">0 ₽</div>
+          </div>
+          <div class="checkout-actions">
+            <button id="checkout" class="btn checkout-btn">Оплатить</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Страница Профиля -->
+    <div class="page" id="profile-page">
+      <header class="page-header">
+        <h1>👤 Профиль</h1>
+      </header>
+      
+      <main class="page-content">
+        <div class="profile-container">
+          <div class="profile-info">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-details">
+              <h2 id="user-name">Пользователь</h2>
+              <p id="user-id">ID: загрузка...</p>
+            </div>
+          </div>
+          
+          <div class="profile-stats">
+            <div class="stat-item">
+              <div class="stat-number" id="total-orders">0</div>
+              <div class="stat-label">Заказов</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number" id="completed-orders">0</div>
+              <div class="stat-label">Завершено</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number" id="total-spent">0 ₽</div>
+              <div class="stat-label">Потрачено</div>
+            </div>
+          </div>
+          
+          <div class="profile-actions">
+            <button class="action-btn" id="my-orders-btn">
+              <span class="btn-icon">📋</span>
+              <span class="btn-text">Мои заказы</span>
+            </button>
+            <button class="action-btn" id="contact-admin-btn">
+              <span class="btn-icon">💬</span>
+              <span class="btn-text">Связаться с админом</span>
+            </button>
+            <button class="action-btn" id="faq-btn">
+              <span class="btn-icon">❓</span>
+              <span class="btn-text">FAQ</span>
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Модальное окно заказов -->
+    <div class="modal" id="orders-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📋 Мои заказы</h2>
+          <button class="modal-close" id="close-orders-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="orders-list" id="orders-list"></div>
         </div>
       </div>
     </div>
-  </header>
 
-  <main class="container">
-    <div class="grid">
-      <section>
-        <div style="margin-bottom:8px;color:var(--muted)">Выберите товар, укажите размер и количество, затем нажмите «Добавить в корзину».</div>
-        <div class="products" id="products"></div>
-      </section>
-
-      <aside class="sidebar">
-        <div class="cart" id="cart">
-          <h3>Ваша корзина</h3>
-          <div class="cart-list" id="cart-list"></div>
-          <div class="cart-total"><div>Итого</div><div id="total">0 ₽</div></div>
-          <div style="margin-top:12px;display:flex;gap:8px">
-            <button id="checkout" class="btn" style="flex:1">Оплатить</button>
-            <button id="clear" class="btn ghost">Очистить</button>
+    <!-- Модальное окно FAQ -->
+    <div class="modal" id="faq-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>❓ FAQ</h2>
+          <button class="modal-close" id="close-faq-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="faq-content">
+            <div class="faq-item">
+              <h3>📦 Как оформить заказ?</h3>
+              <p>Выберите товар в каталоге, укажите размер и количество, добавьте в корзину и нажмите "Оплатить".</p>
+            </div>
+            <div class="faq-item">
+              <h3>🚚 Доставка</h3>
+              <p>Мы свяжемся с вами для уточнения адреса и времени доставки после оформления заказа.</p>
+            </div>
+            <div class="faq-item">
+              <h3>🔁 Возврат</h3>
+              <p>Возврат возможен в течение 14 дней с момента покупки при сохранении товарного вида.</p>
+            </div>
+            <div class="faq-item">
+              <h3>💬 Вопросы</h3>
+              <p>По любым вопросам обращайтесь к администратору через кнопку "Связаться с админом".</p>
+            </div>
           </div>
         </div>
-      </aside>
+      </div>
     </div>
-  </main>
 
-  <footer>
-    Поддержка: напишите владельцу магазина в чате бота. Доставка обсуждается индивидуально.
-  </footer>
+  </div>
+
+  <!-- Нижняя навигация -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="catalog">
+      <span class="nav-icon">🛍</span>
+      <span class="nav-label">Каталог</span>
+    </button>
+    <button class="nav-item" data-page="cart">
+      <span class="nav-icon">🛒</span>
+      <span class="nav-label">Корзина</span>
+      <span class="nav-badge" id="cart-badge" style="display: none;">0</span>
+    </button>
+    <button class="nav-item" data-page="profile">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Профиль</span>
+    </button>
+  </nav>
 
   <script src="/webapp/static/app.js"></script>
 </body>

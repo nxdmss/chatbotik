@@ -1,0 +1,28 @@
+{
+  "name": "Telegram Shop",
+  "short_name": "Shop",
+  "description": "Мобильный магазин в Telegram",
+  "start_url": "/webapp",
+  "display": "standalone",
+  "background_color": "#f7f9fb",
+  "theme_color": "#2469a8",
+  "orientation": "portrait",
+  "scope": "/webapp/",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiMyNDY5QTgiLz4KPHN2ZyB4PSI0OCIgeT0iNDgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNNyA0SDE3QzE5LjIwOTEgNCAyMSA1Ljc5MDg2IDIxIDhWMTZDMjEgMTguMjA5MSAxOS4yMDkxIDIwIDE3IDIwSDdDNS43OTA4NiAyMCA0IDE4LjIwOTEgNCAxNlY4QzQgNS43OTA4NiA1Ljc5MDg2IDQgNyA0WiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTggNkgxNkMxNy4xMDQ2IDYgMTggNi44OTU0MyAxOCA4VjE2QzE4IDE3LjEwNDYgMTcuMTA0NiAxOCAxNiAxOEg4QzYuODk1NDMgMTggNiAxNy4xMDQ2IDYgMTZWOFM2IDYuODk1NDMgOCA2WiIgZmlsbD0iIzI0NjlBOCIvPgo8L3N2Zz4KPC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iNjQiIGZpbGw9IiMyNDY5QTgiLz4KPHN2ZyB4PSIxMjgiIHk9IjEyOCIgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTcgNEgxN0MxOS4yMDkxIDQgMjEgNS43OTA4NiAyMSA4VjE2QzIxIDE4LjIwOTEgMTkuMjA5MSAyMCAxNyAyMEg3QzUuNzkwODYgMjAgNCAxOC4yMDkxIDQgMTZWOFM0IDUuNzkwODYgNyA0WiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTggNkgxNkMxNy4xMDQ2IDYgMTggNi44OTU0MyAxOCA4VjE2QzE4IDE3LjEwNDYgMTcuMTA0NiAxOCAxNiAxOEg4QzYuODk1NDMgMTggNiAxNy4xMDQ2IDYgMTZWOFM2IDYuODk1NDMgOCA2WiIgZmlsbD0iIzI0NjlBOCIvPgo8L3N2Zz4KPC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "business"],
+  "lang": "ru",
+  "dir": "ltr"
+}
