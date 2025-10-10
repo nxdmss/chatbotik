@@ -215,7 +215,8 @@ body {
     font-size: 28px;
   }
   
-  .quantity-controls {
+  .qty-controls {
+    width: 100px;
     max-width: 100px;
   }
   
@@ -226,7 +227,7 @@ body {
   }
   
   .qty-display {
-    min-width: 36px;
+    width: 44px;
     font-size: 14px;
   }
 }
@@ -237,7 +238,8 @@ body {
     font-size: 24px;
   }
   
-  .quantity-controls {
+  .qty-controls {
+    width: 90px;
     max-width: 90px;
   }
   
@@ -248,7 +250,7 @@ body {
   }
   
   .qty-display {
-    min-width: 32px;
+    width: 38px;
     font-size: 13px;
   }
 }
@@ -303,16 +305,15 @@ body {
 
 /* ===== КОЛИЧЕСТВО ===== */
 
-.quantity-controls {
+.qty-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
-  margin: var(--spacing-sm) 0;
-  padding: 0 var(--spacing-sm);
+  gap: 0;
+  margin: var(--spacing-sm) auto;
+  padding: 0;
+  width: 120px;
   max-width: 120px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .qty-btn {
@@ -346,16 +347,16 @@ body {
 }
 
 .qty-display {
-  min-width: 40px;
+  width: 56px;
   text-align: center;
   font-weight: 600;
   color: var(--text-primary);
   font-size: 16px;
-  padding: 0 var(--spacing-xs);
-  flex: 1;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 /* ===== КНОПКИ ===== */
