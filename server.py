@@ -121,7 +121,7 @@ async def log_requests(request: Request, call_next):
 async def index():
     """Главная страница"""
     try:
-    return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
+        return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
     except Exception as e:
         logger.error("Error serving index page", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
