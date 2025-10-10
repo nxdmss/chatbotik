@@ -167,6 +167,66 @@ async def create_order(order_data: Dict[str, Any]):
         logger.error("Error creating order", error=str(e))
         raise HTTPException(status_code=500, detail="Error creating order")
 
+@app.post('/webapp/admin/add-product')
+async def admin_add_product(
+    title: str = Form(...),
+    price: float = Form(...),
+    sizes: str = Form(...),
+    description: str = Form(""),
+    photo: UploadFile = File(None)
+):
+    """API для добавления товара админом"""
+    try:
+        # Парсим размеры
+        sizes_list = [size.strip() for size in sizes.split(',') if size.strip()]
+        
+        # Обрабатываем фото
+        photo_url = None
+        if photo and photo.filename:
+            # Сохраняем файл
+            filename = f"product_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.filename}"
+            file_path = os.path.join(UPLOADS_DIR, filename)
+            
+            with open(file_path, "wb") as buffer:
+                content = await photo.read()
+                buffer.write(content)
+            
+            photo_url = f"/webapp/static/uploads/{filename}"
+        
+        # Добавляем товар в базу данных
+        product_id = db.add_product(
+            title=title,
+            description=description,
+            price=price,
+            sizes=sizes_list,
+            photo=photo_url
+        )
+        
+        if product_id:
+            logger.info(f"Product {product_id} added by admin")
+            return JSONResponse({"product_id": product_id, "status": "created"})
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create product")
+    except Exception as e:
+        logger.error("Error adding product", error=str(e))
+        raise HTTPException(status_code=500, detail="Error adding product")
+
+@app.delete('/webapp/admin/delete-product/{product_id}')
+async def admin_delete_product(product_id: int):
+    """API для удаления товара админом"""
+    try:
+        # Обновляем статус товара в базе данных
+        success = db.update_product_status(product_id, is_active=False)
+        
+        if success:
+            logger.info(f"Product {product_id} deactivated by admin")
+            return JSONResponse({"status": "deleted"})
+        else:
+            raise HTTPException(status_code=404, detail="Product not found")
+    except Exception as e:
+        logger.error("Error deleting product", error=str(e))
+        raise HTTPException(status_code=500, detail="Error deleting product")
+
 @app.get('/webapp/admins.json', response_model=AdminResponse)
 async def admins_json():
     """API для получения списка администраторов"""

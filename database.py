@@ -270,6 +270,21 @@ class Database:
                 })
             return orders
     
+    def update_product_status(self, product_id: int, is_active: bool) -> bool:
+        """Обновляет статус товара (активен/неактивен)"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    UPDATE products SET is_active = ? WHERE id = ?
+                """, (is_active, product_id))
+                conn.commit()
+                logger.info(f"Product {product_id} status updated to {is_active}")
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"Error updating product status: {e}")
+                return False
+    
     def migrate_from_json(self):
         """Мигрирует данные из JSON файлов в базу данных"""
         logger.info("Начинаем миграцию данных из JSON в базу данных...")

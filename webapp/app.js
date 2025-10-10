@@ -81,6 +81,118 @@ class MobileShopApp {
     }
   }
 
+  // ===== АДМИНСКИЕ ФУНКЦИИ =====
+  
+  async addProduct(productData) {
+    try {
+      const response = await fetch('/webapp/admin/add-product', {
+        method: 'POST',
+        body: productData
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Товар добавлен:', result);
+        this.showNotification('Товар успешно добавлен!', 'success');
+        await this.fetchProducts(); // Обновляем список товаров
+        this.renderCurrentPage(); // Перерисовываем страницу
+        return true;
+      } else {
+        throw new Error('Ошибка добавления товара');
+      }
+    } catch (error) {
+      console.error('❌ Ошибка добавления товара:', error);
+      this.showNotification('Ошибка добавления товара', 'error');
+      return false;
+    }
+  }
+
+  async deleteProduct(productId) {
+    try {
+      const response = await fetch(`/webapp/admin/delete-product/${productId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        console.log('✅ Товар удален');
+        this.showNotification('Товар удален!', 'success');
+        await this.fetchProducts(); // Обновляем список товаров
+        this.renderCurrentPage(); // Перерисовываем страницу
+        return true;
+      } else {
+        throw new Error('Ошибка удаления товара');
+      }
+    } catch (error) {
+      console.error('❌ Ошибка удаления товара:', error);
+      this.showNotification('Ошибка удаления товара', 'error');
+      return false;
+    }
+  }
+
+  showAddProductModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>➕ Добавить товар</h3>
+          <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="add-product-form">
+            <div class="form-group">
+              <label>Название товара:</label>
+              <input type="text" id="product-title" required>
+            </div>
+            <div class="form-group">
+              <label>Цена (₽):</label>
+              <input type="number" id="product-price" required min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Размеры (через запятую):</label>
+              <input type="text" id="product-sizes" placeholder="S,M,L" required>
+            </div>
+            <div class="form-group">
+              <label>Описание:</label>
+              <textarea id="product-description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Фото:</label>
+              <input type="file" id="product-photo" accept="image/*">
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Отмена</button>
+              <button type="submit" class="btn btn-primary">Добавить товар</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Обработчик формы
+    document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData();
+      formData.append('title', document.getElementById('product-title').value);
+      formData.append('price', document.getElementById('product-price').value);
+      formData.append('sizes', document.getElementById('product-sizes').value);
+      formData.append('description', document.getElementById('product-description').value);
+      
+      const photoFile = document.getElementById('product-photo').files[0];
+      if (photoFile) {
+        formData.append('photo', photoFile);
+      }
+      
+      const success = await this.addProduct(formData);
+      if (success) {
+        modal.remove();
+      }
+    });
+  }
+
   // ===== КОРЗИНА =====
   
   loadCart() {
@@ -201,7 +313,19 @@ class MobileShopApp {
       return product.title.toLowerCase().includes(searchQuery);
     });
 
-    productsEl.innerHTML = filteredProducts.map(product => this.renderProductCard(product)).join('');
+    // Добавляем кнопку "Добавить товар" для админов
+    let adminButton = '';
+    if (this.isAdmin) {
+      adminButton = `
+        <div class="admin-actions" style="margin-bottom: 20px; text-align: center;">
+          <button class="btn btn-success" onclick="app.showAddProductModal()">
+            ➕ Добавить товар
+          </button>
+        </div>
+      `;
+    }
+
+    productsEl.innerHTML = adminButton + filteredProducts.map(product => this.renderProductCard(product)).join('');
     
     // Добавляем обработчики событий
     this.setupProductEventListeners();
