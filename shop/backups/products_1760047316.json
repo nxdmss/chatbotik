@@ -1,0 +1,116 @@
+[
+  {
+    "id": "p1",
+    "title": "Кроссовки Sprint",
+    "price": 4990,
+    "currency": "RUB",
+    "photo": "",
+    "sizes": [
+      38,
+      39,
+      40,
+      41
+    ],
+    "deleted": true
+  },
+  {
+    "id": "p2",
+    "title": "Кеды Classic",
+    "price": 3490,
+    "currency": "RUB",
+    "photo": "",
+    "sizes": [
+      36,
+      37,
+      38,
+      39,
+      40
+    ],
+    "deleted": true
+  },
+  {
+    "id": "p3",
+    "title": "Ботинки Trail",
+    "price": 7990,
+    "currency": "RUB",
+    "photo": "",
+    "sizes": [
+      40,
+      41,
+      42,
+      43
+    ],
+    "deleted": true
+  },
+  {
+    "title": "Jordan 11",
+    "price": 4800,
+    "currency": "RUB",
+    "photo": "/webapp/static/uploads/photo_2025-10-05_12-32-10.jpg",
+    "sizes": [
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "id": "p4"
+  },
+  {
+    "title": "Asics Gel-Kahana 8",
+    "price": 4900,
+    "currency": "RUB",
+    "photo": "/webapp/static/uploads/photo_2025-10-10_00-57-51.jpg",
+    "sizes": [
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "id": "p5"
+  },
+  {
+    "title": "Asics Gel-Kahana 8",
+    "price": 4900,
+    "currency": "RUB",
+    "photo": "/webapp/static/uploads/photo_2025-10-10_00-57-51_1.jpg",
+    "sizes": [
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "id": "p6",
+    "deleted": true
+  },
+  {
+    "title": "Nike AVA ROVER",
+    "price": 5100,
+    "currency": "RUB",
+    "photo": "/webapp/static/uploads/photo_2025-10-10_00-59-18.jpg",
+    "sizes": [
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "id": "p7"
+  },
+  {
+    "title": "Nike Air Force 1 Low Kobe Forever",
+    "price": 4900,
+    "currency": "RUB",
+    "photo": "/webapp/static/uploads/photo_2025-10-10_01-01-46.jpg",
+    "sizes": [
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "id": "p8"
+  }
+]

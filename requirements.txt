@@ -1,0 +1,5 @@
+aiogram==3.13.1
+python-dotenv==1.0.1
+fastapi==0.103.0
+uvicorn==0.22.0
+python-multipart==0.0.6

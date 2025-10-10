@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Магазин — Открыть в Telegram</title>
+  <link rel="stylesheet" href="/webapp/static/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+        <h1 style="margin:0">🛍 Магазин — Откройте в Telegram</h1>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="search" placeholder="Поиск товаров..." style="padding:6px 8px;border-radius:8px;border:none;min-width:220px" />
+          <button id="toggle_cart" class="btn" style="background:#fff;color:var(--accent);border:1px solid rgba(36,105,168,0.12)">Корзина</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <section>
+        <div style="margin-bottom:8px;color:var(--muted)">Выберите товар, укажите размер и количество, затем нажмите «Добавить в корзину».</div>
+        <div class="products" id="products"></div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="cart" id="cart">
+          <h3>Ваша корзина</h3>
+          <div class="cart-list" id="cart-list"></div>
+          <div class="cart-total"><div>Итого</div><div id="total">0 ₽</div></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button id="checkout" class="btn" style="flex:1">Оплатить</button>
+            <button id="clear" class="btn ghost">Очистить</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    Поддержка: напишите владельцу магазина в чате бота. Доставка обсуждается индивидуально.
+  </footer>
+
+  <script src="/webapp/static/app.js"></script>
+</body>
+</html>

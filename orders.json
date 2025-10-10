@@ -1,0 +1,95 @@
+{
+  "orders": {
+    "1593426947": [
+      {
+        "order_id": 1,
+        "text": "ацуауа",
+        "status": "done",
+        "admin_dialog": [
+          {
+            "from": "admin",
+            "text": "дкцьдцьмц"
+          },
+          {
+            "from": "user",
+            "text": "э гандонка"
+          }
+        ]
+      }
+    ],
+    "7519683517": [
+      {
+        "order_id": 2,
+        "text": "я хочу хуй",
+        "status": "work",
+        "admin_dialog": [
+          {
+            "from": "admin",
+            "text": "хоти хуй лох"
+          },
+          {
+            "from": "user",
+            "text": "ну почему"
+          },
+          {
+            "from": "admin",
+            "text": "я сказал соси хуец лошок"
+          }
+        ]
+      }
+    ],
+    "736010504": [
+      {
+        "order_id": 3,
+        "text": "Найк",
+        "status": "work",
+        "admin_dialog": [
+          {
+            "from": "admin",
+            "text": "САСИ ХУЙ РАП БАЙК ЦЕНТРА ЗАЗААХАХАХА"
+          },
+          {
+            "from": "admin",
+            "text": "бла бла бла обновление по заказу бла бла"
+          }
+        ]
+      }
+    ],
+    "1896928202": [
+      {
+        "order_id": 4,
+        "text": "pisi",
+        "status": "work",
+        "admin_dialog": [
+          {
+            "from": "admin",
+            "text": "попи"
+          },
+          {
+            "from": "admin",
+            "text": "бля бля бля бле бле бле"
+          }
+        ]
+      },
+      {
+        "order_id": 5,
+        "text": "мяу",
+        "status": "new",
+        "admin_dialog": [
+          {
+            "from": "admin",
+            "text": "киси киси мяу мяу киси киси мяу мяу мяу"
+          }
+        ]
+      }
+    ]
+  },
+  "order_counter": 6,
+  "user_states": {},
+  "admin_active_order": {
+    "1593426947": [
+      "1896928202",
+      5
+    ]
+  }
+}
