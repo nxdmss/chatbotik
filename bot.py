@@ -239,6 +239,8 @@ def admin_main_kb() -> ReplyKeyboardMarkup:
     kb = []
     
     kb.append([KeyboardButton(text="Админ-панель")])
+    kb.append([KeyboardButton(text="➕ Добавить товар")])
+    kb.append([KeyboardButton(text="📊 Статистика")])
     kb.append([KeyboardButton(text="🗑 Очистить чат")])
     
     if web_url and isinstance(web_url, str) and web_url.startswith('http'):
@@ -609,6 +611,72 @@ async def admin_clear_chat(msg: Message, state: FSMContext):
     
     bot_logger.log_admin_action(str(msg.chat.id), "clear_chat")
 
+@dp.message(F.text == "➕ Добавить товар")
+@handle_errors
+async def admin_add_product(msg: Message):
+    """Обработчик добавления товара админом"""
+    user_id = str(msg.chat.id)
+    
+    try:
+        validate_admin_access(user_id, ADMINS)
+    except SecurityError:
+        await msg.answer("❌ Только для админов!")
+        return
+    
+    await msg.answer(
+        "📝 **Добавление товара**\n\n"
+        "Отправьте данные в формате:\n"
+        "**Название** | **Цена** | **Размеры**\n\n"
+        "Пример:\n"
+        "`Футболка | 1500 | S,M,L`\n\n"
+        "После этого отправьте фото товара.",
+        reply_markup=admin_main_kb()
+    )
+    
+    # Устанавливаем состояние ожидания данных товара
+    data["user_states"][user_id] = "waiting_product_data"
+    bot_logger.log_admin_action(user_id, "add_product_request")
+
+@dp.message(F.text == "📊 Статистика")
+@handle_errors
+async def admin_statistics(msg: Message):
+    """Обработчик статистики для админа"""
+    user_id = str(msg.chat.id)
+    
+    try:
+        validate_admin_access(user_id, ADMINS)
+    except SecurityError:
+        await msg.answer("❌ Только для админов!")
+        return
+    
+    # Получаем статистику из базы данных
+    try:
+        products_count = len(db.get_products())
+        orders = db.get_all_orders()
+        orders_count = len(orders)
+        total_revenue = sum(order['total_amount'] for order in orders)
+        
+        stats_text = f"""
+📊 **Статистика магазина**
+
+🛍 **Товары:** {products_count}
+📦 **Заказы:** {orders_count}
+💰 **Выручка:** {total_revenue:,.0f} ₽
+
+📈 **Последние заказы:**
+"""
+        
+        # Показываем последние 5 заказов
+        for order in orders[:5]:
+            stats_text += f"• #{order['id']} - {order['total_amount']:,.0f} ₽ ({order['status']})\n"
+        
+        await msg.answer(stats_text, reply_markup=admin_main_kb())
+        bot_logger.log_admin_action(user_id, "view_statistics")
+        
+    except Exception as e:
+        await msg.answer(f"❌ Ошибка получения статистики: {e}", reply_markup=admin_main_kb())
+        bot_logger.log_error(e, {"action": "admin_statistics", "admin_id": user_id})
+
 @dp.message(F.text == "❓ FAQ")
 @handle_errors
 async def faq(msg: Message):
@@ -627,6 +695,123 @@ async def faq(msg: Message):
 # ======================
 # 🔹 WebApp обработчики
 # ======================
+
+@dp.message(F.text.regexp(r'.*\|.*\|.*'))
+@handle_errors
+async def handle_product_data(msg: Message):
+    """Обработчик данных товара от админа"""
+    user_id = str(msg.chat.id)
+    
+    if data.get("user_states", {}).get(user_id) != "waiting_product_data":
+        return
+    
+    try:
+        validate_admin_access(user_id, ADMINS)
+    except SecurityError:
+        await msg.answer("❌ Только для админов!")
+        return
+    
+    # Парсим данные товара
+    text = msg.text.strip()
+    parts = [part.strip() for part in text.split('|')]
+    
+    if len(parts) != 3:
+        await msg.answer("❌ Неверный формат! Используйте: Название | Цена | Размеры")
+        return
+    
+    title, price_str, sizes_str = parts
+    
+    try:
+        price = float(price_str)
+        sizes = [size.strip() for size in sizes_str.split(',')]
+    except ValueError:
+        await msg.answer("❌ Неверная цена! Используйте числа.")
+        return
+    
+    # Сохраняем данные товара
+    data["temp_product"] = {
+        "title": title,
+        "price": price,
+        "sizes": sizes,
+        "admin_id": user_id
+    }
+    
+    await msg.answer(
+        f"✅ **Данные товара получены:**\n\n"
+        f"📝 Название: {title}\n"
+        f"💰 Цена: {price:,.0f} ₽\n"
+        f"📏 Размеры: {', '.join(sizes)}\n\n"
+        f"📸 Теперь отправьте фото товара:",
+        reply_markup=admin_main_kb()
+    )
+    
+    # Меняем состояние на ожидание фото
+    data["user_states"][user_id] = "waiting_product_photo"
+    bot_logger.log_admin_action(user_id, "product_data_received", f"title: {title}")
+
+@dp.message(F.photo)
+@handle_errors
+async def handle_product_photo(msg: Message):
+    """Обработчик фото товара от админа"""
+    user_id = str(msg.chat.id)
+    
+    if data.get("user_states", {}).get(user_id) != "waiting_product_photo":
+        return
+    
+    try:
+        validate_admin_access(user_id, ADMINS)
+    except SecurityError:
+        await msg.answer("❌ Только для админов!")
+        return
+    
+    product_data = data.get("temp_product")
+    if not product_data or product_data.get("admin_id") != user_id:
+        await msg.answer("❌ Данные товара не найдены. Начните заново.")
+        return
+    
+    try:
+        # Получаем файл фото
+        photo = msg.photo[-1]  # Берем самое большое разрешение
+        file = await bot.get_file(photo.file_id)
+        
+        # Создаем уникальное имя файла
+        import uuid
+        filename = f"product_{uuid.uuid4().hex[:8]}.jpg"
+        file_path = f"webapp/static/uploads/{filename}"
+        
+        # Скачиваем и сохраняем файл
+        await bot.download_file(file.file_path, file_path)
+        
+        # Добавляем товар в базу данных
+        product_id = db.add_product(
+            title=product_data["title"],
+            description="",
+            price=product_data["price"],
+            sizes=product_data["sizes"],
+            photo=f"/webapp/static/uploads/{filename}"
+        )
+        
+        if product_id:
+            await msg.answer(
+                f"✅ **Товар успешно добавлен!**\n\n"
+                f"🆔 ID: {product_id}\n"
+                f"📝 Название: {product_data['title']}\n"
+                f"💰 Цена: {product_data['price']:,.0f} ₽\n"
+                f"📏 Размеры: {', '.join(product_data['sizes'])}\n"
+                f"📸 Фото: {filename}",
+                reply_markup=admin_main_kb()
+            )
+            bot_logger.log_admin_action(user_id, "product_added", f"id: {product_id}")
+        else:
+            await msg.answer("❌ Ошибка добавления товара в базу данных!", reply_markup=admin_main_kb())
+        
+        # Очищаем временные данные
+        data.pop("temp_product", None)
+        data["user_states"].pop(user_id, None)
+        
+    except Exception as e:
+        await msg.answer(f"❌ Ошибка обработки фото: {e}", reply_markup=admin_main_kb())
+        bot_logger.log_error(e, {"action": "handle_product_photo", "admin_id": user_id})
 
 @dp.message()
 @handle_webapp_errors
