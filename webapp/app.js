@@ -230,10 +230,10 @@ class MobileShopApp {
           <button class="btn btn-primary add-to-cart" data-product-id="${product.id}">
             🛒 Добавить
           </button>
-          <button class="btn btn-secondary quick-buy" data-product-id="${product.id}">
+          <button class="btn btn-success quick-buy" data-product-id="${product.id}">
             ⚡ Купить
           </button>
-          ${this.isAdmin ? `<button class="btn btn-danger delete-product" data-product-id="${product.id}">🗑</button>` : ''}
+          ${this.isAdmin ? `<button class="btn btn-danger btn-sm delete-product" data-product-id="${product.id}">🗑 Удалить</button>` : ''}
         </div>
       </div>
     `;
@@ -666,8 +666,8 @@ class MobileShopApp {
       } catch (error) {
         console.error('Ошибка отправки сообщения:', error);
         this.showNotification('Ошибка отправки сообщения', 'error');
-      }
-    } else {
+    }
+  } else {
       this.showNotification('Откройте приложение в Telegram', 'warning');
     }
   }
