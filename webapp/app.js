@@ -44,9 +44,11 @@ class MobileShopApp {
   
   async fetchProducts() {
     try {
+      console.log('Загружаем товары...');
       const response = await fetch('/webapp/products.json');
       if (response.ok) {
         this.PRODUCTS = await response.json();
+        console.log('✅ Товары загружены:', this.PRODUCTS.length, 'шт.');
       } else {
         throw new Error('Не удалось загрузить товары');
       }
@@ -57,6 +59,7 @@ class MobileShopApp {
         {id:'p2', title:'Кеды Classic', price:3490, sizes:[36,37,38,39,40], photo:''},
         {id:'p3', title:'Ботинки Trail', price:7990, sizes:[40,41,42,43], photo:''}
       ];
+      console.log('✅ Тестовые товары загружены:', this.PRODUCTS.length, 'шт.');
     }
   }
 
@@ -65,15 +68,18 @@ class MobileShopApp {
       // Проверяем URL параметр
       if (new URLSearchParams(window.location.search).get('admin') === '1') {
         this.isAdmin = true;
+        console.log('Admin status: true (URL parameter)');
         return;
       }
       
       // Проверяем через API
       const response = await fetch('/webapp/admins.json');
       if (response.ok) {
-        const admins = await response.json();
+        const data = await response.json();
+        const admins = data.admins || data;
         const userId = this.userInfo?.id || this.userInfo?.user_id;
         this.isAdmin = userId && admins.includes(String(userId));
+        console.log('Admin status:', this.isAdmin, 'User ID:', userId, 'Admins:', admins);
       }
     } catch (error) {
       console.warn('Не удалось проверить статус администратора:', error);
@@ -305,6 +311,8 @@ class MobileShopApp {
     const productsEl = document.getElementById('products');
     if (!productsEl) return;
 
+    console.log('Рендерим каталог. Товаров:', this.PRODUCTS.length, 'Админ:', this.isAdmin);
+
     const searchQuery = document.getElementById('search')?.value?.toLowerCase() || '';
     
     const filteredProducts = this.PRODUCTS.filter(product => {
@@ -313,16 +321,19 @@ class MobileShopApp {
       return product.title.toLowerCase().includes(searchQuery);
     });
 
+    console.log('Отфильтрованных товаров:', filteredProducts.length);
+
     // Добавляем кнопку "Добавить товар" для админов
     let adminButton = '';
     if (this.isAdmin) {
       adminButton = `
         <div class="admin-actions" style="margin-bottom: 20px; text-align: center;">
-          <button class="btn btn-success" onclick="app.showAddProductModal()">
+          <button class="btn btn-success" onclick="window.mobileShopApp.showAddProductModal()">
             ➕ Добавить товар
           </button>
         </div>
       `;
+      console.log('Кнопка админа добавлена');
     }
 
     productsEl.innerHTML = adminButton + filteredProducts.map(product => this.renderProductCard(product)).join('');
@@ -825,7 +836,6 @@ let app;
 
 document.addEventListener('DOMContentLoaded', () => {
   app = new MobileShopApp();
+  // Экспортируем для глобального доступа
+  window.mobileShopApp = app;
 });
-
-// Экспортируем для глобального доступа
-window.app = app;
