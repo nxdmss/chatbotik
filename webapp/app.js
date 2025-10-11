@@ -433,16 +433,8 @@ class MobileShopApp {
     }
 
     updateCartBadge() {
-        const badge = document.getElementById('cart-badge');
-        if (badge) {
-            const totalItems = this.cart.reduce((sum, item) => sum + item.quantity, 0);
-            if (totalItems > 0) {
-                badge.textContent = totalItems;
-                badge.style.display = 'block';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
+        // Убрали отображение бейджа корзины в шапке
+        // Корзина отображается только в навигации
     }
 
     // ===== ОФОРМЛЕНИЕ ЗАКАЗА =====
