@@ -174,6 +174,11 @@ class MobileShopApp {
             return;
         }
         
+        // ПРИНУДИТЕЛЬНО: 2 товара в ряд на всех экранах
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        container.style.gap = '0.75rem';
+        
         const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
         const filteredProducts = this.products.filter(product => 
             product.title.toLowerCase().includes(searchTerm) ||

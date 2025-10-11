@@ -109,17 +109,18 @@ body {
 /* ===== СЕТКА ТОВАРОВ ===== */
 
 .products-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.75rem;
     margin-bottom: 2rem;
     padding: 0 0.5rem;
 }
 
-/* Фиксированно 2 товара в ряд на всех экранах */
+/* ЖЕСТКО: 2 товара в ряд на ВСЕХ экранах без исключений */
 @media (max-width: 768px) {
     .products-grid {
-        grid-template-columns: repeat(2, 1fr);
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.5rem;
         padding: 0 0.25rem;
     }
@@ -127,7 +128,8 @@ body {
 
 @media (max-width: 480px) {
     .products-grid {
-        grid-template-columns: repeat(2, 1fr);
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.5rem;
         padding: 0 0.25rem;
     }
@@ -135,9 +137,20 @@ body {
 
 @media (max-width: 320px) {
     .products-grid {
-        grid-template-columns: repeat(2, 1fr);
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.25rem;
         padding: 0 0.125rem;
+    }
+}
+
+/* Дополнительная защита от переопределения */
+@media (max-width: 240px) {
+    .products-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.125rem;
+        padding: 0 0.0625rem;
     }
 }
 
@@ -896,7 +909,10 @@ body {
     }
     
     .products-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem;
+        padding: 0 0.25rem;
     }
     
     .cart-item {
@@ -1002,4 +1018,18 @@ body {
 
 .visible {
     display: block !important;
+}
+
+/* КРИТИЧЕСКИ ВАЖНО: Гарантированно 2 товара в ряд на ВСЕХ экранах */
+.products-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* Переопределение всех возможных медиа-запросов */
+@media screen and (max-width: 9999px) {
+    .products-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
 }
