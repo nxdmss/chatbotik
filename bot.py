@@ -58,6 +58,16 @@ if not BOT_TOKEN:
 
 ADMINS = [str(x) for x in ADMINS]
 
+# Добавляем дополнительных админов из файла admins.json
+try:
+    with open('webapp/admins.json', 'r', encoding='utf-8') as f:
+        admins_data = json.load(f)
+        for admin_id in admins_data.get('admins', []):
+            if str(admin_id) not in ADMINS:
+                ADMINS.append(str(admin_id))
+except Exception as e:
+    bot_logger.log_error(e, {"action": "load_admins_from_json"})
+
 # Настраиваем логирование
 setup_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
 bot_logger.logger.info("Bot starting up", admins_count=len(ADMINS))
@@ -97,9 +107,9 @@ class ContactAdmin(StatesGroup):
 def save_data() -> None:
     """Безопасное сохранение данных с обработкой ошибок"""
     try:
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-            bot_logger.logger.debug("Data saved successfully")
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        bot_logger.logger.debug("Data saved successfully")
     except Exception as e:
         bot_logger.log_error(e, {"action": "save_data"})
         raise
@@ -107,11 +117,13 @@ def save_data() -> None:
 def load_data() -> None:
     """Безопасная загрузка данных с обработкой ошибок"""
     try:
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            loaded = json.load(f)
-            data.update(loaded)
-                bot_logger.logger.debug("Data loaded successfully")
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                data.update(loaded)
+            bot_logger.logger.debug("Data loaded successfully")
+        else:
+            bot_logger.logger.info("Data file not found, using defaults")
     except Exception as e:
         bot_logger.log_error(e, {"action": "load_data"})
         # Создаем пустую структуру данных если файл поврежден
