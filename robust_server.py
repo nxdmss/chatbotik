@@ -9,28 +9,69 @@ import json
 import os
 import threading
 import time
+import sqlite3
 
-# Простые товары для тестирования
-test_products = [
-    {
-        "id": 1,
-        "title": "Тестовые кроссовки",
-        "description": "Кроссовки для тестирования функциональности",
-        "price": 5000,
-        "sizes": ["40", "41", "42"],
-        "photo": "/webapp/static/uploads/default.jpg",
-        "is_active": True
-    },
-    {
-        "id": 2,
-        "title": "Тестовые кеды",
-        "description": "Кеды для тестирования функциональности",
-        "price": 3000,
-        "sizes": ["38", "39", "40"],
-        "photo": "/webapp/static/uploads/default.jpg",
-        "is_active": True
-    }
-]
+# Функции для работы с базой данных
+def get_products_from_db():
+    """Получает товары из базы данных"""
+    try:
+        print(f"🔍 Получаем товары из базы данных...")
+        with sqlite3.connect("shop.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, title, description, price, sizes, photo, is_active 
+                FROM products 
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
+            print(f"🔍 Найдено строк в БД: {len(rows)}")
+            products = []
+            for row in rows:
+                try:
+                    sizes = json.loads(row[4]) if row[4] else []
+                except:
+                    sizes = [row[4]] if row[4] else []
+                
+                products.append({
+                    'id': row[0],
+                    'title': row[1],
+                    'description': row[2],
+                    'price': row[3],
+                    'sizes': sizes,
+                    'photo': row[5] or "/webapp/static/uploads/default.jpg",
+                    'is_active': bool(row[6])
+                })
+            print(f"🔍 Возвращаем {len(products)} товаров")
+            return products
+    except Exception as e:
+        print(f"❌ Ошибка получения товаров из БД: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def update_product_status_in_db(product_id, is_active):
+    """Обновляет статус товара в базе данных"""
+    try:
+        print(f"🔄 Обновляем статус товара {product_id} на {is_active}")
+        with sqlite3.connect("shop.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE products SET is_active = ? WHERE id = ?
+            """, (int(is_active), int(product_id)))
+            conn.commit()
+            affected_rows = cursor.rowcount
+            print(f"📊 Затронуто строк: {affected_rows}")
+            
+            # Проверяем результат
+            cursor.execute("SELECT is_active FROM products WHERE id = ?", (int(product_id),))
+            result = cursor.fetchone()
+            if result:
+                print(f"✅ Новый статус товара {product_id}: {result[0]}")
+            
+            return affected_rows > 0
+    except Exception as e:
+        print(f"❌ Ошибка обновления статуса товара: {e}")
+        return False
 
 class RobustHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -61,17 +102,19 @@ class RobustHandler(http.server.SimpleHTTPRequestHandler):
             return
             
         elif self.path == '/webapp/products.json':
+            products = get_products_from_db()
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(test_products).encode('utf-8'))
+            self.wfile.write(json.dumps(products).encode('utf-8'))
             return
             
         elif self.path.startswith('/webapp/admin/products'):
+            products = get_products_from_db()
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"products": test_products}).encode('utf-8'))
+            self.wfile.write(json.dumps({"products": products}).encode('utf-8'))                                                                          
             return
             
         elif self.path == '/webapp/static/uploads/default.jpg':
@@ -219,14 +262,13 @@ class RobustHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith('/webapp/admin/products/'):
             # Извлекаем product_id из пути, убирая query параметры
             path_parts = self.path.split('/')
-            product_id_str = path_parts[-1].split('?')[0]  # Убираем query параметры
+            product_id_str = path_parts[-1].split('?')[0]  # Убираем query параметры                                                                           
             product_id = int(product_id_str)
             
-            # Находим товар
-            product = next((p for p in test_products if p["id"] == product_id), None)
-            if product:
-                product["is_active"] = False
-                
+            # Обновляем статус товара в базе данных
+            success = update_product_status_in_db(product_id, False)
+            
+            if success:
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
