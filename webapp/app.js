@@ -715,6 +715,7 @@ class MobileShopApp {
         
         console.log('🗑️ Удаляем товар:', productId);
         console.log('🔍 Тип productId:', typeof productId);
+        console.log('🔍 this.isAdmin:', this.isAdmin);
         
         // Проверяем, что productId валидный
         if (!productId || productId === 'undefined' || productId === 'null') {
@@ -1376,11 +1377,23 @@ function editProduct(productId) {
 
 function deleteProduct(productId) {
     console.log('🔗 Вызов deleteProduct из глобальной функции:', productId);
+    console.log('🔍 window.mobileShopApp:', window.mobileShopApp);
+    
     if (window.mobileShopApp) {
+        console.log('✅ Приложение найдено, вызываем deleteProduct');
         window.mobileShopApp.deleteProduct(productId);
     } else {
         console.error('❌ mobileShopApp не инициализирован');
-        alert('Приложение не инициализировано. Попробуйте обновить страницу.');
+        console.log('🔍 Попытка инициализации...');
+        
+        try {
+            window.mobileShopApp = new MobileShopApp();
+            console.log('✅ Приложение инициализировано, повторяем вызов');
+            window.mobileShopApp.deleteProduct(productId);
+        } catch (error) {
+            console.error('❌ Ошибка инициализации:', error);
+            alert('Ошибка инициализации приложения. Попробуйте обновить страницу.');
+        }
     }
 }
 
@@ -1416,5 +1429,13 @@ function contactAdmin() {
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
-    window.mobileShopApp = new MobileShopApp();
+    console.log('🚀 Инициализация приложения...');
+    try {
+        window.mobileShopApp = new MobileShopApp();
+        console.log('✅ Приложение инициализировано успешно');
+        console.log('🔍 mobileShopApp:', window.mobileShopApp);
+    } catch (error) {
+        console.error('❌ Ошибка инициализации приложения:', error);
+        alert('Ошибка инициализации приложения: ' + error.message);
+    }
 });
