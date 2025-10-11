@@ -141,6 +141,84 @@
       </div>
     </div>
 
+    <!-- Страница Админ-панели -->
+    <div class="page" id="admin-page">
+      <header class="page-header">
+        <h1>⚙️ Админ-панель</h1>
+        <button id="add-product-btn" class="btn btn-success btn-sm">➕ Добавить товар</button>
+      </header>
+
+      <main class="page-content">
+        <div class="admin-container">
+          <div class="admin-stats">
+            <div class="stat-card">
+              <div class="stat-value" id="admin-products-count">0</div>
+              <div class="stat-label">Товаров</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="admin-orders-count">0</div>
+              <div class="stat-label">Заказов</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="admin-revenue">0 ₽</div>
+              <div class="stat-label">Выручка</div>
+            </div>
+          </div>
+          
+          <div class="admin-products">
+            <h3>Управление товарами</h3>
+            <div class="products-list" id="admin-products-list">
+              <!-- Товары будут загружены динамически -->
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Модальное окно добавления/редактирования товара -->
+    <div class="modal" id="product-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="product-modal-title">➕ Добавить товар</h2>
+          <button class="modal-close" id="close-product-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="product-form" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="product-title">Название товара</label>
+              <input type="text" id="product-title" name="title" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="product-description">Описание</label>
+              <textarea id="product-description" name="description" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="product-price">Цена (₽)</label>
+              <input type="number" id="product-price" name="price" min="0" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="product-sizes">Размеры (через запятую)</label>
+              <input type="text" id="product-sizes" name="sizes" placeholder="40, 41, 42, 43">
+            </div>
+            
+            <div class="form-group">
+              <label for="product-photo">Фото товара</label>
+              <input type="file" id="product-photo" name="photo" accept="image/*">
+              <div id="photo-preview" class="photo-preview"></div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="button" class="btn btn-outline" id="cancel-product">Отмена</button>
+              <button type="submit" class="btn btn-primary" id="save-product">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Нижняя навигация -->
@@ -157,6 +235,10 @@
     <button class="nav-item" data-page="profile">
       <span class="nav-icon">👤</span>
       <span class="nav-label">Профиль</span>
+    </button>
+    <button class="nav-item" data-page="admin" id="admin-nav-btn" style="display: none;">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Админ</span>
     </button>
   </nav>
 

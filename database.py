@@ -135,11 +135,33 @@ class Database:
                 logger.error(f"Ошибка добавления товара: {e}")
                 return None
     
+    def update_product(self, product_id: int, title: str, description: str, 
+                      price: float, sizes: List[str], photo: str = None) -> bool:
+        """Обновляет товар в базе данных"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    UPDATE products 
+                    SET title = ?, description = ?, price = ?, sizes = ?, photo = ?
+                    WHERE id = ?
+                """, (title, description, price, json.dumps(sizes), photo, product_id))
+                conn.commit()
+                if cursor.rowcount > 0:
+                    logger.info(f"Товар {product_id} обновлен")
+                    return True
+                else:
+                    logger.warning(f"Товар {product_id} не найден для обновления")
+                    return False
+            except Exception as e:
+                logger.error(f"Ошибка обновления товара {product_id}: {e}")
+                return False
+
     def get_products(self, active_only: bool = True) -> List[Dict]:
         """Получает список товаров"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            query = "SELECT id, title, description, price, sizes, photo FROM products"
+            query = "SELECT id, title, description, price, sizes, photo, is_active FROM products"
             if active_only:
                 query += " WHERE is_active = TRUE"
             query += " ORDER BY created_at DESC"
@@ -154,7 +176,8 @@ class Database:
                     'description': row[2],
                     'price': row[3],
                     'sizes': json.loads(row[4]) if row[4] else [],
-                    'photo': row[5]
+                    'photo': row[5],
+                    'is_active': bool(row[6]) if len(row) > 6 else True
                 })
             return products
     

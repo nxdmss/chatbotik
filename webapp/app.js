@@ -7,6 +7,7 @@ class MobileShopApp {
     this.currentPage = 'catalog';
     this.userInfo = null;
     this.isAdmin = false;
+    this.editingProduct = null;
     
     this.CART_KEY = 'mobile_shop_cart_v2';
     this.ORDERS_KEY = 'mobile_shop_orders_v1';
@@ -69,6 +70,7 @@ class MobileShopApp {
       if (new URLSearchParams(window.location.search).get('admin') === '1') {
         this.isAdmin = true;
         console.log('Admin status: true (URL parameter)');
+        this.showAdminPanel();
         return;
       }
       
@@ -80,10 +82,28 @@ class MobileShopApp {
         const userId = this.userInfo?.id || this.userInfo?.user_id;
         this.isAdmin = userId && admins.includes(String(userId));
         console.log('Admin status:', this.isAdmin, 'User ID:', userId, 'Admins:', admins);
+        
+        if (this.isAdmin) {
+          this.showAdminPanel();
+        }
       }
     } catch (error) {
       console.warn('Не удалось проверить статус администратора:', error);
       this.isAdmin = false;
+    }
+  }
+
+  showAdminPanel() {
+    // Показываем кнопку админ-панели в навигации
+    const adminNavBtn = document.getElementById('admin-nav-btn');
+    if (adminNavBtn) {
+      adminNavBtn.style.display = 'block';
+    }
+    
+    // Показываем кнопку добавления товара в каталоге
+    const adminActions = document.getElementById('admin-actions');
+    if (adminActions) {
+      adminActions.style.display = 'block';
     }
   }
 
@@ -302,7 +322,22 @@ class MobileShopApp {
       case 'profile':
         this.renderProfilePage();
         break;
+      case 'admin':
+        this.renderAdminPage();
+        break;
     }
+  }
+
+  // ===== СТРАНИЦА АДМИН-ПАНЕЛИ =====
+  
+  renderAdminPage() {
+    if (!this.isAdmin) {
+      this.showNotification('Доступ запрещен', 'error');
+      this.showPage('catalog');
+      return;
+    }
+    
+    this.loadAdminProducts();
   }
 
   // ===== СТРАНИЦА КАТАЛОГА =====
@@ -750,6 +785,9 @@ class MobileShopApp {
       });
     });
 
+    // Админ-панель
+    this.setupAdminEventListeners();
+
     // Поиск
     const searchInput = document.getElementById('search');
     if (searchInput) {
@@ -827,6 +865,173 @@ class MobileShopApp {
   } else {
       this.showNotification('Откройте приложение в Telegram', 'warning');
     }
+  }
+
+  // ===== АДМИН-ПАНЕЛЬ =====
+
+  async loadAdminProducts() {
+    try {
+      const response = await fetch('/webapp/admin/products');
+      if (response.ok) {
+        const products = await response.json();
+        this.renderAdminProducts(products);
+        this.updateAdminStats(products);
+      } else {
+        throw new Error('Не удалось загрузить товары');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки товаров для админа:', error);
+      this.showNotification('Ошибка загрузки товаров', 'error');
+    }
+  }
+
+  renderAdminProducts(products) {
+    const container = document.getElementById('admin-products-list');
+    if (!container) return;
+
+    container.innerHTML = products.map(product => `
+      <div class="admin-product-item" data-product-id="${product.id}">
+        <img src="${product.photo || '/webapp/static/uploads/no-image.jpg'}" 
+             alt="${product.title}" class="admin-product-image">
+        <div class="admin-product-info">
+          <div class="admin-product-title">${product.title}</div>
+          <div class="admin-product-price">${this.formatPrice(product.price)}</div>
+          <div class="admin-product-status">
+            ${product.is_active ? '✅ Активен' : '❌ Неактивен'}
+          </div>
+        </div>
+        <div class="admin-product-actions">
+          <button class="btn btn-primary btn-sm" onclick="window.mobileShopApp.editProduct(${product.id})">
+            ✏️
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="window.mobileShopApp.deleteProduct(${product.id})">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  updateAdminStats(products) {
+    const activeProducts = products.filter(p => p.is_active).length;
+    document.getElementById('admin-products-count').textContent = activeProducts;
+    
+    // Здесь можно добавить загрузку статистики заказов
+    document.getElementById('admin-orders-count').textContent = '0';
+    document.getElementById('admin-revenue').textContent = '0 ₽';
+  }
+
+  showAddProductModal() {
+    this.editingProduct = null;
+    document.getElementById('product-modal-title').textContent = '➕ Добавить товар';
+    document.getElementById('product-form').reset();
+    document.getElementById('photo-preview').innerHTML = '';
+    this.showModal('product-modal');
+  }
+
+  editProduct(productId) {
+    const product = this.PRODUCTS.find(p => p.id == productId);
+    if (!product) return;
+
+    this.editingProduct = product;
+    document.getElementById('product-modal-title').textContent = '✏️ Редактировать товар';
+    
+    // Заполняем форму
+    document.getElementById('product-title').value = product.title;
+    document.getElementById('product-description').value = product.description || '';
+    document.getElementById('product-price').value = product.price;
+    document.getElementById('product-sizes').value = product.sizes.join(', ');
+    
+    // Показываем текущее фото
+    if (product.photo) {
+      document.getElementById('photo-preview').innerHTML = `
+        <img src="${product.photo}" alt="Текущее фото" style="max-width: 100px; max-height: 100px; border-radius: 8px;">
+      `;
+    }
+    
+    this.showModal('product-modal');
+  }
+
+  async deleteProduct(productId) {
+    if (!confirm('Вы уверены, что хотите удалить этот товар?')) return;
+
+    try {
+      const response = await fetch(`/webapp/admin/products/${productId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        this.showNotification('Товар удален', 'success');
+        this.loadAdminProducts(); // Перезагружаем список
+        this.fetchProducts(); // Обновляем основной каталог
+      } else {
+        throw new Error('Ошибка удаления товара');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления товара:', error);
+      this.showNotification('Ошибка удаления товара', 'error');
+    }
+  }
+
+  async saveProduct(formData) {
+    try {
+      const url = this.editingProduct 
+        ? `/webapp/admin/products/${this.editingProduct.id}`
+        : '/webapp/admin/products';
+      
+      const method = this.editingProduct ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        body: formData
+      });
+
+      if (response.ok) {
+        const action = this.editingProduct ? 'обновлен' : 'добавлен';
+        this.showNotification(`Товар ${action}`, 'success');
+        this.hideModal('product-modal');
+        this.loadAdminProducts(); // Перезагружаем список
+        this.fetchProducts(); // Обновляем основной каталог
+      } else {
+        throw new Error('Ошибка сохранения товара');
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения товара:', error);
+      this.showNotification('Ошибка сохранения товара', 'error');
+    }
+  }
+
+  setupAdminEventListeners() {
+    // Кнопка добавления товара
+    document.getElementById('add-product-btn')?.addEventListener('click', () => {
+      this.showAddProductModal();
+    });
+
+    // Форма товара
+    document.getElementById('product-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      this.saveProduct(formData);
+    });
+
+    // Кнопка отмены
+    document.getElementById('cancel-product')?.addEventListener('click', () => {
+      this.hideModal('product-modal');
+    });
+
+    // Предварительный просмотр фото
+    document.getElementById('product-photo')?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('photo-preview').innerHTML = `
+            <img src="${e.target.result}" alt="Предварительный просмотр" style="max-width: 100px; max-height: 100px; border-radius: 8px;">
+          `;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
   }
 }
 

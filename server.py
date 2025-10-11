@@ -331,6 +331,123 @@ async def upload_file(file: UploadFile = File(...)):
         logger.error("Error uploading file", error=str(e), filename=file.filename)
         raise HTTPException(status_code=500, detail="Error uploading file")
 
+@app.post('/webapp/admin/products')
+async def create_product(
+    title: str = Form(...),
+    description: str = Form(""),
+    price: float = Form(...),
+    sizes: str = Form(""),
+    photo: UploadFile = File(None)
+):
+    """API для создания товара админом"""
+    try:
+        # Парсим размеры
+        sizes_list = [size.strip() for size in sizes.split(',') if size.strip()]
+        
+        # Обрабатываем фото
+        photo_url = None
+        if photo and photo.filename:
+            # Сохраняем файл
+            filename = f"product_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.filename}"
+            file_path = os.path.join(UPLOADS_DIR, filename)
+            
+            with open(file_path, "wb") as buffer:
+                content = await photo.read()
+                buffer.write(content)
+            
+            photo_url = f"/webapp/static/uploads/{filename}"
+        
+        # Добавляем товар в базу данных
+        product_id = db.add_product(
+            title=title,
+            description=description,
+            price=price,
+            sizes=sizes_list,
+            photo=photo_url
+        )
+        
+        if product_id:
+            logger.info(f"Product {product_id} created by admin")
+            return JSONResponse({"product_id": product_id, "status": "created"})
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create product")
+    except Exception as e:
+        logger.error("Error creating product", error=str(e))
+        raise HTTPException(status_code=500, detail="Error creating product")
+
+@app.put('/webapp/admin/products/{product_id}')
+async def update_product(
+    product_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    price: float = Form(...),
+    sizes: str = Form(""),
+    photo: UploadFile = File(None)
+):
+    """API для обновления товара админом"""
+    try:
+        # Парсим размеры
+        sizes_list = [size.strip() for size in sizes.split(',') if size.strip()]
+        
+        # Обрабатываем фото (если загружено новое)
+        photo_url = None
+        if photo and photo.filename:
+            # Сохраняем файл
+            filename = f"product_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.filename}"
+            file_path = os.path.join(UPLOADS_DIR, filename)
+            
+            with open(file_path, "wb") as buffer:
+                content = await photo.read()
+                buffer.write(content)
+            
+            photo_url = f"/webapp/static/uploads/{filename}"
+        
+        # Обновляем товар в базе данных
+        success = db.update_product(
+            product_id=product_id,
+            title=title,
+            description=description,
+            price=price,
+            sizes=sizes_list,
+            photo=photo_url
+        )
+        
+        if success:
+            logger.info(f"Product {product_id} updated by admin")
+            return JSONResponse({"status": "updated"})
+        else:
+            raise HTTPException(status_code=404, detail="Product not found")
+    except Exception as e:
+        logger.error("Error updating product", error=str(e))
+        raise HTTPException(status_code=500, detail="Error updating product")
+
+@app.delete('/webapp/admin/products/{product_id}')
+async def delete_product(product_id: int):
+    """API для удаления товара админом"""
+    try:
+        # Обновляем статус товара в базе данных
+        success = db.update_product_status(product_id, is_active=False)
+        
+        if success:
+            logger.info(f"Product {product_id} deleted by admin")
+            return JSONResponse({"status": "deleted"})
+        else:
+            raise HTTPException(status_code=404, detail="Product not found")
+    except Exception as e:
+        logger.error("Error deleting product", error=str(e))
+        raise HTTPException(status_code=500, detail="Error deleting product")
+
+@app.get('/webapp/admin/products')
+async def get_all_products():
+    """API для получения всех товаров (включая неактивные) для админа"""
+    try:
+        products = db.get_products(active_only=False)
+        logger.info(f"Serving {len(products)} products for admin")
+        return JSONResponse(products)
+    except Exception as e:
+        logger.error("Error serving products for admin", error=str(e))
+        raise HTTPException(status_code=500, detail="Error loading products")
+
 @app.get('/health')
 async def health_check():
     """Проверка здоровья сервера"""
