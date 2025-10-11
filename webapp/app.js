@@ -30,6 +30,11 @@ class MobileShopApp {
       await this.fetchProducts();
       await this.checkAdminStatus();
       
+      // ВРЕМЕННО: принудительно устанавливаем админ-статус для тестирования
+      this.isAdmin = true;
+      this.showAdminPanel();
+      console.log('🔧 ВРЕМЕННО: Админ-статус принудительно установлен для тестирования');
+      
       // Настройка интерфейса
       this.setupEventListeners();
       this.renderCurrentPage();
@@ -94,16 +99,24 @@ class MobileShopApp {
   }
 
   showAdminPanel() {
+    console.log('Показываем админ-панель...');
+    
     // Показываем кнопку админ-панели в навигации
     const adminNavBtn = document.getElementById('admin-nav-btn');
     if (adminNavBtn) {
       adminNavBtn.style.display = 'block';
+      console.log('Кнопка админ-панели показана');
+    } else {
+      console.error('Кнопка админ-панели не найдена!');
     }
     
     // Показываем кнопку добавления товара в каталоге
     const adminActions = document.getElementById('admin-actions');
     if (adminActions) {
       adminActions.style.display = 'block';
+      console.log('Кнопка добавления товара показана');
+    } else {
+      console.error('Кнопка добавления товара не найдена!');
     }
   }
 
@@ -784,6 +797,15 @@ class MobileShopApp {
         this.showPage(page);
       });
     });
+    
+    // Обработчик для тестовой кнопки админ-панели
+    const testAdminBtn = document.getElementById('test-admin-btn');
+    if (testAdminBtn) {
+      testAdminBtn.addEventListener('click', () => {
+        console.log('🔧 Тестовая кнопка админ-панели нажата');
+        this.showPage('admin');
+      });
+    }
 
     // Админ-панель
     this.setupAdminEventListeners();
