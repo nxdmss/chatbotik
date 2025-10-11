@@ -54,6 +54,12 @@ class MobileShopApp {
             this.renderCurrentPage();
             this.updateCartBadge();
             
+            // Настройка автоматического обновления
+            this.setupAutoRefresh();
+            
+            // Настройка очистки ресурсов при закрытии
+            window.addEventListener('beforeunload', () => this.destroy());
+            
             console.log('✅ Приложение инициализировано');
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
@@ -67,14 +73,34 @@ class MobileShopApp {
 
     async fetchProducts() {
         try {
+            // Сначала пытаемся загрузить из API (база данных)
             const response = await fetch('/webapp/products.json');
             const data = await response.json();
+            
             // API возвращает массив товаров напрямую
             this.products = Array.isArray(data) ? data : (data.products || []);
-            console.log('📦 Загружено товаров:', this.products.length);
+            console.log('📦 Загружено товаров из API:', this.products.length);
+            
+            // Если товаров нет, загружаем из статического файла как fallback
+            if (this.products.length === 0) {
+                console.log('⚠️ Товары не найдены в API, загружаем из статического файла...');
+                const fallbackResponse = await fetch('/webapp/static/products.json');
+                const fallbackData = await fallbackResponse.json();
+                this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
+                console.log('📦 Загружено товаров из статического файла:', this.products.length);
+            }
         } catch (error) {
             console.error('❌ Ошибка загрузки товаров:', error);
-            this.products = [];
+            // В случае ошибки пытаемся загрузить из статического файла
+            try {
+                const fallbackResponse = await fetch('/webapp/static/products.json');
+                const fallbackData = await fallbackResponse.json();
+                this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
+                console.log('📦 Загружено товаров из статического файла (fallback):', this.products.length);
+            } catch (fallbackError) {
+                console.error('❌ Ошибка загрузки из статического файла:', fallbackError);
+                this.products = [];
+            }
         }
     }
 
@@ -212,12 +238,48 @@ class MobileShopApp {
         container.style.gap = '0.75rem';
         
         const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
-        const filteredProducts = this.products.filter(product => 
-            product.title.toLowerCase().includes(searchTerm) ||
-            product.description.toLowerCase().includes(searchTerm)
-        );
+        const filteredProducts = this.products.filter(product => {
+            // Фильтруем только активные товары
+            if (!product.is_active && product.is_active !== undefined) {
+                return false;
+            }
+            
+            // Поиск по названию и описанию
+            if (searchTerm) {
+                return product.title.toLowerCase().includes(searchTerm) ||
+                       product.description.toLowerCase().includes(searchTerm);
+            }
+            
+            return true;
+        });
         
         console.log('🔍 Отфильтровано товаров:', filteredProducts.length);
+        
+        // Показываем сообщение если товаров нет
+        if (filteredProducts.length === 0) {
+            if (searchTerm) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                        <p>🔍 Товары по запросу "${searchTerm}" не найдены</p>
+                        <button class="btn btn-outline" onclick="document.getElementById('search').value=''; window.mobileShopApp.renderCatalogPage();">
+                            Показать все товары
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                        <p>📦 Товары не найдены</p>
+                        ${this.isAdmin ? `
+                            <button class="btn btn-primary" onclick="showAddProductModal()">
+                                ➕ Добавить первый товар
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            return;
+        }
         
         container.innerHTML = filteredProducts.map(product => this.renderProductCard(product)).join('');
         
@@ -226,34 +288,38 @@ class MobileShopApp {
     }
 
     renderProductCard(product) {
+        const photoUrl = product.photo || '/webapp/static/uploads/default.jpg';
+        const isActive = product.is_active !== false;
+        
         return `
-            <div class="product-card" data-product-id="${product.id}">
+            <div class="product-card ${!isActive ? 'inactive' : ''}" data-product-id="${product.id}">
                 <div class="product-image">
-                    <img src="${product.photo}" alt="${product.title}" onerror="this.src='/webapp/static/uploads/default.jpg'">
+                    <img src="${photoUrl}" alt="${product.title || 'Товар'}" onerror="this.src='/webapp/static/uploads/default.jpg'">
+                    ${!isActive ? '<div class="product-status-badge inactive">Неактивен</div>' : ''}
                 </div>
                 <div class="product-info">
-                    <h3 class="product-title">${product.title}</h3>
-                    <p class="product-description">${product.description}</p>
-                    <div class="product-price">${this.formatPrice(product.price)}</div>
+                    <h3 class="product-title">${product.title || 'Без названия'}</h3>
+                    <p class="product-description">${product.description || 'Без описания'}</p>
+                    <div class="product-price">${this.formatPrice(product.price || 0)}</div>
                     
                     ${product.sizes && product.sizes.length > 0 ? `
                         <select class="size-select" data-product-id="${product.id}">
                             <option value="">Выберите размер</option>
                             ${product.sizes.map(size => `<option value="${size}">${size}</option>`).join('')}
-        </select>
+                        </select>
                     ` : ''}
                     
                     <div class="qty-controls">
-                        <button class="qty-btn qty-decrease" data-product-id="${product.id}">-</button>
+                        <button class="qty-btn qty-decrease" data-product-id="${product.id}" ${!isActive ? 'disabled' : ''}>-</button>
                         <span class="qty-display" data-product-id="${product.id}">0</span>
-                        <button class="qty-btn qty-increase" data-product-id="${product.id}">+</button>
+                        <button class="qty-btn qty-increase" data-product-id="${product.id}" ${!isActive ? 'disabled' : ''}>+</button>
                     </div>
                     
                     <div class="product-actions">
-                        <button class="btn btn-primary add-to-cart" data-product-id="${product.id}">
+                        <button class="btn btn-primary add-to-cart" data-product-id="${product.id}" ${!isActive ? 'disabled' : ''}>
                             🛒 В корзину
                         </button>
-                        <button class="btn btn-outline quick-buy" data-product-id="${product.id}">
+                        <button class="btn btn-outline quick-buy" data-product-id="${product.id}" ${!isActive ? 'disabled' : ''}>
                             ⚡ Быстрая покупка
                         </button>
                     </div>
@@ -336,46 +402,85 @@ class MobileShopApp {
 
     async loadAdminProducts() {
         try {
+            console.log('📦 Загружаем товары для админ-панели...');
             const response = await fetch('/webapp/admin/products?user_id=admin');
-            const data = await response.json();
-            this.adminProducts = data.products || [];
-            this.renderAdminProducts(this.adminProducts);
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.adminProducts = data.products || [];
+                console.log('✅ Загружено товаров для админа:', this.adminProducts.length);
+                this.renderAdminProducts(this.adminProducts);
+            } else {
+                console.error('❌ Ошибка загрузки товаров для админа:', response.status);
+                // Используем основные товары как fallback
+                this.adminProducts = this.products;
+                this.renderAdminProducts(this.adminProducts);
+            }
         } catch (error) {
-            console.error('Ошибка загрузки товаров для админа:', error);
+            console.error('❌ Ошибка загрузки товаров для админа:', error);
+            // Используем основные товары как fallback
+            this.adminProducts = this.products;
+            this.renderAdminProducts(this.adminProducts);
         }
     }
 
     renderAdminProducts(products) {
         const container = document.getElementById('admin-products-list');
-        if (!container) return;
+        if (!container) {
+            console.error('❌ Контейнер admin-products-list не найден!');
+            return;
+        }
+        
+        console.log('🎨 Рендерим товары в админ-панели:', products.length);
+        
+        if (products.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>📦 Товары не найдены</p>
+                    <button class="btn btn-primary" onclick="showAddProductModal()">
+                        ➕ Добавить первый товар
+                    </button>
+                </div>
+            `;
+            return;
+        }
         
         container.innerHTML = products.map(product => this.renderAdminProductItem(product)).join('');
+        
+        // Настраиваем обработчики событий для админ-товаров
+        this.setupAdminProductEventListeners();
     }
 
     renderAdminProductItem(product) {
+        const photoUrl = product.photo || '/webapp/static/uploads/default.jpg';
+        const isActive = product.is_active !== false; // По умолчанию активен
+        
         return `
             <div class="admin-product-item" data-product-id="${product.id}">
                 <div class="admin-product-image">
-                    <img src="${product.photo}" alt="${product.title}">
+                    <img src="${photoUrl}" alt="${product.title}" onerror="this.src='/webapp/static/uploads/default.jpg'">
                 </div>
                 <div class="admin-product-info">
-                    <h4>${product.title}</h4>
-                    <p>${product.description}</p>
-                    <div class="admin-product-price">${this.formatPrice(product.price)}</div>
-                    <div class="admin-product-status ${product.is_active ? 'active' : 'inactive'}">
-                        ${product.is_active ? 'Активен' : 'Неактивен'}
-        </div>
-      </div>
+                    <h4>${product.title || 'Без названия'}</h4>
+                    <p>${product.description || 'Без описания'}</p>
+                    <div class="admin-product-price">${this.formatPrice(product.price || 0)}</div>
+                    <div class="admin-product-sizes">
+                        Размеры: ${product.sizes && product.sizes.length > 0 ? product.sizes.join(', ') : 'Не указаны'}
+                    </div>
+                    <div class="admin-product-status ${isActive ? 'active' : 'inactive'}">
+                        ${isActive ? '✅ Активен' : '❌ Неактивен'}
+                    </div>
+                </div>
                 <div class="admin-product-actions">
-                    <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">
+                    <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})" title="Редактировать товар">
                         ✏️ Редактировать
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})">
+                    <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})" title="Удалить товар">
                         🗑️ Удалить
                     </button>
                 </div>
-      </div>
-    `;
+            </div>
+        `;
     }
 
     updateAdminStats() {
@@ -512,85 +617,173 @@ class MobileShopApp {
     // ===== АДМИН-ФУНКЦИИ =====
 
     showAddProductModal() {
-        console.log('showAddProductModal вызвана, isAdmin:', this.isAdmin);
+        console.log('➕ Показываем форму добавления товара, isAdmin:', this.isAdmin);
         
         // Принудительно даем админские права
         this.isAdmin = true;
         
         this.editingProduct = null;
         document.getElementById('product-modal-title').textContent = '➕ Добавить товар';
+        
+        // Очищаем форму
         document.getElementById('product-form').reset();
         document.getElementById('photo-preview').style.display = 'none';
+        
+        // Скрываем текущее фото
+        const previewImg = document.getElementById('preview-img');
+        if (previewImg) {
+            previewImg.src = '';
+        }
+        
         this.showModal('product-modal');
+        console.log('✅ Форма добавления товара открыта');
     }
 
     async editProduct(productId) {
         // Принудительно даем админские права
         this.isAdmin = true;
         
+        console.log('✏️ Редактируем товар:', productId);
+        
         const product = this.products.find(p => p.id === productId);
-        if (!product) return;
+        if (!product) {
+            console.error('❌ Товар не найден:', productId);
+            this.showNotification('Товар не найден!', 'error');
+            return;
+        }
+        
+        console.log('📦 Найден товар для редактирования:', product);
         
         this.editingProduct = product;
         document.getElementById('product-modal-title').textContent = '✏️ Редактировать товар';
         
         // Заполняем форму
-        document.getElementById('product-title').value = product.title;
-        document.getElementById('product-description').value = product.description;
-        document.getElementById('product-price').value = product.price;
+        document.getElementById('product-title').value = product.title || '';
+        document.getElementById('product-description').value = product.description || '';
+        document.getElementById('product-price').value = product.price || '';
         document.getElementById('product-sizes').value = product.sizes ? product.sizes.join(', ') : '';
         
+        // Показываем текущее фото если есть
+        const photoPreview = document.getElementById('photo-preview');
+        const previewImg = document.getElementById('preview-img');
+        if (product.photo && product.photo !== '/webapp/static/uploads/default.jpg') {
+            previewImg.src = product.photo;
+            photoPreview.style.display = 'block';
+        } else {
+            photoPreview.style.display = 'none';
+        }
+        
         this.showModal('product-modal');
+        console.log('✅ Форма редактирования открыта');
     }
 
     async deleteProduct(productId) {
         // Принудительно даем админские права
         this.isAdmin = true;
         
-        if (!confirm('Удалить товар?')) return;
+        console.log('🗑️ Удаляем товар:', productId);
+        
+        if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
+            console.log('❌ Удаление отменено пользователем');
+            return;
+        }
         
         try {
+            console.log('📡 Отправляем запрос на удаление...');
             const response = await fetch(`/webapp/admin/products/${productId}?user_id=admin`, {
                 method: 'DELETE'
             });
             
+            console.log('📡 Получен ответ:', response.status, response.statusText);
+            
             if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Товар удален успешно:', result);
+                
+                // Показываем уведомление об успехе
+                this.showNotification('Товар удален!', 'success');
+                
+                // Обновляем данные
                 await this.fetchProducts();
                 await this.loadAdminProducts();
                 this.updateAdminStats();
+                
+                // Обновляем каталог если мы на нем
+                if (this.currentPage === 'catalog') {
+                    this.renderCatalogPage();
+                }
+                
             } else {
-                alert('Ошибка при удалении товара');
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ Ошибка сервера:', response.status, errorData);
+                this.showNotification(
+                    `Ошибка при удалении товара: ${errorData.detail || response.statusText}`, 
+                    'error'
+                );
             }
         } catch (error) {
-            console.error('Ошибка удаления товара:', error);
-            alert('Ошибка при удалении товара');
+            console.error('❌ Ошибка удаления товара:', error);
+            this.handleNetworkError(error, 'при удалении товара');
         }
     }
 
     async saveProduct(formData) {
         try {
+            console.log('💾 Начинаем сохранение товара...');
+            
             const url = this.editingProduct 
                 ? `/webapp/admin/products/${this.editingProduct.id}?user_id=admin`
                 : '/webapp/admin/products?user_id=admin';
             
             const method = this.editingProduct ? 'PUT' : 'POST';
             
+            console.log('📡 Отправляем запрос:', method, url);
+            
             const response = await fetch(url, {
                 method: method,
                 body: formData
             });
             
+            console.log('📡 Получен ответ:', response.status, response.statusText);
+            
             if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Товар сохранен успешно:', result);
+                
+                // Показываем уведомление об успехе
+                this.showNotification(
+                    this.editingProduct ? 'Товар обновлен!' : 'Товар добавлен!', 
+                    'success'
+                );
+                
+                // Обновляем данные
                 await this.fetchProducts();
                 await this.loadAdminProducts();
                 this.updateAdminStats();
+                
+                // Обновляем каталог если мы на нем
+                if (this.currentPage === 'catalog') {
+                    this.renderCatalogPage();
+                }
+                
+                // Закрываем модальное окно
                 this.hideModal('product-modal');
+                
+                // Очищаем форму
+                document.getElementById('product-form').reset();
+                document.getElementById('photo-preview').style.display = 'none';
+                
             } else {
-                alert('Ошибка при сохранении товара');
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ Ошибка сервера:', response.status, errorData);
+                this.showNotification(
+                    `Ошибка при сохранении товара: ${errorData.detail || response.statusText}`, 
+                    'error'
+                );
             }
         } catch (error) {
-            console.error('Ошибка сохранения товара:', error);
-            alert('Ошибка при сохранении товара');
+            console.error('❌ Ошибка сохранения товара:', error);
+            this.handleNetworkError(error, 'при сохранении товара');
         }
     }
 
@@ -658,6 +851,12 @@ class MobileShopApp {
         if (productForm) {
             productForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                
+                // Валидация формы
+                if (!this.validateProductForm(e.target)) {
+                    return;
+                }
+                
                 const formData = new FormData(e.target);
                 this.saveProduct(formData);
             });
@@ -785,6 +984,12 @@ class MobileShopApp {
         });
     }
 
+    setupAdminProductEventListeners() {
+        // Обработчики для админ-товаров уже настроены через onclick
+        // Но можем добавить дополнительные обработчики здесь если нужно
+        console.log('🔧 Настроены обработчики событий для админ-товаров');
+    }
+
     // ===== УТИЛИТЫ =====
 
     formatPrice(price) {
@@ -806,6 +1011,263 @@ class MobileShopApp {
             console.error('Ошибка загрузки корзины:', error);
             this.cart = [];
         }
+    }
+
+    // ===== ВАЛИДАЦИЯ =====
+
+    validateProductForm(form) {
+        console.log('🔍 Валидация формы товара...');
+        
+        const title = form.querySelector('#product-title').value.trim();
+        const description = form.querySelector('#product-description').value.trim();
+        const price = parseFloat(form.querySelector('#product-price').value);
+        const photo = form.querySelector('#product-photo').files[0];
+        
+        // Проверяем название
+        if (!title) {
+            this.showNotification('Введите название товара', 'error');
+            form.querySelector('#product-title').focus();
+            return false;
+        }
+        
+        if (title.length < 2) {
+            this.showNotification('Название должно содержать минимум 2 символа', 'error');
+            form.querySelector('#product-title').focus();
+            return false;
+        }
+        
+        // Проверяем описание
+        if (!description) {
+            this.showNotification('Введите описание товара', 'error');
+            form.querySelector('#product-description').focus();
+            return false;
+        }
+        
+        if (description.length < 10) {
+            this.showNotification('Описание должно содержать минимум 10 символов', 'error');
+            form.querySelector('#product-description').focus();
+            return false;
+        }
+        
+        // Проверяем цену
+        if (isNaN(price) || price <= 0) {
+            this.showNotification('Введите корректную цену (больше 0)', 'error');
+            form.querySelector('#product-price').focus();
+            return false;
+        }
+        
+        if (price > 1000000) {
+            this.showNotification('Цена не может превышать 1,000,000 ₽', 'error');
+            form.querySelector('#product-price').focus();
+            return false;
+        }
+        
+        // Проверяем фото (только для новых товаров)
+        if (!this.editingProduct && !photo) {
+            this.showNotification('Загрузите фото товара', 'error');
+            form.querySelector('#product-photo').focus();
+            return false;
+        }
+        
+        // Проверяем размер файла фото
+        if (photo && photo.size > 5 * 1024 * 1024) { // 5MB
+            this.showNotification('Размер фото не должен превышать 5MB', 'error');
+            form.querySelector('#product-photo').focus();
+            return false;
+        }
+        
+        // Проверяем тип файла фото
+        if (photo && !photo.type.startsWith('image/')) {
+            this.showNotification('Загрузите файл изображения', 'error');
+            form.querySelector('#product-photo').focus();
+            return false;
+        }
+        
+        console.log('✅ Форма прошла валидацию');
+        return true;
+    }
+
+    // ===== АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ =====
+
+    setupAutoRefresh() {
+        // Обновляем данные каждые 30 секунд
+        this.autoRefreshInterval = setInterval(async () => {
+            try {
+                console.log('🔄 Автоматическое обновление данных...');
+                await this.fetchProducts();
+                
+                // Обновляем текущую страницу если нужно
+                if (this.currentPage === 'catalog') {
+                    this.renderCatalogPage();
+                } else if (this.currentPage === 'admin') {
+                    await this.loadAdminProducts();
+                    this.updateAdminStats();
+                }
+                
+                console.log('✅ Данные обновлены автоматически');
+            } catch (error) {
+                console.error('❌ Ошибка автоматического обновления:', error);
+            }
+        }, 30000); // 30 секунд
+        
+        console.log('⏰ Автоматическое обновление настроено (каждые 30 секунд)');
+    }
+
+    stopAutoRefresh() {
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+            this.autoRefreshInterval = null;
+            console.log('⏹️ Автоматическое обновление остановлено');
+        }
+    }
+
+    // ===== УВЕДОМЛЕНИЯ =====
+
+    showNotification(message, type = 'info') {
+        console.log(`🔔 Уведомление [${type}]:`, message);
+        
+        // Создаем элемент уведомления
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-icon">
+                    ${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}
+                </span>
+                <span class="notification-message">${message}</span>
+                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+            </div>
+        `;
+        
+        // Добавляем стили если их нет
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                .notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    max-width: 300px;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    animation: slideIn 0.3s ease-out;
+                    font-size: 14px;
+                    line-height: 1.4;
+                }
+                
+                .notification-success {
+                    background: #d4edda;
+                    color: #155724;
+                    border: 1px solid #c3e6cb;
+                }
+                
+                .notification-error {
+                    background: #f8d7da;
+                    color: #721c24;
+                    border: 1px solid #f5c6cb;
+                }
+                
+                .notification-info {
+                    background: #d1ecf1;
+                    color: #0c5460;
+                    border: 1px solid #bee5eb;
+                }
+                
+                .notification-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                
+                .notification-icon {
+                    font-size: 16px;
+                    flex-shrink: 0;
+                }
+                
+                .notification-message {
+                    flex: 1;
+                }
+                
+                .notification-close {
+                    background: none;
+                    border: none;
+                    font-size: 18px;
+                    cursor: pointer;
+                    color: inherit;
+                    opacity: 0.7;
+                    padding: 0;
+                    margin-left: 8px;
+                }
+                
+                .notification-close:hover {
+                    opacity: 1;
+                }
+                
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Добавляем уведомление на страницу
+        document.body.appendChild(notification);
+        
+        // Автоматически удаляем через 5 секунд
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, 5000);
+    }
+
+    // ===== ОБРАБОТКА ОШИБОК =====
+
+    handleNetworkError(error, context = '') {
+        console.error(`❌ Ошибка сети ${context}:`, error);
+        
+        let message = 'Ошибка соединения с сервером';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            message = 'Не удается подключиться к серверу';
+        } else if (error.message.includes('404')) {
+            message = 'Сервер не найден';
+        } else if (error.message.includes('500')) {
+            message = 'Ошибка сервера';
+        } else if (error.message.includes('timeout')) {
+            message = 'Превышено время ожидания';
+        }
+        
+        this.showNotification(`${message} ${context}`, 'error');
+    }
+
+    // ===== ОЧИСТКА РЕСУРСОВ =====
+
+    destroy() {
+        console.log('🧹 Очистка ресурсов приложения...');
+        
+        // Останавливаем автоматическое обновление
+        this.stopAutoRefresh();
+        
+        // Очищаем обработчики событий
+        document.removeEventListener('beforeunload', this.destroy);
+        
+        console.log('✅ Ресурсы очищены');
     }
 }
 
