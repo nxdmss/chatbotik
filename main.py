@@ -25,8 +25,8 @@ def start_web_server():
     """Запуск веб-сервера"""
     try:
         print("🌐 Запуск веб-сервера...")
-        # Импортируем и запускаем наш ультра-простой сервер
-        from ultra_simple_server import start_server
+        # Импортируем и запускаем идеальный сервер
+        from perfect_server import start_server
         start_server()
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
@@ -65,8 +65,8 @@ def main():
     print_banner()
     
     # Проверяем наличие файлов
-    if not os.path.exists('ultra_simple_server.py'):
-        print("❌ Файл ultra_simple_server.py не найден!")
+    if not os.path.exists('perfect_server.py'):
+        print("❌ Файл perfect_server.py не найден!")
         return
     
     if not os.path.exists('webapp'):
