@@ -17,11 +17,26 @@ class MobileShopApp {
         try {
             console.log('🚀 Инициализация приложения...');
             
+            // Проверяем основные элементы DOM
+            const app = document.querySelector('.app');
+            const header = document.querySelector('.header');
+            const main = document.querySelector('.main');
+            const nav = document.querySelector('.nav');
+            
+            console.log('🔍 Проверка DOM элементов:');
+            console.log('- .app:', !!app);
+            console.log('- .header:', !!header);
+            console.log('- .main:', !!main);
+            console.log('- .nav:', !!nav);
+            
             // Настройка Telegram WebApp
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
                 this.userInfo = window.Telegram.WebApp.initDataUnsafe?.user;
+                console.log('📱 Telegram WebApp настроен');
+            } else {
+                console.log('🌐 Запуск в обычном браузере');
             }
             
             // Загрузка данных
@@ -46,7 +61,8 @@ class MobileShopApp {
         try {
             const response = await fetch('/webapp/products.json');
             const data = await response.json();
-            this.products = data.products || [];
+            // API возвращает массив товаров напрямую
+            this.products = Array.isArray(data) ? data : (data.products || []);
             console.log('📦 Загружено товаров:', this.products.length);
         } catch (error) {
             console.error('❌ Ошибка загрузки товаров:', error);
@@ -151,14 +167,20 @@ class MobileShopApp {
     // ===== КАТАЛОГ =====
 
     renderCatalogPage() {
+        console.log('🎨 Рендерим каталог, товаров:', this.products.length);
         const container = document.getElementById('products-grid');
-        if (!container) return;
+        if (!container) {
+            console.error('❌ Контейнер products-grid не найден!');
+            return;
+        }
         
         const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
         const filteredProducts = this.products.filter(product => 
             product.title.toLowerCase().includes(searchTerm) ||
             product.description.toLowerCase().includes(searchTerm)
         );
+        
+        console.log('🔍 Отфильтровано товаров:', filteredProducts.length);
         
         container.innerHTML = filteredProducts.map(product => this.renderProductCard(product)).join('');
         

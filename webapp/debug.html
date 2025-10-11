@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Магазин</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .debug-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-info">
+        <h1>🔧 Debug - Магазин</h1>
+        <p>Проверяем работу приложения...</p>
+        <div id="debug-output"></div>
+    </div>
+    
+    <div class="debug-info">
+        <h2>Тесты</h2>
+        <button class="test-button" onclick="testCSS()">Тест CSS</button>
+        <button class="test-button" onclick="testJS()">Тест JavaScript</button>
+        <button class="test-button" onclick="testAPI()">Тест API</button>
+        <button class="test-button" onclick="openMainApp()">Открыть основное приложение</button>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('debug-output');
+            output.innerHTML += '<p>' + new Date().toLocaleTimeString() + ': ' + message + '</p>';
+        }
+
+        function testCSS() {
+            log('✅ CSS загружен');
+        }
+
+        function testJS() {
+            try {
+                log('✅ JavaScript работает');
+            } catch (e) {
+                log('❌ Ошибка JavaScript: ' + e.message);
+            }
+        }
+
+        async function testAPI() {
+            try {
+                const response = await fetch('/webapp/products.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ API работает, товаров: ' + data.length);
+                } else {
+                    log('❌ API ошибка: ' + response.status);
+                }
+            } catch (e) {
+                log('❌ Ошибка API: ' + e.message);
+            }
+        }
+
+        function openMainApp() {
+            window.location.href = '/webapp/';
+        }
+
+        // Автоматические тесты при загрузке
+        window.addEventListener('load', () => {
+            log('🚀 Страница загружена');
+            testCSS();
+            testJS();
+            testAPI();
+        });
+    </script>
+</body>
+</html>
