@@ -62,8 +62,12 @@ class MobileShopApp {
                 userId = this.userInfo.id.toString();
             }
             
+            console.log('Проверяем админ-статус для ID:', userId);
+            
             // Единственный администратор - 1593426947
             this.isAdmin = (userId === '1593426947');
+            
+            console.log('Результат проверки админ-статуса:', this.isAdmin);
             
             if (this.isAdmin) {
                 this.showAdminPanel();
@@ -450,7 +454,11 @@ class MobileShopApp {
     // ===== АДМИН-ФУНКЦИИ =====
 
     showAddProductModal() {
-        if (!this.isAdmin) return;
+        console.log('showAddProductModal вызвана, isAdmin:', this.isAdmin);
+        if (!this.isAdmin) {
+            console.log('Пользователь не является администратором');
+            return;
+        }
         
         this.editingProduct = null;
         document.getElementById('product-modal-title').textContent = '➕ Добавить товар';
@@ -530,15 +538,21 @@ class MobileShopApp {
     // ===== МОДАЛЬНЫЕ ОКНА =====
 
     showModal(modalId) {
+        console.log('Показываем модальное окно:', modalId);
         const modal = document.getElementById(modalId);
         if (modal) {
+            modal.classList.add('show');
             modal.style.display = 'flex';
+            console.log('Модальное окно показано:', modalId);
+        } else {
+            console.error('Модальное окно не найдено:', modalId);
         }
     }
 
     hideModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
+            modal.classList.remove('show');
             modal.style.display = 'none';
         }
     }

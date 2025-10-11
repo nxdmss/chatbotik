@@ -638,6 +638,10 @@ body {
     padding: 1rem;
 }
 
+.modal.show {
+    display: flex !important;
+}
+
 .modal-content {
     background: white;
     border-radius: var(--border-radius);
