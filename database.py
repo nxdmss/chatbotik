@@ -96,6 +96,14 @@ class Database:
                 logger.error(f"Ошибка добавления пользователя: {e}")
                 return False
     
+    async def register_user(self, telegram_id: str, username: str = None):
+        """Регистрирует пользователя (асинхронная версия add_user)"""
+        try:
+            return self.add_user(int(telegram_id), username)
+        except Exception as e:
+            logger.error(f"Ошибка регистрации пользователя: {e}")
+            return False
+    
     def get_user(self, telegram_id: int) -> Optional[Dict]:
         """Получает пользователя по Telegram ID"""
         with sqlite3.connect(self.db_path) as conn:
@@ -335,6 +343,49 @@ class Database:
             logger.info(f"Мигрировано {len(admins)} админов")
         
         logger.info("Миграция завершена!")
+    
+    async def create_order(self, user_id: str, order_data) -> int:
+        """Создает новый заказ"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            try:
+                # Конвертируем товары в JSON
+                products_json = json.dumps([item.dict() for item in order_data.items])
+                
+                cursor.execute("""
+                    INSERT INTO orders (user_id, products, total_amount, status, text)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user_id, products_json, order_data.total, 'pending', order_data.text))
+                
+                order_id = cursor.lastrowid
+                conn.commit()
+                logger.info(f"Создан заказ {order_id} для пользователя {user_id}")
+                return order_id
+            except Exception as e:
+                logger.error(f"Ошибка создания заказа: {e}")
+                return None
+    
+    async def create_product(self, product_data) -> int:
+        """Создает новый товар"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            try:
+                # Конвертируем размеры в JSON
+                sizes_json = json.dumps(product_data.sizes) if product_data.sizes else None
+                
+                cursor.execute("""
+                    INSERT INTO products (title, description, price, sizes, photo, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (product_data.title, product_data.description, product_data.price, 
+                      sizes_json, product_data.photo, True))
+                
+                product_id = cursor.lastrowid
+                conn.commit()
+                logger.info(f"Создан товар {product_id}: {product_data.title}")
+                return product_id
+            except Exception as e:
+                logger.error(f"Ошибка создания товара: {e}")
+                return None
 
 # Создаем глобальный экземпляр базы данных
 db = Database()
