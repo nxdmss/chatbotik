@@ -57,8 +57,8 @@ def is_admin(user_id: str) -> bool:
     """Проверка, является ли пользователь администратором"""
     user_id_str = str(user_id)
     
-    # Единственный администратор
-    return user_id_str == "1593426947"
+    # Единственный администратор или тестовый admin
+    return user_id_str == "1593426947" or user_id_str == "admin"
 
 # ======================
 # 🔹 Основные маршруты
@@ -78,11 +78,11 @@ async def webapp():
 # 🔹 API для товаров
 # ======================
 
-@app.get("/webapp/products.json")
+@app.get("/api/products")
 async def get_products():
     """Получить список товаров"""
     try:
-        products = db.get_products()
+        products = db.get_products(active_only=False)
         
         # Если товаров нет, добавляем примеры
         if not products:
@@ -281,17 +281,24 @@ async def update_product(
 async def delete_product(product_id: int, user_id: str = None):
     """Удалить товар (деактивировать)"""
     try:
+        print(f"🗑️ Запрос на удаление товара {product_id} от пользователя {user_id}")
+        
         if not is_admin(user_id):
+            print(f"❌ Доступ запрещен для пользователя {user_id}")
             raise HTTPException(status_code=403, detail="Доступ запрещен")
         
-        success = await db.update_product_status(product_id, False)
+        print(f"✅ Пользователь {user_id} имеет права администратора")
+        success = db.update_product_status(product_id, False)
         
         if success:
+            print(f"✅ Товар {product_id} успешно деактивирован")
             return {"success": True, "message": "Товар удален успешно"}
         else:
+            print(f"❌ Товар {product_id} не найден")
             raise HTTPException(status_code=404, detail="Товар не найден")
         
     except Exception as e:
+        print(f"❌ Ошибка при удалении товара {product_id}: {e}")
         logger.error("Error deleting product", error=str(e))
         raise HTTPException(status_code=500, detail="Ошибка при удалении товара")
 

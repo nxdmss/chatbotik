@@ -167,15 +167,18 @@ class Database:
 
     def get_products(self, active_only: bool = True) -> List[Dict]:
         """Получает список товаров"""
+        print(f"🔍 Получаем товары (active_only={active_only})")
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             query = "SELECT id, title, description, price, sizes, photo, is_active FROM products"
             if active_only:
-                query += " WHERE is_active = TRUE"
+                query += " WHERE is_active = 1"
             query += " ORDER BY created_at DESC"
             
+            print(f"🔍 SQL запрос: {query}")
             cursor.execute(query)
             rows = cursor.fetchall()
+            print(f"🔍 Найдено строк: {len(rows)}")
             products = []
             for row in rows:
                 products.append({
@@ -303,18 +306,43 @@ class Database:
     
     def update_product_status(self, product_id: int, is_active: bool) -> bool:
         """Обновляет статус товара (активен/неактивен)"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            try:
+        try:
+            print(f"🔄 Обновляем статус товара {product_id} на {is_active}")
+            
+            # Проверяем, существует ли товар
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                print(f"🔍 Ищем товар с ID: {product_id} (тип: {type(product_id)})")
+                cursor.execute("SELECT id FROM products WHERE id = ?", (product_id,))
+                result = cursor.fetchone()
+                print(f"🔍 Результат поиска: {result}")
+                if not result:
+                    print(f"❌ Товар {product_id} не найден")
+                    return False
+            
+            # Обновляем статус
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE products SET is_active = ? WHERE id = ?
                 """, (is_active, product_id))
                 conn.commit()
-                logger.info(f"Product {product_id} status updated to {is_active}")
-                return cursor.rowcount > 0
-            except Exception as e:
-                logger.error(f"Error updating product status: {e}")
-                return False
+                affected_rows = cursor.rowcount
+                print(f"📊 Затронуто строк: {affected_rows}")
+                
+                # Проверяем результат
+                cursor.execute("SELECT is_active FROM products WHERE id = ?", (product_id,))
+                result = cursor.fetchone()
+                if result:
+                    print(f"✅ Новый статус товара {product_id}: {result[0]}")
+                
+                logger.info(f"Product {product_id} status updated to {is_active}, affected rows: {affected_rows}")
+                return affected_rows > 0
+                
+        except Exception as e:
+            print(f"❌ Ошибка обновления статуса: {e}")
+            logger.error(f"Error updating product status: {e}")
+            return False
     
     def migrate_from_json(self):
         """Мигрирует данные из JSON файлов в базу данных"""
