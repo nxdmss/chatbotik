@@ -97,8 +97,8 @@ class ContactAdmin(StatesGroup):
 def save_data() -> None:
     """Безопасное сохранение данных с обработкой ошибок"""
     try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
         bot_logger.logger.debug("Data saved successfully")
     except Exception as e:
         bot_logger.log_error(e, {"action": "save_data"})
@@ -107,10 +107,10 @@ def save_data() -> None:
 def load_data() -> None:
     """Безопасная загрузка данных с обработкой ошибок"""
     try:
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-                data.update(loaded)
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+            data.update(loaded)
             bot_logger.logger.debug("Data loaded successfully")
     except Exception as e:
         bot_logger.log_error(e, {"action": "load_data"})
@@ -128,24 +128,24 @@ load_data()
 def save_admin_msgs(admin_id: str, msg_id: int) -> None:
     """Сохранение ID сообщений администратора"""
     try:
-        msgs = {}
-        if os.path.exists(ADMIN_MSGS_FILE):
-            with open(ADMIN_MSGS_FILE, "r", encoding="utf-8") as f:
-                msgs = json.load(f)
-        msgs.setdefault(str(admin_id), []).append(msg_id)
-        with open(ADMIN_MSGS_FILE, "w", encoding="utf-8") as f:
-            json.dump(msgs, f, ensure_ascii=False, indent=2)
+    msgs = {}
+    if os.path.exists(ADMIN_MSGS_FILE):
+        with open(ADMIN_MSGS_FILE, "r", encoding="utf-8") as f:
+            msgs = json.load(f)
+    msgs.setdefault(str(admin_id), []).append(msg_id)
+    with open(ADMIN_MSGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(msgs, f, ensure_ascii=False, indent=2)
     except Exception as e:
         bot_logger.log_error(e, {"action": "save_admin_msgs", "admin_id": admin_id})
 
 def get_admin_msgs(admin_id: str) -> List[int]:
     """Получение ID сообщений администратора"""
     try:
-        if not os.path.exists(ADMIN_MSGS_FILE):
-            return []
-        with open(ADMIN_MSGS_FILE, "r", encoding="utf-8") as f:
-            msgs = json.load(f)
-        return msgs.get(str(admin_id), [])
+    if not os.path.exists(ADMIN_MSGS_FILE):
+        return []
+    with open(ADMIN_MSGS_FILE, "r", encoding="utf-8") as f:
+        msgs = json.load(f)
+    return msgs.get(str(admin_id), [])
     except Exception as e:
         bot_logger.log_error(e, {"action": "get_admin_msgs", "admin_id": admin_id})
         return []
@@ -153,13 +153,13 @@ def get_admin_msgs(admin_id: str) -> List[int]:
 def clear_admin_msgs(admin_id: str) -> None:
     """Очистка ID сообщений администратора"""
     try:
-        if not os.path.exists(ADMIN_MSGS_FILE):
-            return
-        with open(ADMIN_MSGS_FILE, "r", encoding="utf-8") as f:
-            msgs = json.load(f)
-        msgs[str(admin_id)] = []
-        with open(ADMIN_MSGS_FILE, "w", encoding="utf-8") as f:
-            json.dump(msgs, f, ensure_ascii=False, indent=2)
+    if not os.path.exists(ADMIN_MSGS_FILE):
+        return
+    with open(ADMIN_MSGS_FILE, "r", encoding="utf-8") as f:
+        msgs = json.load(f)
+    msgs[str(admin_id)] = []
+    with open(ADMIN_MSGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(msgs, f, ensure_ascii=False, indent=2)
     except Exception as e:
         bot_logger.log_error(e, {"action": "clear_admin_msgs", "admin_id": admin_id})
 
@@ -228,9 +228,9 @@ def main_kb() -> ReplyKeyboardMarkup:
         kb.append([KeyboardButton(text="🛍 Открыть магазин", web_app=WebAppInfo(url=web_url))])
     else:
         kb.append([KeyboardButton(text="🛍 Открыть магазин")])
-    
+
     kb.append([KeyboardButton(text="❓ FAQ"), KeyboardButton(text="💬 Связь с админом")])
-    
+
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def admin_main_kb() -> ReplyKeyboardMarkup:
@@ -269,20 +269,20 @@ async def admin_clients_kb() -> InlineKeyboardMarkup:
     """Клавиатура со списком клиентов для администратора"""
     buttons = []
     try:
-        for user_id in data.get("orders", {}):
-            user_name = await get_user_name(user_id)
-            buttons.append([
-                InlineKeyboardButton(
-                    text=user_name,
-                    callback_data=f"adminclient_{user_id}"
-                ),
-                InlineKeyboardButton(
-                    text=f"💬 Связь с {user_name}",
-                    callback_data=f"adminchat_{user_id}"
-                )
-            ])
-        if not buttons:
-            buttons.append([InlineKeyboardButton(text="Нет клиентов", callback_data="none")])
+    for user_id in data.get("orders", {}):
+        user_name = await get_user_name(user_id)
+        buttons.append([
+            InlineKeyboardButton(
+                text=user_name,
+                callback_data=f"adminclient_{user_id}"
+            ),
+            InlineKeyboardButton(
+                text=f"💬 Связь с {user_name}",
+                callback_data=f"adminchat_{user_id}"
+            )
+        ])
+    if not buttons:
+        buttons.append([InlineKeyboardButton(text="Нет клиентов", callback_data="none")])
     except Exception as e:
         bot_logger.log_error(e, {"action": "admin_clients_kb"})
         buttons.append([InlineKeyboardButton(text="Ошибка загрузки", callback_data="none")])
@@ -293,18 +293,18 @@ def admin_client_orders_kb(user_id: str) -> InlineKeyboardMarkup:
     """Клавиатура с заказами клиента"""
     buttons = []
     try:
-        orders = data.get("orders", {}).get(user_id, [])
-        for order in orders:
-            btn_text = f"Заказ №{order['order_id']} | {order['text'][:20]}"
-            buttons.append([
-                InlineKeyboardButton(
-                    text=btn_text,
-                    callback_data=f"adminorder_{user_id}_{order['order_id']}"
-                )
-            ])
-        buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="adminback")])
-        if len(orders) == 0:
-            buttons.insert(0, [InlineKeyboardButton(text="Нет заказов", callback_data="none")])
+    orders = data.get("orders", {}).get(user_id, [])
+    for order in orders:
+        btn_text = f"Заказ №{order['order_id']} | {order['text'][:20]}"
+        buttons.append([
+            InlineKeyboardButton(
+                text=btn_text,
+                callback_data=f"adminorder_{user_id}_{order['order_id']}"
+            )
+        ])
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="adminback")])
+    if len(orders) == 0:
+        buttons.insert(0, [InlineKeyboardButton(text="Нет заказов", callback_data="none")])
     except Exception as e:
         bot_logger.log_error(e, {"action": "admin_client_orders_kb", "user_id": user_id})
         buttons.append([InlineKeyboardButton(text="Ошибка загрузки", callback_data="none")])
@@ -499,7 +499,7 @@ async def admin_add_note_cb(c: CallbackQuery):
     data["admin_note_state"][str(c.from_user.id)] = (user_id, int(order_id))
     await bot.send_message(c.from_user.id, "📝 Введите заметку по этому заказу. Она будет видна только администраторам.")
     await c.answer()
-    
+
     bot_logger.log_admin_action(str(c.from_user.id), "add_note_request", f"order_{order_id}")
 
 @dp.callback_query(lambda c: c.data.startswith("delete_"))
@@ -654,7 +654,7 @@ async def faq(msg: Message):
         "💬 Вопросы — просто напишите сообщение в чат!",
         reply_markup=get_user_kb(msg.chat.id)
     )
-    
+
     bot_logger.log_user_action(str(msg.chat.id), "view_faq")
 
 # ======================
@@ -702,11 +702,11 @@ async def handle_web_app_message(msg: Message):
             # Валидируем товар
             product = Product(**webapp_data.product.dict())
             created = catalog_add_product(product.dict())
-            await msg.answer(f"✅ Товар '{created.get('title')}' добавлен с id {created.get('id')}")
+        await msg.answer(f"✅ Товар '{created.get('title')}' добавлен с id {created.get('id')}")
             
             # Уведомляем других админов
-            for admin_id in ADMINS:
-                try:
+        for admin_id in ADMINS:
+            try:
                     await safe_send_message(
                         bot, int(admin_id), 
                         f"🆕 Админ добавил товар: <b>{created.get('title')}</b> (id: {created.get('id')})", 
@@ -737,10 +737,10 @@ async def handle_web_app_message(msg: Message):
         )
         
         # Server-side validation: пересчитываем сумму
-        expected_total = 0
+    expected_total = 0
         for item in order_data.items:
             prod = get_product(item.product_id)
-            if not prod:
+        if not prod:
                 raise ValidationError(f"Товар {item.product_id} не найден")
             expected_total += prod['price'] * item.qty
 
@@ -748,8 +748,8 @@ async def handle_web_app_message(msg: Message):
             raise ValidationError("Сумма заказа не совпадает с серверной проверкой")
 
         # Создаем заказ
-        order_id = data['order_counter']
-        data['order_counter'] += 1
+    order_id = data['order_counter']
+    data['order_counter'] += 1
         
         order = Order(
             order_id=order_id,
@@ -761,11 +761,11 @@ async def handle_web_app_message(msg: Message):
         )
         
         data.setdefault('orders', {}).setdefault(user_id, []).append(order.dict())
-        save_data()
+    save_data()
 
-        # Уведомляем админов
-        for admin_id in ADMINS:
-            try:
+    # Уведомляем админов
+    for admin_id in ADMINS:
+        try:
                 await safe_send_message(
                     bot, int(admin_id), 
                     f"🆕 Новый заказ #{order_id} (WebApp) от <a href='tg://user?id={user_id}'>Пользователя</a>\nСумма: {format_price(expected_total)}", 
@@ -809,7 +809,7 @@ async def client_chat_message(msg: Message, state: FSMContext):
     
     # Валидируем сообщение
     try:
-        if msg.text:
+    if msg.text:
             validated_text = validate_user_input(msg.text, max_length=2000)
         else:
             validated_text = None
@@ -936,7 +936,7 @@ async def admin_to_user(msg: Message, state: FSMContext):
     except Exception as e:
         bot_logger.log_error(e, {"action": "send_message_to_user", "user_id": user_id})
         await msg.answer("⚠️ Не удалось доставить сообщение клиенту.", reply_markup=exit_dialog_kb())
-    
+
     bot_logger.log_admin_action(admin_id, "send_message_to_user", user_id)
 
 @dp.message(F.text == "🔙 Выйти из диалога")
@@ -1011,8 +1011,8 @@ async def handle_pre_checkout(pre: PreCheckoutQuery):
         bot_logger.log_error(e, {"action": "pre_checkout", "query_id": pre.id})
         try:
             await bot.answer_pre_checkout_query(pre.id, ok=False, error_message="Ошибка обработки платежа")
-        except Exception:
-            pass
+    except Exception:
+        pass
 
 @dp.message()
 @handle_errors
