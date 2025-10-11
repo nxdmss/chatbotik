@@ -27,7 +27,6 @@ class MobileShopApp {
             // Загрузка данных
             await this.fetchProducts();
             await this.checkAdminStatus();
-            this.loadCart();
             
             // Настройка интерфейса
             this.setupEventListeners();
@@ -91,7 +90,7 @@ class MobileShopApp {
         if (adminNavBtn) {
             adminNavBtn.style.display = 'block';
             console.log('Кнопка админ-панели показана');
-    } else {
+        } else {
             console.error('Кнопка админ-панели не найдена!');
         }
         
@@ -100,7 +99,7 @@ class MobileShopApp {
         if (adminActions) {
             adminActions.style.display = 'block';
             console.log('Кнопка добавления товара показана');
-      } else {
+        } else {
             console.error('Кнопка добавления товара не найдена!');
         }
     }
@@ -183,7 +182,7 @@ class MobileShopApp {
                         <select class="size-select" data-product-id="${product.id}">
                             <option value="">Выберите размер</option>
                             ${product.sizes.map(size => `<option value="${size}">${size}</option>`).join('')}
-        </select>
+                        </select>
                     ` : ''}
                     
                     <div class="qty-controls">
@@ -300,8 +299,8 @@ class MobileShopApp {
                     <div class="admin-product-price">${this.formatPrice(product.price)}</div>
                     <div class="admin-product-status ${product.is_active ? 'active' : 'inactive'}">
                         ${product.is_active ? 'Активен' : 'Неактивен'}
-        </div>
-      </div>
+                    </div>
+                </div>
                 <div class="admin-product-actions">
                     <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">
                         ✏️ Редактировать
@@ -310,8 +309,8 @@ class MobileShopApp {
                         🗑️ Удалить
                     </button>
                 </div>
-      </div>
-    `;
+            </div>
+        `;
     }
 
     updateAdminStats() {
@@ -425,8 +424,8 @@ class MobileShopApp {
     async checkout() {
         if (this.cart.length === 0) {
             alert('Корзина пуста');
-    return;
-  }
+            return;
+        }
         
         try {
             const orderData = {

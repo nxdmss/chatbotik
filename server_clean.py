@@ -7,7 +7,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
-import json
 from pathlib import Path
 from typing import List, Dict, Any
 import logging
