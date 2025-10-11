@@ -121,7 +121,7 @@ async def log_requests(request: Request, call_next):
 async def index():
     """Главная страница"""
     try:
-    return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
+        return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
     except Exception as e:
         logger.error("Error serving index page", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -130,7 +130,7 @@ async def index():
 async def webapp():
     """WebApp страница"""
     try:
-    return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
+        return FileResponse(os.path.join(WEBAPP_DIR, 'index.html'))
     except Exception as e:
         logger.error("Error serving webapp page", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -275,7 +275,7 @@ async def admin_delete_product(product_id: int):
 async def admins_json():
     """API для получения списка администраторов"""
     try:
-    admins = os.getenv('ADMINS', '')
+        admins = os.getenv('ADMINS', '')
         admin_list = [x.strip() for x in admins.split(',') if x.strip()]
 
         logger.info("Admins list requested", admins_count=len(admin_list))
@@ -288,7 +288,7 @@ async def admins_json():
 async def upload_file(file: UploadFile = File(...)):
     """API для загрузки файлов"""
     try:
-    if not file.filename:
+        if not file.filename:
             raise HTTPException(status_code=400, detail='No filename provided')
         
         # Валидация типа файла
@@ -303,18 +303,18 @@ async def upload_file(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail='File too large. Maximum size is 10MB.')
         
         # Санитизация имени файла
-    filename = os.path.basename(file.filename)
+        filename = os.path.basename(file.filename)
         # Удаляем потенциально опасные символы
         filename = "".join(c for c in filename if c.isalnum() or c in ".-_")
         
         # Избегаем перезаписи файлов
-    base, ext = os.path.splitext(filename)
-    i = 1
+        base, ext = os.path.splitext(filename)
+        i = 1
         save_path = os.path.join(UPLOADS_DIR, filename)
-    while os.path.exists(save_path):
-        filename = f"{base}_{i}{ext}"
-        save_path = os.path.join(UPLOADS_DIR, filename)
-        i += 1
+        while os.path.exists(save_path):
+            filename = f"{base}_{i}{ext}"
+            save_path = os.path.join(UPLOADS_DIR, filename)
+            i += 1
         
         # Сохраняем файл
         with open(save_path, 'wb') as f:
@@ -330,152 +330,6 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         logger.error("Error uploading file", error=str(e), filename=file.filename)
         raise HTTPException(status_code=500, detail="Error uploading file")
-
-@app.post('/webapp/add_product')
-async def add_product_endpoint(request: Request):
-    """API для добавления товара (только для администраторов)"""
-    try:
-        # Проверяем права администратора
-        admin_param = request.query_params.get('admin')
-        if admin_param != '1':
-            logger.warning("Unauthorized product addition attempt", 
-                         client_ip=request.client.host if request.client else "unknown")
-            return JSONResponse({'error': 'Admin access required'}, status_code=403)
-        
-        # Получаем данные
-    try:
-        body = await request.json()
-        except Exception as e:
-            logger.error("Invalid JSON in add_product request", error=str(e))
-            return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
-        
-        if not isinstance(body, dict) or 'product' not in body:
-            return JSONResponse({'error': 'Product data missing'}, status_code=400)
-        
-        # Валидируем данные товара
-        try:
-            product_data = ProductCreate(**body['product'])
-            product = Product(
-                id="",  # Будет сгенерирован в catalog
-                title=product_data.title,
-                price=product_data.price,
-                currency=product_data.currency,
-                photo=product_data.photo,
-                sizes=product_data.sizes
-            )
-        except ValidationError as e:
-            logger.error("Product validation failed", error=str(e), product_data=body['product'])
-            return JSONResponse({'error': f'Validation failed: {e}'}, status_code=400)
-        
-        # Добавляем товар в каталог
-        try:
-    from shop.catalog import add_product as catalog_add_product
-            created = catalog_add_product(product.dict())
-            
-            # Логируем действие администратора
-            admin_action = AdminAction(
-                admin_id="webapp_user",  # В реальном приложении получать из сессии
-                action="add_product",
-                target_id=created.get('id', ''),
-                details={"title": created.get('title', ''), "price": created.get('price', 0)}
-            )
-            logger.info("Product added via API", **admin_action.dict())
-            
-    return JSONResponse({'ok': True, 'product': created})
-
-        except Exception as e:
-            logger.error("Error adding product to catalog", error=str(e))
-            return JSONResponse({'error': 'Failed to add product'}, status_code=500)
-    
-    except Exception as e:
-        logger.error("Unexpected error in add_product", error=str(e))
-        return JSONResponse({'error': 'Internal server error'}, status_code=500)
-
-@app.post('/webapp/delete_product')
-async def delete_product_endpoint(request: Request):
-    """API для удаления товара (только для администраторов)"""
-    try:
-        # Проверяем права администратора
-        admin_param = request.query_params.get('admin')
-        if admin_param != '1':
-            logger.warning("Unauthorized product deletion attempt", 
-                         client_ip=request.client.host if request.client else "unknown")
-            return JSONResponse({'error': 'Admin access required'}, status_code=403)
-        
-        # Получаем данные
-    try:
-        body = await request.json()
-        except Exception as e:
-            logger.error("Invalid JSON in delete_product request", error=str(e))
-            return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
-        
-        product_id = body.get('id')
-        if not product_id:
-            return JSONResponse({'error': 'Product ID required'}, status_code=400)
-        
-        # Удаляем товар
-        try:
-    from shop.catalog import delete_product
-            success = delete_product(product_id)
-            
-            if not success:
-                return JSONResponse({'error': 'Product not found'}, status_code=404)
-            
-            # Логируем действие
-            logger.info("Product deleted via API", product_id=product_id)
-            
-    return JSONResponse({'ok': True})
-
-        except Exception as e:
-            logger.error("Error deleting product", error=str(e), product_id=product_id)
-            return JSONResponse({'error': 'Failed to delete product'}, status_code=500)
-    
-    except Exception as e:
-        logger.error("Unexpected error in delete_product", error=str(e))
-        return JSONResponse({'error': 'Internal server error'}, status_code=500)
-
-@app.post('/webapp/restore_product')
-async def restore_product_endpoint(request: Request):
-    """API для восстановления товара (только для администраторов)"""
-    try:
-        # Проверяем права администратора
-        admin_param = request.query_params.get('admin')
-        if admin_param != '1':
-            logger.warning("Unauthorized product restoration attempt", 
-                         client_ip=request.client.host if request.client else "unknown")
-            return JSONResponse({'error': 'Admin access required'}, status_code=403)
-        
-        # Получаем данные
-    try:
-        body = await request.json()
-        except Exception as e:
-            logger.error("Invalid JSON in restore_product request", error=str(e))
-            return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
-        
-        product_id = body.get('id')
-        if not product_id:
-            return JSONResponse({'error': 'Product ID required'}, status_code=400)
-        
-        # Восстанавливаем товар
-        try:
-    from shop.catalog import restore_product
-            success = restore_product(product_id)
-            
-            if not success:
-                return JSONResponse({'error': 'Product not found or not deleted'}, status_code=404)
-            
-            # Логируем действие
-            logger.info("Product restored via API", product_id=product_id)
-            
-            return JSONResponse({'ok': True})
-            
-        except Exception as e:
-            logger.error("Error restoring product", error=str(e), product_id=product_id)
-            return JSONResponse({'error': 'Failed to restore product'}, status_code=500)
-    
-    except Exception as e:
-        logger.error("Unexpected error in restore_product", error=str(e))
-        return JSONResponse({'error': 'Internal server error'}, status_code=500)
 
 @app.get('/health')
 async def health_check():
@@ -508,24 +362,15 @@ async def metrics():
     """Метрики сервера (базовая версия)"""
     try:
         # Подсчитываем количество товаров
-        products_file = os.path.join(os.path.dirname(__file__), 'shop', 'products.json')
-        products_count = 0
-        if os.path.exists(products_file):
-            try:
-                import json
-                with open(products_file, 'r', encoding='utf-8') as f:
-                    products = json.load(f)
-                    products_count = len(products)
-            except Exception:
-                pass
+        products_count = len(db.get_products())
         
         # Подсчитываем количество загруженных файлов
         uploads_count = 0
         if os.path.exists(UPLOADS_DIR):
             try:
                 uploads_count = len([f for f in os.listdir(UPLOADS_DIR) if os.path.isfile(os.path.join(UPLOADS_DIR, f))])
-    except Exception:
-        pass
+            except Exception:
+                pass
         
         return JSONResponse({
             "timestamp": datetime_now(),
