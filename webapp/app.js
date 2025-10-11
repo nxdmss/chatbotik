@@ -73,9 +73,22 @@ class MobileShopApp {
 
     async fetchProducts() {
         try {
-            // Сначала пытаемся загрузить из API (база данных)
-            const response = await fetch('/webapp/products.json');
+            console.log('📦 Загружаем товары...');
+            
+            // Сначала пытаемся загрузить из API
+            const response = await fetch('/webapp/products.json', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            console.log('📡 Получены данные от API:', data);
             
             // API возвращает массив товаров напрямую
             this.products = Array.isArray(data) ? data : (data.products || []);
@@ -85,21 +98,31 @@ class MobileShopApp {
             if (this.products.length === 0) {
                 console.log('⚠️ Товары не найдены в API, загружаем из статического файла...');
                 const fallbackResponse = await fetch('/webapp/static/products.json');
-                const fallbackData = await fallbackResponse.json();
-                this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
-                console.log('📦 Загружено товаров из статического файла:', this.products.length);
+                if (fallbackResponse.ok) {
+                    const fallbackData = await fallbackResponse.json();
+                    this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
+                    console.log('📦 Загружено товаров из статического файла:', this.products.length);
+                }
             }
         } catch (error) {
             console.error('❌ Ошибка загрузки товаров:', error);
+            this.handleNetworkError(error, 'при загрузке товаров');
+            
             // В случае ошибки пытаемся загрузить из статического файла
             try {
+                console.log('🔄 Пытаемся загрузить из статического файла...');
                 const fallbackResponse = await fetch('/webapp/static/products.json');
-                const fallbackData = await fallbackResponse.json();
-                this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
-                console.log('📦 Загружено товаров из статического файла (fallback):', this.products.length);
+                if (fallbackResponse.ok) {
+                    const fallbackData = await fallbackResponse.json();
+                    this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
+                    console.log('📦 Загружено товаров из статического файла (fallback):', this.products.length);
+                } else {
+                    throw new Error('Статический файл недоступен');
+                }
             } catch (fallbackError) {
                 console.error('❌ Ошибка загрузки из статического файла:', fallbackError);
                 this.products = [];
+                this.showNotification('Не удалось загрузить товары. Проверьте подключение к серверу.', 'error');
             }
         }
     }
@@ -403,10 +426,18 @@ class MobileShopApp {
     async loadAdminProducts() {
         try {
             console.log('📦 Загружаем товары для админ-панели...');
-            const response = await fetch('/webapp/admin/products?user_id=admin');
+            const response = await fetch('/webapp/admin/products?user_id=admin', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            console.log('📡 Ответ админ-API:', response.status, response.statusText);
             
             if (response.ok) {
                 const data = await response.json();
+                console.log('📋 Данные админ-API:', data);
                 this.adminProducts = data.products || [];
                 console.log('✅ Загружено товаров для админа:', this.adminProducts.length);
                 this.renderAdminProducts(this.adminProducts);
@@ -418,6 +449,7 @@ class MobileShopApp {
             }
         } catch (error) {
             console.error('❌ Ошибка загрузки товаров для админа:', error);
+            this.handleNetworkError(error, 'при загрузке админ-товаров');
             // Используем основные товары как fallback
             this.adminProducts = this.products;
             this.renderAdminProducts(this.adminProducts);
@@ -691,7 +723,10 @@ class MobileShopApp {
         try {
             console.log('📡 Отправляем запрос на удаление...');
             const response = await fetch(`/webapp/admin/products/${productId}?user_id=admin`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
             });
             
             console.log('📡 Получен ответ:', response.status, response.statusText);
@@ -714,10 +749,17 @@ class MobileShopApp {
                 }
                 
             } else {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('❌ Ошибка сервера:', response.status, errorData);
+                let errorMessage = `Ошибка ${response.status}: ${response.statusText}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || errorMessage;
+                    console.error('❌ Ошибка сервера:', response.status, errorData);
+                } catch (e) {
+                    console.error('❌ Не удалось распарсить ошибку сервера');
+                }
+                
                 this.showNotification(
-                    `Ошибка при удалении товара: ${errorData.detail || response.statusText}`, 
+                    `Ошибка при удалении товара: ${errorMessage}`, 
                     'error'
                 );
             }
@@ -730,6 +772,7 @@ class MobileShopApp {
     async saveProduct(formData) {
         try {
             console.log('💾 Начинаем сохранение товара...');
+            console.log('📋 Данные формы:', Object.fromEntries(formData.entries()));
             
             const url = this.editingProduct 
                 ? `/webapp/admin/products/${this.editingProduct.id}?user_id=admin`
@@ -741,7 +784,8 @@ class MobileShopApp {
             
             const response = await fetch(url, {
                 method: method,
-                body: formData
+                body: formData,
+                // Не добавляем Content-Type, браузер сам установит с boundary для FormData
             });
             
             console.log('📡 Получен ответ:', response.status, response.statusText);
@@ -774,10 +818,17 @@ class MobileShopApp {
                 document.getElementById('photo-preview').style.display = 'none';
                 
             } else {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('❌ Ошибка сервера:', response.status, errorData);
+                let errorMessage = `Ошибка ${response.status}: ${response.statusText}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || errorMessage;
+                    console.error('❌ Ошибка сервера:', response.status, errorData);
+                } catch (e) {
+                    console.error('❌ Не удалось распарсить ошибку сервера');
+                }
+                
                 this.showNotification(
-                    `Ошибка при сохранении товара: ${errorData.detail || response.statusText}`, 
+                    `Ошибка при сохранении товара: ${errorMessage}`, 
                     'error'
                 );
             }
