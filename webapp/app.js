@@ -350,7 +350,7 @@ class MobileShopApp {
                     ${this.isAdmin ? `
                         <div class="admin-product-actions" style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: center;">
                             <button class="btn btn-sm" onclick="window.mobileShopApp.editProduct('${product.id}')" style="background: #2a2a2a; color: #fff; border: 1px solid #3a3a3a; padding: 0.25rem 0.5rem; font-size: 0.7rem;">✏️ Редактировать</button>
-                            <button class="btn btn-sm" onclick="window.mobileShopApp.deleteProduct('${product.id}')" style="background: #d32f2f; color: #fff; border: 1px solid #f44336; padding: 0.25rem 0.5rem; font-size: 0.7rem;">🗑️ Удалить</button>
+                            <button class="btn btn-sm" onclick="deleteProduct(${product.id})" style="background: #d32f2f; color: #fff; border: 1px solid #f44336; padding: 0.25rem 0.5rem; font-size: 0.7rem;">🗑️ Удалить</button>
                         </div>
                     ` : ''}
                 </div>
@@ -714,20 +714,36 @@ class MobileShopApp {
         this.isAdmin = true;
         
         console.log('🗑️ Удаляем товар:', productId);
+        console.log('🔍 Тип productId:', typeof productId);
         
-        if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
+        // Проверяем, что productId валидный
+        if (!productId || productId === 'undefined' || productId === 'null') {
+            console.error('❌ Неверный ID товара:', productId);
+            this.showNotification('Ошибка: неверный ID товара', 'error');
+            return;
+        }
+        
+        // Конвертируем в число если нужно
+        const numericId = parseInt(productId);
+        if (isNaN(numericId)) {
+            console.error('❌ ID товара не является числом:', productId);
+            this.showNotification('Ошибка: ID товара должен быть числом', 'error');
+            return;
+        }
+        
+        if (!confirm(`Вы уверены, что хотите удалить товар #${numericId}?`)) {
             console.log('❌ Удаление отменено пользователем');
             return;
         }
         
         try {
-            console.log('📡 Отправляем запрос на удаление...');
+            console.log('📡 Отправляем запрос на удаление товара #' + numericId);
             
             // Добавляем таймаут
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
             
-            const response = await fetch(`/webapp/admin/products/${productId}?user_id=admin`, {
+            const response = await fetch(`/webapp/admin/products/${numericId}?user_id=admin`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -743,7 +759,7 @@ class MobileShopApp {
                 console.log('✅ Товар удален успешно:', result);
                 
                 // Показываем уведомление об успехе
-                this.showNotification('Товар удален!', 'success');
+                this.showNotification(`Товар #${numericId} удален!`, 'success');
                 
                 // Обновляем данные
                 await this.fetchProducts();
@@ -1359,8 +1375,12 @@ function editProduct(productId) {
 }
 
 function deleteProduct(productId) {
+    console.log('🔗 Вызов deleteProduct из глобальной функции:', productId);
     if (window.mobileShopApp) {
         window.mobileShopApp.deleteProduct(productId);
+    } else {
+        console.error('❌ mobileShopApp не инициализирован');
+        alert('Приложение не инициализировано. Попробуйте обновить страницу.');
     }
 }
 
