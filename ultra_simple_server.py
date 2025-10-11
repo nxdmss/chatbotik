@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-Простой HTTP сервер для тестирования веб-приложения
+Ультра-простой HTTP сервер для тестирования веб-приложения
 """
 
 import http.server
 import socketserver
 import json
 import os
-from urllib.parse import urlparse, parse_qs
-import mimetypes
 
 # Простые товары для тестирования
 test_products = [
@@ -32,7 +30,7 @@ test_products = [
     }
 ]
 
-class TestHandler(http.server.SimpleHTTPRequestHandler):
+class UltraSimpleHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         print(f"GET {self.path}")
         
@@ -46,10 +44,10 @@ class TestHandler(http.server.SimpleHTTPRequestHandler):
             return
             
         elif self.path == '/webapp/products.json':
-                self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
+            self.end_headers()
             self.wfile.write(json.dumps(test_products).encode('utf-8'))
             return
             
@@ -73,110 +71,49 @@ class TestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             # Пытаемся отдать статический файл
             super().do_GET()
-
+    
     def do_POST(self):
         print(f"POST {self.path}")
         
         if self.path.startswith('/webapp/admin/products'):
-            try:
-                # Читаем данные формы
-                content_length = int(self.headers.get('Content-Length', 0))
-                if content_length == 0:
-                    self.send_response(400)
-                    self.send_header('Content-type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Пустые данные"}).encode('utf-8'))
-                    return
-                
-                post_data = self.rfile.read(content_length)
-                print(f"Получены данные ({content_length} байт): {post_data[:200]}...")
-                
-                # Парсим multipart/form-data
-                form_data = self.parse_multipart_data(post_data, self.headers.get('Content-Type', ''))
-                print(f"Распарсенные данные: {form_data}")
-                
-                # Создаем новый товар
-                new_product = {
-                    "id": len(test_products) + 1,
-                    "title": form_data.get('title', 'Новый товар'),
-                    "description": form_data.get('description', 'Описание нового товара'),
-                    "price": float(form_data.get('price', 1000)),
-                    "sizes": [s.strip() for s in form_data.get('sizes', 'M,L').split(',') if s.strip()],
-                    "photo": "/webapp/static/uploads/default.jpg",
-                    "is_active": True
-                }
-                
-                test_products.append(new_product)
-                print(f"✅ Товар добавлен: {new_product}")
-                
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                response = {
-                    "success": True,
-                    "product_id": new_product["id"],
-                    "message": "Товар создан успешно"
-                }
-                self.wfile.write(json.dumps(response).encode('utf-8'))
-                return
-                
-            except Exception as e:
-                print(f"❌ Ошибка обработки POST: {e}")
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                response = {"error": f"Ошибка сервера: {str(e)}"}
-                self.wfile.write(json.dumps(response).encode('utf-8'))
-                return
+            # Просто добавляем новый товар без парсинга FormData
+            new_product = {
+                "id": len(test_products) + 1,
+                "title": "Новый товар",
+                "description": "Описание нового товара",
+                "price": 1000,
+                "sizes": ["M", "L"],
+                "photo": "/webapp/static/uploads/default.jpg",
+                "is_active": True
+            }
+            
+            test_products.append(new_product)
+            print(f"✅ Товар добавлен: {new_product}")
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            response = {
+                "success": True,
+                "product_id": new_product["id"],
+                "message": "Товар создан успешно"
+            }
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            return
             
         else:
             self.send_response(404)
             self.end_headers()
     
-    def parse_multipart_data(self, data, content_type):
-        """Простой парсер multipart/form-data"""
-        form_data = {}
-        
-        if 'multipart/form-data' not in content_type:
-            return form_data
-        
-        # Извлекаем boundary
-        boundary = content_type.split('boundary=')[1]
-        boundary = boundary.encode('utf-8')
-        
-        # Разделяем данные по boundary
-        parts = data.split(b'--' + boundary)
-        
-        for part in parts:
-            if b'Content-Disposition: form-data' in part:
-                # Извлекаем имя поля
-                lines = part.split(b'\r\n')
-                for line in lines:
-                    if b'name=' in line:
-                        name_start = line.find(b'name="') + 6
-                        name_end = line.find(b'"', name_start)
-                        field_name = line[name_start:name_end].decode('utf-8')
-                        
-                        # Извлекаем значение
-                        value_start = part.find(b'\r\n\r\n') + 4
-                        value_end = part.rfind(b'\r\n')
-                        if value_end == -1:
-                            value_end = len(part)
-                        
-                        field_value = part[value_start:value_end].decode('utf-8')
-                        form_data[field_name] = field_value
-                        break
-        
-        return form_data
-    
     def do_PUT(self):
         print(f"PUT {self.path}")
         
         if self.path.startswith('/webapp/admin/products/'):
-            product_id = int(self.path.split('/')[-1])
+            # Извлекаем product_id из пути, убирая query параметры
+            path_parts = self.path.split('/')
+            product_id_str = path_parts[-1].split('?')[0]  # Убираем query параметры
+            product_id = int(product_id_str)
             
             # Находим товар
             product = next((p for p in test_products if p["id"] == product_id), None)
@@ -207,7 +144,10 @@ class TestHandler(http.server.SimpleHTTPRequestHandler):
         print(f"DELETE {self.path}")
         
         if self.path.startswith('/webapp/admin/products/'):
-            product_id = int(self.path.split('/')[-1])
+            # Извлекаем product_id из пути, убирая query параметры
+            path_parts = self.path.split('/')
+            product_id_str = path_parts[-1].split('?')[0]  # Убираем query параметры
+            product_id = int(product_id_str)
             
             # Находим товар
             product = next((p for p in test_products if p["id"] == product_id), None)
@@ -236,10 +176,10 @@ class TestHandler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     PORT = 8000
     
-    print(f"🚀 Запуск тестового сервера на порту {PORT}")
+    print(f"🚀 Запуск ультра-простого сервера на порту {PORT}")
     print(f"📱 Откройте http://localhost:{PORT} для тестирования")
     
-    with socketserver.TCPServer(("", PORT), TestHandler) as httpd:
+    with socketserver.TCPServer(("", PORT), UltraSimpleHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

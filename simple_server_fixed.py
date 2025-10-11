@@ -46,10 +46,10 @@ class TestHandler(http.server.SimpleHTTPRequestHandler):
             return
             
         elif self.path == '/webapp/products.json':
-                self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
+            self.end_headers()
             self.wfile.write(json.dumps(test_products).encode('utf-8'))
             return
             
@@ -73,7 +73,7 @@ class TestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             # Пытаемся отдать статический файл
             super().do_GET()
-
+    
     def do_POST(self):
         print(f"POST {self.path}")
         

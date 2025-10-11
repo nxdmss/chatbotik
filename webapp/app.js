@@ -722,13 +722,20 @@ class MobileShopApp {
         
         try {
             console.log('📡 Отправляем запрос на удаление...');
+            
+            // Добавляем таймаут
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
+            
             const response = await fetch(`/webapp/admin/products/${productId}?user_id=admin`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                signal: controller.signal,
             });
             
+            clearTimeout(timeoutId);
             console.log('📡 Получен ответ:', response.status, response.statusText);
             
             if (response.ok) {
@@ -765,7 +772,12 @@ class MobileShopApp {
             }
         } catch (error) {
             console.error('❌ Ошибка удаления товара:', error);
-            this.handleNetworkError(error, 'при удалении товара');
+            
+            if (error.name === 'AbortError') {
+                this.showNotification('Превышено время ожидания сервера', 'error');
+            } else {
+                this.handleNetworkError(error, 'при удалении товара');
+            }
         }
     }
 
@@ -782,12 +794,18 @@ class MobileShopApp {
             
             console.log('📡 Отправляем запрос:', method, url);
             
+            // Добавляем таймаут и retry логику
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
+            
             const response = await fetch(url, {
                 method: method,
                 body: formData,
+                signal: controller.signal,
                 // Не добавляем Content-Type, браузер сам установит с boundary для FormData
             });
             
+            clearTimeout(timeoutId);
             console.log('📡 Получен ответ:', response.status, response.statusText);
             
             if (response.ok) {
@@ -834,7 +852,12 @@ class MobileShopApp {
             }
         } catch (error) {
             console.error('❌ Ошибка сохранения товара:', error);
-            this.handleNetworkError(error, 'при сохранении товара');
+            
+            if (error.name === 'AbortError') {
+                this.showNotification('Превышено время ожидания сервера', 'error');
+            } else {
+                this.handleNetworkError(error, 'при сохранении товара');
+            }
         }
     }
 
