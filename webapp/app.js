@@ -1336,6 +1336,8 @@ class MobileShopApp {
         
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
             message = 'Не удается подключиться к серверу';
+        } else if (error.name === 'TypeError' && error.message.includes('Load failed')) {
+            message = 'Ошибка загрузки данных. Сервер может быть недоступен.';
         } else if (error.message.includes('404')) {
             message = 'Сервер не найден';
         } else if (error.message.includes('500')) {
