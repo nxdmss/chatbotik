@@ -56,33 +56,18 @@ class MobileShopApp {
 
     async checkAdminStatus() {
         try {
-            // Проверяем по URL параметру
-            const urlParams = new URLSearchParams(window.location.search);
-            const isAdminParam = urlParams.get('admin') === 'true';
-            
-            // Проверяем через API
-            const response = await fetch('/webapp/admins.json');
-            const data = await response.json();
-            const adminIds = data.admins || [];
-            
             // Проверяем ID пользователя
             let userId = null;
             if (this.userInfo && this.userInfo.id) {
                 userId = this.userInfo.id.toString();
             }
             
-            // Проверяем, является ли пользователь админом
-            this.isAdmin = isAdminParam || (userId && adminIds.includes(userId));
-            
-            // Дополнительная проверка для вашего ID
-            if (userId === '1593426947') {
-                this.isAdmin = true;
-                console.log('👑 Главный администратор обнаружен');
-            }
+            // Единственный администратор - 1593426947
+            this.isAdmin = (userId === '1593426947');
             
             if (this.isAdmin) {
                 this.showAdminPanel();
-                console.log('👑 Пользователь является администратором, ID:', userId);
+                console.log('👑 Единственный администратор обнаружен, ID:', userId);
             } else {
                 console.log('👤 Обычный пользователь, ID:', userId);
             }

@@ -57,16 +57,8 @@ def is_admin(user_id: str) -> bool:
     """Проверка, является ли пользователь администратором"""
     user_id_str = str(user_id)
     
-    # Главный администратор всегда имеет права
-    if user_id_str == "1593426947":
-        return True
-    
-    try:
-        with open('webapp/admins.json', 'r', encoding='utf-8') as f:
-            admins_data = json.load(f)
-            return user_id_str in admins_data.get('admins', [])
-    except:
-        return False
+    # Единственный администратор
+    return user_id_str == "1593426947"
 
 # ======================
 # 🔹 Основные маршруты
