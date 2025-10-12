@@ -36,7 +36,7 @@ products = [
 def get_main_keyboard():
     """Главная клавиатура"""
     keyboard = [
-        [KeyboardButton(text="🛍️ Магазин", web_app=WebAppInfo(url="http://localhost:8000"))],
+        [KeyboardButton(text="🛍️ Магазин", web_app=WebAppInfo(url="http://localhost:8001"))],
         [KeyboardButton(text="📞 Связаться с администратором")],
         [KeyboardButton(text="⭐ Отзывы")]
     ]
@@ -45,8 +45,8 @@ def get_main_keyboard():
 def get_admin_keyboard():
     """Админ клавиатура"""
     keyboard = [
-        [KeyboardButton(text="🛍️ Магазин", web_app=WebAppInfo(url="http://localhost:8000"))],
-        [KeyboardButton(text="⚙️ Админ панель", web_app=WebAppInfo(url="http://localhost:8000/admin"))],
+        [KeyboardButton(text="🛍️ Магазин", web_app=WebAppInfo(url="http://localhost:8001"))],
+        [KeyboardButton(text="⚙️ Админ панель", web_app=WebAppInfo(url="http://localhost:8001/admin"))],
         [KeyboardButton(text="📞 Связаться с администратором")],
         [KeyboardButton(text="⭐ Отзывы")]
     ]

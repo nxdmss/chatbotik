@@ -12,7 +12,7 @@ import base64
 from urllib.parse import urlparse
 
 # Настройки
-PORT = 8000
+PORT = 8001
 DATA_FILE = 'products_data.json'
 UPLOADS_DIR = 'uploads'
 ADMIN_PASSWORD = "admin123"
