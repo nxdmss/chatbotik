@@ -222,6 +222,11 @@ class ProductManager:
             print(f"❌ Товар ID={product_id} не найден")
             return False
         
+        # Проверяем, не удален ли уже товар
+        if not product.get('is_active', True):
+            print(f"⚠️ Товар ID={product_id} уже был удален ранее")
+            return False
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE products SET is_active = 0 WHERE id = ?", (product_id,))

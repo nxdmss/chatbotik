@@ -99,6 +99,9 @@ def restore_from_json():
             
             # Восстанавливаем товары
             for product in products:
+                # Получаем created_at или используем текущее время
+                created_at = product.get("created_at", datetime.now().isoformat())
+                
                 cursor.execute("""
                     INSERT INTO products (id, title, description, price, sizes, photo, is_active, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -109,8 +112,8 @@ def restore_from_json():
                     product["price"],
                     json.dumps(product["sizes"]),
                     product["photo"],
-                    1 if product["is_active"] else 0,
-                    product["created_at"]
+                    1 if product.get("is_active", True) else 0,
+                    created_at
                 ))
             
             conn.commit()

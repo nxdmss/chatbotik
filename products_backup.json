@@ -1,75 +1,17 @@
 [
   {
-    "id": 7,
+    "id": 1,
     "title": "Тестовые кроссовки",
-    "description": "Новый товар для теста",
-    "price": 3500.0,
+    "description": "Тестовое описание",
+    "price": 5000.0,
     "sizes": [
-      "39",
-      "40",
-      "41"
-    ],
-    "photo": "/webapp/static/uploads/default.jpg",
-    "is_active": false
-  },
-  {
-    "id": 6,
-    "title": "Кроссовки New Balance",
-    "description": "Спортивные кроссовки с амортизацией",
-    "price": 5490.0,
-    "sizes": [
-      "39",
-      "40",
-      "41",
-      "42",
-      "43"
-    ],
-    "photo": "/webapp/static/uploads/photo_2025-10-10_01-02-41.jpg",
-    "is_active": false
-  },
-  {
-    "id": 5,
-    "title": "Сандалии Birkenstock",
-    "description": "Ортопедические сандалии для комфорта",
-    "price": 4590.0,
-    "sizes": [
-      "38",
-      "39",
       "40",
       "41",
       "42"
     ],
-    "photo": "/webapp/static/uploads/photo_2025-10-10_01-01-46.jpg",
-    "is_active": true
-  },
-  {
-    "id": 4,
-    "title": "Ботинки Timberland",
-    "description": "Прочные ботинки для активного отдыха",
-    "price": 7990.0,
-    "sizes": [
-      "40",
-      "41",
-      "42",
-      "43"
-    ],
-    "photo": "/webapp/static/uploads/photo_2025-10-10_00-59-18.jpg",
-    "is_active": true
-  },
-  {
-    "id": 3,
-    "title": "Кеды Adidas Stan Smith",
-    "description": "Классические кеды в белом цвете",
-    "price": 3990.0,
-    "sizes": [
-      "38",
-      "39",
-      "40",
-      "41",
-      "42"
-    ],
-    "photo": "/webapp/static/uploads/photo_2025-10-10_00-57-51.jpg",
-    "is_active": true
+    "photo": "/test.jpg",
+    "is_active": true,
+    "created_at": "2025-10-11 00:27:45"
   },
   {
     "id": 2,
@@ -84,19 +26,84 @@
       "44"
     ],
     "photo": "/webapp/static/uploads/photo_2025-10-05_12-32-10.jpg",
-    "is_active": true
+    "is_active": true,
+    "created_at": "2025-10-11 00:32:00"
   },
   {
-    "id": 1,
-    "title": "Тестовые кроссовки",
-    "description": "Тестовое описание",
-    "price": 5000.0,
+    "id": 3,
+    "title": "Кеды Adidas Stan Smith",
+    "description": "Классические кеды в белом цвете",
+    "price": 3990.0,
     "sizes": [
+      "38",
+      "39",
       "40",
       "41",
       "42"
     ],
-    "photo": "/test.jpg",
-    "is_active": true
+    "photo": "/webapp/static/uploads/photo_2025-10-10_00-57-51.jpg",
+    "is_active": true,
+    "created_at": "2025-10-11 00:32:00"
+  },
+  {
+    "id": 4,
+    "title": "Ботинки Timberland",
+    "description": "Прочные ботинки для активного отдыха",
+    "price": 7990.0,
+    "sizes": [
+      "40",
+      "41",
+      "42",
+      "43"
+    ],
+    "photo": "/webapp/static/uploads/photo_2025-10-10_00-59-18.jpg",
+    "is_active": true,
+    "created_at": "2025-10-11 00:32:00"
+  },
+  {
+    "id": 5,
+    "title": "Сандалии Birkenstock",
+    "description": "Ортопедические сандалии для комфорта",
+    "price": 4590.0,
+    "sizes": [
+      "38",
+      "39",
+      "40",
+      "41",
+      "42"
+    ],
+    "photo": "/webapp/static/uploads/photo_2025-10-10_01-01-46.jpg",
+    "is_active": true,
+    "created_at": "2025-10-11 00:32:00"
+  },
+  {
+    "id": 6,
+    "title": "Кроссовки New Balance",
+    "description": "Спортивные кроссовки с амортизацией",
+    "price": 5490.0,
+    "sizes": [
+      "39",
+      "40",
+      "41",
+      "42",
+      "43"
+    ],
+    "photo": "/webapp/static/uploads/photo_2025-10-10_01-02-41.jpg",
+    "is_active": false,
+    "created_at": "2025-10-11 00:32:00"
+  },
+  {
+    "id": 7,
+    "title": "Тестовые кроссовки",
+    "description": "Новый товар для теста",
+    "price": 3500.0,
+    "sizes": [
+      "39",
+      "40",
+      "41"
+    ],
+    "photo": "/webapp/static/uploads/default.jpg",
+    "is_active": false,
+    "created_at": "2025-10-12T02:40:12.107965"
   }
 ]
