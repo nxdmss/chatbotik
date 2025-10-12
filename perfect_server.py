@@ -195,10 +195,23 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
             if boundary.startswith('"') and boundary.endswith('"'):
                 boundary = boundary[1:-1]
             
-            print(f"🔍 Boundary: {boundary}")
+            print(f"🔍 Boundary из заголовка: {boundary}")
+            
+            # Boundary в данных может иметь префикс "--", а может и нет
+            # Ищем его в данных
+            boundary_bytes = boundary.encode()
+            if b'--' + boundary_bytes in post_data:
+                separator = b'--' + boundary_bytes
+                print(f"✅ Найден разделитель с --")
+            elif boundary_bytes in post_data:
+                separator = boundary_bytes
+                print(f"✅ Найден разделитель без --")
+            else:
+                print(f"❌ Разделитель не найден в данных!")
+                return {}
             
             # Разбиваем на части
-            parts = post_data.split(f'------{boundary}'.encode())
+            parts = post_data.split(separator)
             
             result = {}
             for i, part in enumerate(parts):
