@@ -241,8 +241,11 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
                 
+                print(f"📦 Получены данные: {post_data[:200]}")  # Первые 200 байт
+                
                 # Парсим JSON
                 data = json.loads(post_data.decode('utf-8'))
+                print(f"✅ Распарсены данные: {data}")
                 
                 # Извлекаем данные
                 title = data.get('title', 'Новый товар')
@@ -251,8 +254,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 sizes = data.get('sizes', ['M', 'L'])
                 photo = data.get('photo', '/webapp/static/uploads/default.jpg')
                 
+                print(f"📝 Создаем товар: {title}, цена: {price}")
+                
                 # Добавляем товар
                 product_id = product_manager.add_product(title, description, price, sizes, photo)
+                
+                print(f"✅ Товар создан с ID: {product_id}")
                 
                 self.send_json(200, {
                     "success": True,
@@ -262,6 +269,8 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 
             except Exception as e:
                 print(f"❌ Ошибка добавления товара: {e}")
+                import traceback
+                traceback.print_exc()
                 self.send_json(500, {"success": False, "error": str(e)})
         else:
             self.send_json(404, {"success": False, "error": "Not found"})
