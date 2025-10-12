@@ -2,12 +2,33 @@
 import json
 import socket
 import os
+import uuid
+import base64
 from urllib.parse import urlparse
 
 # Настройки
 PORT = 8000
 DATA_FILE = 'shop_data.json'
+UPLOADS_DIR = 'uploads'
 ADMIN_PASSWORD = "admin123"
+
+# Создаем папку для загрузок
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
+
+def save_photo(photo_data, filename):
+    """Сохранение фотографии"""
+    try:
+        if ',' in photo_data:
+            photo_data = photo_data.split(',')[1]
+        photo_bytes = base64.b64decode(photo_data)
+        filepath = os.path.join(UPLOADS_DIR, filename)
+        with open(filepath, 'wb') as f:
+            f.write(photo_bytes)
+        return f"/uploads/{filename}"
+    except Exception as e:
+        print(f"❌ Ошибка сохранения фото: {e}")
+        return ""
 
 # Загрузка товаров
 def load_products():
@@ -101,12 +122,20 @@ Access-Control-Allow-Origin: *
                 data = json.loads(post_data)
                 
                 max_id = max([p['id'] for p in products]) if products else 0
+                
+                # Обработка фотографии
+                photo_url = ""
+                if data.get('photo'):
+                    filename = f"product_{max_id + 1}_{uuid.uuid4().hex[:8]}.jpg"
+                    photo_url = save_photo(data['photo'], filename)
+                
                 new_product = {
                     "id": max_id + 1,
                     "title": data.get('title', 'Новый товар'),
                     "price": data.get('price', 0),
                     "description": data.get('description', ''),
-                    "image": data.get('image', '📦')
+                    "image": data.get('image', '📦'),
+                    "photo": photo_url
                 }
                 
                 products.append(new_product)
@@ -154,6 +183,27 @@ Access-Control-Allow-Origin: *
 {response_body}"""
                         break
         
+        # Статические файлы (фотографии)
+        elif parsed_path.path.startswith('/uploads/'):
+            file_path = parsed_path.path[1:]  # Убираем первый /
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as f:
+                    file_content = f.read()
+                
+                response = f"""HTTP/1.1 200 OK
+Content-Type: image/jpeg
+Content-Length: {len(file_content)}
+
+"""
+                response = response.encode() + file_content
+            else:
+                response_body = "<h1>404 - File not found</h1>"
+                response = f"""HTTP/1.1 404 Not Found
+Content-Type: text/html; charset=utf-8
+Content-Length: {len(response_body.encode('utf-8'))}
+
+{response_body}"""
+        
         # Главная страница
         elif parsed_path.path == '/':
             html_content = """<!DOCTYPE html>
@@ -169,12 +219,16 @@ Access-Control-Allow-Origin: *
         .btn { background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
         .btn.admin { background: #2196F3; }
         .btn.danger { background: #f44336; }
-        .products { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 800px; margin: 0 auto 80px; }
+        .tab-content { display: none; min-height: calc(100vh - 120px); padding-bottom: 80px; }
+        .tab-content.active { display: block; }
+        .products { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 800px; margin: 0 auto; }
         .product { border: 1px solid #333; padding: 12px; border-radius: 8px; height: 200px; position: relative; }
-        .product-image { height: 60px; background: #222; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; font-size: 2em; }
+        .product-image { height: 80px; background: #222; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; overflow: hidden; }
+        .product-image img { max-width: 100%; max-height: 100%; object-fit: cover; }
+        .product-image span { font-size: 2em; }
         .product-title { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
-        .product-desc { color: #ccc; font-size: 10px; margin-bottom: 6px; }
         .product-price { color: #4CAF50; font-weight: bold; margin-bottom: 8px; }
+        .cart-content { max-width: 800px; margin: 0 auto; }
         .product-controls { display: flex; gap: 6px; align-items: center; }
         .qty-btn { background: #333; color: white; border: none; width: 20px; height: 20px; border-radius: 3px; font-size: 10px; cursor: pointer; }
         .qty-input { width: 35px; text-align: center; background: #222; border: 1px solid #333; color: #fff; padding: 2px; font-size: 10px; }
@@ -194,43 +248,44 @@ Access-Control-Allow-Origin: *
     </style>
 </head>
 <body>
-    <input type="text" placeholder="🔍 Поиск..." id="search" class="search">
-    
-    <div id="products" class="products"></div>
-
-    <!-- Нижняя навигация -->
-    <div class="bottom-nav">
-        <button onclick="showCatalog()" class="nav-btn active" id="catalogBtn">📦 Каталог</button>
-        <button onclick="showCart()" class="nav-btn" id="cartBtn">🛒 Корзина <span id="cartCount">0</span></button>
-        <button onclick="toggleAdmin()" class="nav-btn" id="adminBtn">🔐 Админ</button>
+    <!-- Каталог -->
+    <div id="catalogTab" class="tab-content active">
+        <input type="text" placeholder="🔍 Поиск..." id="search" class="search">
+        <div id="products" class="products"></div>
     </div>
 
-    <!-- Админ панель -->
-    <div id="adminModal" class="modal">
-        <div class="modal-content">
-            <h2>🔐 Админ Панель</h2>
+    <!-- Корзина -->
+    <div id="cartTab" class="tab-content">
+        <div class="cart-content">
+            <h2 style="text-align: center; margin-bottom: 20px;">🛒 Корзина</h2>
+            <div id="cartContent"></div>
+        </div>
+    </div>
+
+    <!-- Админ -->
+    <div id="adminTab" class="tab-content">
+        <div class="cart-content">
+            <h2 style="text-align: center; margin-bottom: 20px;">🔐 Админ Панель</h2>
             <div id="adminLogin">
                 <div class="form-group">
                     <input type="password" id="adminPassword" placeholder="Введите пароль админа" class="form-input">
                 </div>
                 <button onclick="checkAdminPassword()" class="btn">Войти</button>
-                <button onclick="closeAdmin()" class="close-btn">Отмена</button>
             </div>
             <div id="adminPanel" style="display:none;">
-                <div style="color: #4CAF50; margin-bottom: 15px;">✅ Админ авторизован</div>
-                <button onclick="addNew()" class="btn">➕ Добавить товар</button>
+                <div style="color: #4CAF50; margin-bottom: 15px; text-align: center;">✅ Админ авторизован</div>
+                <button onclick="addNew()" class="btn" style="width: 100%; margin-bottom: 10px;">➕ Добавить товар</button>
             </div>
         </div>
     </div>
 
-    <!-- Корзина -->
-    <div id="cartModal" class="modal">
-        <div class="modal-content">
-            <h2>🛒 Корзина</h2>
-            <div id="cartContent"></div>
-            <button onclick="closeCart()" class="close-btn">Закрыть</button>
-        </div>
+    <!-- Нижняя навигация -->
+    <div class="bottom-nav">
+        <button onclick="showCatalog()" class="nav-btn active" id="catalogBtn">📦 Каталог</button>
+        <button onclick="showCart()" class="nav-btn" id="cartBtn">🛒 Корзина <span id="cartCount">0</span></button>
+        <button onclick="showAdmin()" class="nav-btn" id="adminBtn">🔐 Админ</button>
     </div>
+
 
     <!-- Добавление товара -->
     <div id="addModal" class="modal">
@@ -244,10 +299,12 @@ Access-Control-Allow-Origin: *
                     <input type="number" id="addPrice" placeholder="Цена" class="form-input">
                 </div>
                 <div class="form-group">
-                    <input type="text" id="addDesc" placeholder="Описание" class="form-input">
+                    <input type="text" id="addEmoji" placeholder="Эмодзи" class="form-input">
                 </div>
                 <div class="form-group">
-                    <input type="text" id="addEmoji" placeholder="Эмодзи" class="form-input">
+                    <label style="display:block;margin-bottom:5px;">📷 Фотография:</label>
+                    <input type="file" id="addPhoto" accept="image/*" class="form-input">
+                    <div id="photoPreview" style="margin-top:10px;text-align:center;"></div>
                 </div>
                 <button type="submit" class="btn">💾 Сохранить</button>
             </form>
@@ -260,6 +317,7 @@ Access-Control-Allow-Origin: *
         let cart = [];
         let isAdmin = false;
         let adminPassword = '';
+        let currentPhoto = null;
 
         async function loadProducts() {
             try {
@@ -277,24 +335,31 @@ Access-Control-Allow-Origin: *
         }
 
         function showCatalog() {
-            document.getElementById('products').style.display = 'grid';
+            document.getElementById('catalogTab').classList.add('active');
+            document.getElementById('cartTab').classList.remove('active');
+            document.getElementById('adminTab').classList.remove('active');
             document.getElementById('catalogBtn').classList.add('active');
             document.getElementById('cartBtn').classList.remove('active');
             document.getElementById('adminBtn').classList.remove('active');
         }
 
         function showCart() {
-            document.getElementById('products').style.display = 'none';
+            document.getElementById('catalogTab').classList.remove('active');
+            document.getElementById('cartTab').classList.add('active');
+            document.getElementById('adminTab').classList.remove('active');
             document.getElementById('catalogBtn').classList.remove('active');
             document.getElementById('cartBtn').classList.add('active');
             document.getElementById('adminBtn').classList.remove('active');
             loadCart();
-            document.getElementById('cartModal').classList.add('show');
         }
 
-        function closeCart() {
-            document.getElementById('cartModal').classList.remove('show');
-            showCatalog();
+        function showAdmin() {
+            document.getElementById('catalogTab').classList.remove('active');
+            document.getElementById('cartTab').classList.remove('active');
+            document.getElementById('adminTab').classList.add('active');
+            document.getElementById('catalogBtn').classList.remove('active');
+            document.getElementById('cartBtn').classList.remove('active');
+            document.getElementById('adminBtn').classList.add('active');
         }
 
         function renderProducts() {
@@ -303,9 +368,10 @@ Access-Control-Allow-Origin: *
                     <div class="admin-controls ${isAdmin ? 'show' : ''}">
                         <button onclick="deleteProduct(${p.id})" class="admin-btn danger">🗑️</button>
                     </div>
-                    <div class="product-image">${p.image}</div>
+                    <div class="product-image">
+                        ${p.photo ? `<img src="${p.photo}" alt="${p.title}">` : `<span>${p.image}</span>`}
+                    </div>
                     <div class="product-title">${p.title}</div>
-                    <div class="product-desc">${p.description}</div>
                     <div class="product-price">${p.price} ₽</div>
                     <div class="product-controls">
                         <button onclick="changeQty(${p.id}, -1)" class="qty-btn">-</button>
@@ -358,12 +424,6 @@ Access-Control-Allow-Origin: *
             `).join('') + `<div style="margin-top:10px;font-weight:bold;">Итого: ${total} ₽</div>`;
         }
 
-        function toggleAdmin() {
-            document.getElementById('catalogBtn').classList.remove('active');
-            document.getElementById('cartBtn').classList.remove('active');
-            document.getElementById('adminBtn').classList.add('active');
-            document.getElementById('adminModal').classList.add('show');
-        }
 
         async function checkAdminPassword() {
             try {
@@ -393,11 +453,6 @@ Access-Control-Allow-Origin: *
             }
         }
 
-        function closeAdmin() {
-            document.getElementById('adminModal').classList.remove('show');
-            document.getElementById('adminPassword').value = '';
-            showCatalog();
-        }
 
         function addNew() {
             if (!isAdmin) {
@@ -407,10 +462,25 @@ Access-Control-Allow-Origin: *
             
             document.getElementById('addName').value = '';
             document.getElementById('addPrice').value = '';
-            document.getElementById('addDesc').value = '';
             document.getElementById('addEmoji').value = '📦';
+            document.getElementById('addPhoto').value = '';
+            document.getElementById('photoPreview').innerHTML = '<div style="color:#666;">Выберите фотографию</div>';
+            currentPhoto = null;
             document.getElementById('addModal').classList.add('show');
         }
+
+        document.getElementById('addPhoto').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentPhoto = e.target.result;
+                    const preview = document.getElementById('photoPreview');
+                    preview.innerHTML = `<img src="${currentPhoto}" alt="Предпросмотр" style="max-width:150px;max-height:100px;border-radius:5px;">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         document.getElementById('addForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -423,9 +493,13 @@ Access-Control-Allow-Origin: *
             const data = {
                 title: document.getElementById('addName').value,
                 price: parseInt(document.getElementById('addPrice').value),
-                description: document.getElementById('addDesc').value,
+                description: '',
                 image: document.getElementById('addEmoji').value || '📦'
             };
+            
+            if (currentPhoto) {
+                data.photo = currentPhoto;
+            }
             
             try {
                 const response = await fetch('/api/products', {
@@ -473,6 +547,8 @@ Access-Control-Allow-Origin: *
 
         function closeAdd() {
             document.getElementById('addModal').classList.remove('show');
+            currentPhoto = null;
+            document.getElementById('addPhoto').value = '';
         }
 
         // Закрытие модальных окон
