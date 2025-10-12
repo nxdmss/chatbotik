@@ -174,6 +174,8 @@ class MobileShopApp {
             let userId = null;
             
             console.log('🔍 Проверяем источники user_id:');
+            console.log('🌐 Hostname:', window.location.hostname);
+            console.log('🔗 URL:', window.location.href);
             
             // 1. Из Telegram WebApp initDataUnsafe
             if (window.Telegram && window.Telegram.WebApp) {
@@ -242,9 +244,25 @@ class MobileShopApp {
                     console.log('👑 Админские права предоставлены в отладочном режиме');
                     return;
                 } else {
-                    console.log('❌ Telegram WebApp активен, но user_id не найден - админские права НЕ предоставлены');
-                    this.isAdmin = false;
-                    return;
+                    // В Telegram WebApp, но user_id не найден - проверяем отладочный режим
+                    console.log('❌ Telegram WebApp активен, но user_id не найден');
+                    
+                    // Проверяем, находимся ли мы в Replit или на localhost
+                    const isLocalhost = window.location.hostname === 'localhost';
+                    const isReplit = window.location.hostname.includes('replit.com') || 
+                                    window.location.hostname.includes('replit.dev');
+                    
+                    if (isLocalhost || isReplit) {
+                        console.log('🔧 Отладочный режим: Replit/localhost обнаружен, даем админские права');
+                        userId = '1593426947'; // Ваш ID для отладки
+                        this.isAdmin = true;
+                        console.log('👑 Админские права предоставлены в отладочном режиме (Replit)');
+                        return;
+                    } else {
+                        console.log('❌ Продакшн режим: админские права НЕ предоставлены');
+                        this.isAdmin = false;
+                        return;
+                    }
                 }
             }
             
@@ -254,7 +272,11 @@ class MobileShopApp {
             this.isAdmin = (userId === '1593426947');
             
             // Временная отладочная кнопка для принудительного включения админ панели
-            if (!this.isAdmin && window.location.hostname === 'localhost') {
+            const isLocalhost = window.location.hostname === 'localhost';
+            const isReplit = window.location.hostname.includes('replit.com') || 
+                            window.location.hostname.includes('replit.dev');
+            
+            if (!this.isAdmin && (isLocalhost || isReplit)) {
                 console.log('🔧 Отладочный режим: добавляем кнопку принудительного админа');
                 this.addDebugAdminButton();
             }
