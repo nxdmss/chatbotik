@@ -1,11 +1,6 @@
-# Минимальные зависимости для новой системы товаров
-# Основные зависимости
-aiogram==3.13.1
-python-dotenv==1.0.1
-
-# Для веб-сервера (опционально, если нужен FastAPI)
-# fastapi==0.103.0
-# uvicorn==0.22.0
-# python-multipart==0.0.6
-# pydantic==2.5.0
-# structlog==23.2.0
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pillow==10.1.0
+python-telegram-bot==20.7
+pydantic==2.5.0

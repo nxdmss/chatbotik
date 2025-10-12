@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional E-Commerce Platform</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-store"></i>
+                    <span>E-Shop Pro</span>
+                </div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-tab="catalog">
+                        <i class="fas fa-th-large"></i>
+                        <span>Каталог</span>
+                    </button>
+                    <button class="nav-btn" data-tab="cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Корзина</span>
+                        <span class="cart-count">0</span>
+                    </button>
+                    <button class="nav-btn" data-tab="admin">
+                        <i class="fas fa-cog"></i>
+                        <span>Админ</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Catalog Tab -->
+            <div class="tab-content active" id="catalog">
+                <div class="catalog-header">
+                    <h1>Каталог товаров</h1>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Поиск товаров...">
+                    </div>
+                    <div class="category-filter">
+                        <select id="categoryFilter">
+                            <option value="">Все категории</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="products-grid" id="productsGrid">
+                    <!-- Товары будут загружены динамически -->
+                </div>
+            </div>
+
+            <!-- Cart Tab -->
+            <div class="tab-content" id="cart">
+                <div class="cart-header">
+                    <h1>Корзина покупок</h1>
+                </div>
+                
+                <div class="cart-content">
+                    <div class="cart-items" id="cartItems">
+                        <!-- Элементы корзины будут загружены динамически -->
+                    </div>
+                    
+                    <div class="cart-summary">
+                        <div class="total">
+                            <span>Итого:</span>
+                            <span class="total-price">0 ₽</span>
+                        </div>
+                        <button class="checkout-btn" id="checkoutBtn">
+                            <i class="fas fa-credit-card"></i>
+                            Оформить заказ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Tab -->
+            <div class="tab-content" id="admin">
+                <div class="admin-header">
+                    <h1>Панель администратора</h1>
+                    <button class="add-product-btn" id="addProductBtn">
+                        <i class="fas fa-plus"></i>
+                        Добавить товар
+                    </button>
+                </div>
+                
+                <div class="admin-content">
+                    <div class="products-list" id="adminProductsList">
+                        <!-- Список товаров для админа будет загружен динамически -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Add/Edit Product Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Добавить товар</h2>
+                <button class="close-btn" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form class="product-form" id="productForm">
+                <div class="form-group">
+                    <label for="productTitle">Название товара</label>
+                    <input type="text" id="productTitle" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productPrice">Цена (₽)</label>
+                    <input type="number" id="productPrice" min="1" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productCategory">Категория</label>
+                    <select id="productCategory" required>
+                        <option value="electronics">Электроника</option>
+                        <option value="clothing">Одежда</option>
+                        <option value="food">Еда</option>
+                        <option value="books">Книги</option>
+                        <option value="general">Общее</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productDescription">Описание</label>
+                    <textarea id="productDescription" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productImage">Изображение</label>
+                    <input type="file" id="productImage" accept="image/*">
+                    <div class="image-preview" id="imagePreview"></div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Modal -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Оформление заказа</h2>
+                <button class="close-btn" id="closeOrderModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form class="order-form" id="orderForm">
+                <div class="form-group">
+                    <label for="customerName">Ваше имя</label>
+                    <input type="text" id="customerName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="customerPhone">Телефон</label>
+                    <input type="tel" id="customerPhone" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelOrderBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Подтвердить заказ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Загрузка...</span>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
