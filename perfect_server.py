@@ -467,13 +467,13 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         """Обработка GET запросов"""
         print(f"📥 GET {self.path}")
         
-        # Главная страница
-        if self.path == '/' or self.path == '/webapp/index_clean.html':
+        # Главная страница - простая версия
+        if self.path == '/' or self.path == '/webapp/index_simple.html':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             try:
-                with open('webapp/index_clean.html', 'r', encoding='utf-8') as f:
+                with open('webapp/index_simple.html', 'r', encoding='utf-8') as f:
                     self.wfile.write(f.read().encode('utf-8'))
             except:
                 self.wfile.write('<h1>Сервер работает!</h1>'.encode('utf-8'))
@@ -483,6 +483,11 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/webapp/products.json' or self.path == '/api/products':
             products = product_manager.get_all_products(active_only=True)
             self.send_json(200, products)
+            return
+            
+        # Статические файлы для простого приложения
+        elif self.path == '/webapp/static/app_simple.js':
+            self.serve_static_file('webapp/app_simple.js', 'application/javascript')
             return
         
         # API: Получить все товары (для админа)
@@ -769,6 +774,23 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json(500, {"success": False, "error": str(e)})
         else:
             self.send_json(404, {"success": False, "error": "Not found"})
+    
+    def serve_static_file(self, file_path, content_type='application/octet-stream'):
+        """Служит статический файл с указанным типом контента"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            self.send_response(200)
+            self.send_header('Content-type', content_type)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
+        except Exception as e:
+            print(f"❌ Ошибка при чтении файла {file_path}: {e}")
+            self.send_error(500, "Internal Server Error")
 
 def start_server():
     """Запуск сервера"""
@@ -789,7 +811,7 @@ def start_server():
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\n🛑 Сервер остановлен")
-
+    
 if __name__ == "__main__":
     start_server()
 
