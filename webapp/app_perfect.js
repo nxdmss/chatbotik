@@ -119,14 +119,32 @@ class PerfectShopApp {
                 if (userId === '1593426947') {
                     this.isAdmin = true;
                     console.log('👑 ВЫ ЕДИНСТВЕННЫЙ АДМИН! ID:', userId);
+                } else if (!userId) {
+                    // Если user_id не найден в Telegram WebApp - даем админские права для владельца
+                    console.log('🔧 User ID не найден в Telegram WebApp - даем админские права для владельца');
+                    this.isAdmin = true;
+                    console.log('👑 Админские права предоставлены для владельца (Telegram Desktop)');
                 } else {
                     this.isAdmin = false;
-                    console.log('👤 ВЫ КЛИЕНТ! ID:', userId || 'неизвестен');
+                    console.log('👤 ВЫ КЛИЕНТ! ID:', userId);
                 }
                 
             } else {
-                console.log('🌐 Запущено в браузере - НЕ АДМИН');
-                this.isAdmin = false;
+                console.log('🌐 Запущено в браузере - проверяем отладочный режим');
+                
+                // Специальная логика для отладки в браузере
+                const isLocalhost = window.location.hostname === 'localhost';
+                const isReplit = window.location.hostname.includes('replit.com') || 
+                                window.location.hostname.includes('replit.dev');
+                
+                if (isLocalhost || isReplit) {
+                    console.log('🔧 Отладочный режим: localhost/Replit обнаружен');
+                    this.isAdmin = true;
+                    console.log('🔧 Админские права для отладки в браузере');
+                } else {
+                    console.log('❌ Продакшн режим: админские права НЕ предоставлены');
+                    this.isAdmin = false;
+                }
             }
             
         } catch (error) {
