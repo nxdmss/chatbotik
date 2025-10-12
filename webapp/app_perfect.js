@@ -70,125 +70,53 @@ class PerfectShopApp {
     // ===== НОВАЯ ФУНКЦИЯ ПРОВЕРКИ АДМИНСКИХ ПРАВ =====
 
     async checkAdminStatus() {
-        console.log('🔒 КАРДИНАЛЬНО НОВЫЙ ПОДХОД: Проверка по секретному коду');
+        console.log('🔒 SENIOR APPROACH: Простая и надежная проверка');
         
-        // ПО УМОЛЧАНИЮ НЕ АДМИН
+        // По умолчанию НЕ админ
         this.isAdmin = false;
         
         try {
-            // Проверяем, запущено ли в Telegram WebApp
-            const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
-            console.log('📱 Telegram WebApp:', isTelegramWebApp ? 'ДА' : 'НЕТ');
+            // Получаем user ID из Telegram WebApp
+            let userId = null;
             
-            if (isTelegramWebApp) {
-                console.log('🔍 Получаем ваш ID...');
-                
-                // Получаем ваш ID
-                let userId = null;
-                
+            if (window.Telegram && window.Telegram.WebApp) {
+                // Пробуем разные способы получить user ID
                 if (this.userInfo && this.userInfo.id) {
                     userId = this.userInfo.id.toString();
                 } else if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
                     userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
-                } else if (window.Telegram.WebApp.initData) {
-                    try {
-                        const params = new URLSearchParams(window.Telegram.WebApp.initData);
-                        const userParam = params.get('user');
-                        if (userParam) {
-                            const userData = JSON.parse(decodeURIComponent(userParam));
-                            userId = userData.id.toString();
-                        }
-                    } catch (e) {
-                        console.log('❌ Ошибка парсинга initData:', e);
-                    }
                 }
                 
-                console.log('📱 Ваш ID:', userId);
+                console.log('📱 User ID:', userId);
                 
-                // ПРОВЕРЯЕМ ТОЛЬКО ВАШ ID
+                // Простая проверка: только ваш ID = админ
                 if (userId === '1593426947') {
                     this.isAdmin = true;
-                    console.log('👑 ВЫ АДМИН! ID:', userId);
-                    this.showAdminPanel();
+                    console.log('✅ ВЫ АДМИН! ID:', userId);
                 } else {
-                    // Для всех остальных - НЕ АДМИН
                     this.isAdmin = false;
-                    console.log('👤 Вы клиент. ID:', userId || 'не найден');
+                    console.log('❌ Вы клиент. ID:', userId || 'не найден');
                 }
-                
             } else {
-                console.log('🌐 Запущено в браузере - НЕ АДМИН');
+                // В браузере - НЕ админ
                 this.isAdmin = false;
+                console.log('🌐 Браузер - НЕ админ');
             }
             
         } catch (error) {
-            console.error('❌ Ошибка проверки прав:', error);
+            console.error('❌ Ошибка:', error);
             this.isAdmin = false;
         }
         
-        console.log('📊 СТАТУС: Админ =', this.isAdmin ? 'ДА' : 'НЕТ');
-        
-        // Создаем скрытую кнопку для активации админ панели
-        this.createSecretAdminButton();
-    }
-
-    createSecretAdminButton() {
-        console.log('🔧 Создаем скрытую кнопку для активации админ панели...');
-        
-        // Удаляем старую кнопку если есть
-        const oldButton = document.getElementById('secret-admin-button');
-        if (oldButton) {
-            oldButton.remove();
+        // Показываем админ панель если админ
+        if (this.isAdmin) {
+            this.showAdminPanel();
+            console.log('✅ Админ панель активирована');
+        } else {
+            console.log('❌ Админ панель НЕ показана');
         }
         
-        // Создаем скрытую кнопку (невидимую)
-        const button = document.createElement('button');
-        button.id = 'secret-admin-button';
-        button.style.cssText = `
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-            width: 10px;
-            height: 10px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            z-index: 9999;
-            opacity: 0.1;
-        `;
-        
-        let clickCount = 0;
-        const requiredClicks = 5; // Нужно нажать 5 раз подряд
-        
-        // Добавляем обработчик
-        button.onclick = (e) => {
-            e.preventDefault();
-            clickCount++;
-            console.log('🔧 Секретная кнопка нажата:', clickCount, 'из', requiredClicks);
-            
-            if (clickCount >= requiredClicks) {
-                console.log('🔧 Активируем админ панель по секретному коду!');
-                this.isAdmin = true;
-                this.showAdminPanel();
-                button.remove();
-                this.showNotification('Админ панель активирована!', 'success');
-                clickCount = 0;
-            } else {
-                // Сброс счетчика через 3 секунды
-                setTimeout(() => {
-                    if (clickCount < requiredClicks) {
-                        clickCount = 0;
-                        console.log('🔧 Счетчик сброшен');
-                    }
-                }, 3000);
-            }
-        };
-        
-        // Добавляем кнопку на страницу
-        document.body.appendChild(button);
-        
-        console.log('✅ Скрытая кнопка создана в правом нижнем углу');
-        console.log('🔧 Нажмите 5 раз быстро в правом нижнем углу для активации');
+        console.log('📊 РЕЗУЛЬТАТ: Админ =', this.isAdmin ? 'ДА' : 'НЕТ');
     }
 
     showAdminPanel() {
