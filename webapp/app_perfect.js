@@ -102,9 +102,25 @@ class PerfectShopApp {
                     console.log('❌ Вы клиент. ID:', userId || 'не найден');
                 }
             } else {
-                // В браузере - НЕ админ
-                this.isAdmin = false;
-                console.log('🌐 Браузер - НЕ админ');
+                // Проверяем, может быть мы в Telegram но WebApp не определился
+                console.log('🌐 WebApp не найден, проверяем другие признаки...');
+                
+                // Проверяем user agent
+                const userAgent = navigator.userAgent;
+                const isTelegram = userAgent.includes('TelegramBot') || userAgent.includes('Telegram');
+                
+                console.log('📱 User Agent:', userAgent);
+                console.log('🤖 Telegram User Agent:', isTelegram);
+                
+                if (isTelegram) {
+                    // Если это Telegram, но WebApp не определился - даем админские права
+                    console.log('🔧 Telegram обнаружен по User Agent - даем админские права');
+                    this.isAdmin = true;
+                } else {
+                    // В обычном браузере - НЕ админ
+                    this.isAdmin = false;
+                    console.log('🌐 Обычный браузер - НЕ админ');
+                }
             }
             
         } catch (error) {
