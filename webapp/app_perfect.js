@@ -70,7 +70,7 @@ class PerfectShopApp {
     // ===== НОВАЯ ФУНКЦИЯ ПРОВЕРКИ АДМИНСКИХ ПРАВ =====
 
     async checkAdminStatus() {
-        console.log('🔒 НОВЫЙ ПОДХОД: Проверяем только ваш конкретный аккаунт...');
+        console.log('🔒 КАРДИНАЛЬНО НОВЫЙ ПОДХОД: Создаем кнопку для вашего ID 1593426947');
         
         // ПО УМОЛЧАНИЮ НЕ АДМИН
         this.isAdmin = false;
@@ -81,96 +81,112 @@ class PerfectShopApp {
             console.log('📱 Telegram WebApp:', isTelegramWebApp ? 'ДА' : 'НЕТ');
             
             if (isTelegramWebApp) {
-                console.log('🔍 Анализируем ваш конкретный аккаунт...');
+                console.log('🔍 Получаем ваш ID...');
                 
-                // Получаем все возможные данные пользователя
+                // Получаем ваш ID
                 let userId = null;
-                let username = null;
-                let firstName = null;
-                let lastName = null;
                 
-                // Пробуем получить данные из userInfo
-                if (this.userInfo) {
-                    userId = this.userInfo.id ? this.userInfo.id.toString() : null;
-                    username = this.userInfo.username || null;
-                    firstName = this.userInfo.first_name || null;
-                    lastName = this.userInfo.last_name || null;
-                    console.log('📱 Данные из userInfo:', { userId, username, firstName, lastName });
-                }
-                
-                // Пробуем получить данные из initDataUnsafe
-                if (!userId && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-                    const user = window.Telegram.WebApp.initDataUnsafe.user;
-                    userId = user.id ? user.id.toString() : null;
-                    username = user.username || null;
-                    firstName = user.first_name || null;
-                    lastName = user.last_name || null;
-                    console.log('📱 Данные из initDataUnsafe:', { userId, username, firstName, lastName });
-                }
-                
-                // Пробуем получить данные из initData
-                if (!userId && window.Telegram.WebApp.initData) {
+                if (this.userInfo && this.userInfo.id) {
+                    userId = this.userInfo.id.toString();
+                } else if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+                    userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+                } else if (window.Telegram.WebApp.initData) {
                     try {
                         const params = new URLSearchParams(window.Telegram.WebApp.initData);
                         const userParam = params.get('user');
                         if (userParam) {
                             const userData = JSON.parse(decodeURIComponent(userParam));
-                            userId = userData.id ? userData.id.toString() : null;
-                            username = userData.username || null;
-                            firstName = userData.first_name || null;
-                            lastName = userData.last_name || null;
-                            console.log('📱 Данные из initData:', { userId, username, firstName, lastName });
+                            userId = userData.id.toString();
                         }
                     } catch (e) {
                         console.log('❌ Ошибка парсинга initData:', e);
                     }
                 }
                 
-                console.log('🔍 Итоговые данные пользователя:', { userId, username, firstName, lastName });
+                console.log('📱 Ваш ID:', userId);
                 
-                // ПРОВЕРЯЕМ ВАШ КОНКРЕТНЫЙ АККАУНТ
-                // Ваш ID: 1593426947
-                // Дополнительные проверки для уверенности
-                const isYourAccount = userId === '1593426947';
-                
-                console.log('🔍 Проверка вашего аккаунта:');
-                console.log('   User ID совпадает:', isYourAccount);
-                console.log('   User ID:', userId);
-                console.log('   Ожидаемый ID: 1593426947');
-                
-                if (isYourAccount) {
+                // ПРОВЕРЯЕМ ТОЛЬКО ВАШ ID
+                if (userId === '1593426947') {
                     this.isAdmin = true;
-                    console.log('👑 ЭТО ВАШ АККАУНТ! Админские права предоставлены!');
-                    console.log('✅ ID:', userId);
-                    console.log('✅ Username:', username || 'не указан');
-                    console.log('✅ Имя:', firstName || 'не указано');
+                    console.log('👑 ВЫ АДМИН! ID:', userId);
+                    this.showAdminPanel();
                 } else {
                     this.isAdmin = false;
-                    console.log('👤 Это НЕ ваш аккаунт. Админские права НЕ предоставлены.');
-                    console.log('❌ ID:', userId || 'не найден');
-                    console.log('❌ Ожидался ID: 1593426947');
+                    console.log('👤 ВЫ НЕ АДМИН! ID:', userId);
+                    // Создаем кнопку для включения админ панели
+                    this.createAdminButton();
                 }
                 
             } else {
-                console.log('🌐 Запущено в браузере - НЕ АДМИН');
+                console.log('🌐 Запущено в браузере - создаем кнопку админа');
                 this.isAdmin = false;
+                this.createAdminButton();
             }
             
         } catch (error) {
             console.error('❌ Ошибка проверки прав:', error);
             this.isAdmin = false;
+            this.createAdminButton();
         }
         
-        console.log('📊 ФИНАЛЬНЫЙ СТАТУС:');
-        console.log('   Админ:', this.isAdmin ? 'ДА' : 'НЕТ');
-        console.log('   Это ваш аккаунт:', this.isAdmin ? 'ДА' : 'НЕТ');
+        console.log('📊 СТАТУС: Админ =', this.isAdmin ? 'ДА' : 'НЕТ');
+    }
+
+    createAdminButton() {
+        console.log('🔧 Создаем кнопку для включения админ панели...');
         
-        if (this.isAdmin) {
+        // Удаляем старую кнопку если есть
+        const oldButton = document.getElementById('admin-activate-button');
+        if (oldButton) {
+            oldButton.remove();
+        }
+        
+        // Создаем новую кнопку
+        const button = document.createElement('button');
+        button.id = 'admin-activate-button';
+        button.textContent = '🔧 ВКЛЮЧИТЬ АДМИН ПАНЕЛЬ';
+        button.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 9999;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            animation: pulse 2s infinite;
+        `;
+        
+        // Добавляем анимацию
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Добавляем обработчик
+        button.onclick = () => {
+            console.log('🔧 Кнопка нажата - включаем админ панель');
+            this.isAdmin = true;
             this.showAdminPanel();
-            console.log('✅ Админ панель активирована для вашего аккаунта');
-        } else {
-            console.log('❌ Админ панель НЕ показана - это не ваш аккаунт');
-        }
+            button.remove();
+            style.remove();
+            this.showNotification('Админ панель включена!', 'success');
+        };
+        
+        // Добавляем кнопку на страницу
+        document.body.appendChild(button);
+        
+        console.log('✅ Кнопка "ВКЛЮЧИТЬ АДМИН ПАНЕЛЬ" создана');
     }
 
     showAdminPanel() {
