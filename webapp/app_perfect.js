@@ -97,9 +97,21 @@ class PerfectShopApp {
                     this.isAdmin = false;
                 }
             } else {
-                console.log('🌐 Запущено в браузере - отладочный режим');
-                this.isAdmin = true;
-                console.log('🔧 Админские права для отладки');
+                console.log('🌐 Запущено в браузере - проверяем отладочный режим');
+                
+                // Проверяем hostname для отладочного режима
+                const isLocalhost = window.location.hostname === 'localhost';
+                const isReplit = window.location.hostname.includes('replit.com') || 
+                                window.location.hostname.includes('replit.dev');
+                
+                if (isLocalhost || isReplit) {
+                    console.log('🔧 Отладочный режим: localhost/Replit обнаружен');
+                    this.isAdmin = true;
+                    console.log('🔧 Админские права для отладки в браузере');
+                } else {
+                    console.log('❌ Продакшн режим: админские права НЕ предоставлены');
+                    this.isAdmin = false;
+                }
             }
             
             console.log('📊 РЕЗУЛЬТАТ:');
