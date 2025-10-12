@@ -161,17 +161,15 @@ Access-Control-Allow-Origin: *
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Простой Магазин</title>
+    <title>Магазин</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .controls { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .search { padding: 8px; background: #111; border: 1px solid #333; border-radius: 5px; color: #fff; }
+        body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 15px; }
+        .search { padding: 8px; background: #111; border: 1px solid #333; border-radius: 5px; color: #fff; width: 100%; margin-bottom: 15px; }
         .btn { background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
         .btn.admin { background: #2196F3; }
         .btn.danger { background: #f44336; }
-        .products { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 800px; margin: 0 auto; }
+        .products { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 800px; margin: 0 auto 80px; }
         .product { border: 1px solid #333; padding: 12px; border-radius: 8px; height: 200px; position: relative; }
         .product-image { height: 60px; background: #222; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; font-size: 2em; }
         .product-title { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
@@ -184,6 +182,9 @@ Access-Control-Allow-Origin: *
         .admin-controls { position: absolute; top: 5px; right: 5px; display: none; gap: 3px; }
         .admin-controls.show { display: flex; }
         .admin-btn { border: none; padding: 3px 6px; border-radius: 3px; font-size: 10px; cursor: pointer; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111; border-top: 1px solid #333; padding: 10px; display: flex; justify-content: space-around; z-index: 999; }
+        .nav-btn { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; flex: 1; margin: 0 5px; }
+        .nav-btn.active { background: #4CAF50; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
         .modal.show { display: block; }
         .modal-content { background: #111; margin: 10% auto; padding: 20px; border-radius: 10px; width: 80%; max-width: 500px; }
@@ -193,16 +194,16 @@ Access-Control-Allow-Origin: *
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🛍️ Простой Магазин</h1>
-    </div>
+    <input type="text" placeholder="🔍 Поиск..." id="search" class="search">
     
-    <div class="controls">
-        <input type="text" placeholder="🔍 Поиск..." id="search" class="search">
-        <button onclick="toggleAdmin()" class="btn admin">🔐 Админ</button>
-    </div>
-
     <div id="products" class="products"></div>
+
+    <!-- Нижняя навигация -->
+    <div class="bottom-nav">
+        <button onclick="showCatalog()" class="nav-btn active" id="catalogBtn">📦 Каталог</button>
+        <button onclick="showCart()" class="nav-btn" id="cartBtn">🛒 Корзина <span id="cartCount">0</span></button>
+        <button onclick="toggleAdmin()" class="nav-btn" id="adminBtn">🔐 Админ</button>
+    </div>
 
     <!-- Админ панель -->
     <div id="adminModal" class="modal">
@@ -219,6 +220,15 @@ Access-Control-Allow-Origin: *
                 <div style="color: #4CAF50; margin-bottom: 15px;">✅ Админ авторизован</div>
                 <button onclick="addNew()" class="btn">➕ Добавить товар</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Корзина -->
+    <div id="cartModal" class="modal">
+        <div class="modal-content">
+            <h2>🛒 Корзина</h2>
+            <div id="cartContent"></div>
+            <button onclick="closeCart()" class="close-btn">Закрыть</button>
         </div>
     </div>
 
@@ -247,6 +257,7 @@ Access-Control-Allow-Origin: *
 
     <script>
         let products = [];
+        let cart = [];
         let isAdmin = false;
         let adminPassword = '';
 
@@ -258,6 +269,32 @@ Access-Control-Allow-Origin: *
             } catch (error) {
                 console.error('Ошибка загрузки товаров:', error);
             }
+        }
+
+        function updateCartCount() {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cartCount').textContent = count;
+        }
+
+        function showCatalog() {
+            document.getElementById('products').style.display = 'grid';
+            document.getElementById('catalogBtn').classList.add('active');
+            document.getElementById('cartBtn').classList.remove('active');
+            document.getElementById('adminBtn').classList.remove('active');
+        }
+
+        function showCart() {
+            document.getElementById('products').style.display = 'none';
+            document.getElementById('catalogBtn').classList.remove('active');
+            document.getElementById('cartBtn').classList.add('active');
+            document.getElementById('adminBtn').classList.remove('active');
+            loadCart();
+            document.getElementById('cartModal').classList.add('show');
+        }
+
+        function closeCart() {
+            document.getElementById('cartModal').classList.remove('show');
+            showCatalog();
         }
 
         function renderProducts() {
@@ -292,11 +329,39 @@ Access-Control-Allow-Origin: *
 
         function addToCart(productId) {
             const quantity = parseInt(document.getElementById('qty_' + productId).value);
-            alert(`✅ Добавлено в корзину: ${products.find(p => p.id === productId).title} x${quantity}`);
+            const product = products.find(p => p.id === productId);
+            
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({
+                    id: productId,
+                    title: product.title,
+                    price: product.price,
+                    image: product.image,
+                    quantity: quantity
+                });
+            }
+            
+            updateCartCount();
+            alert(`✅ Добавлено в корзину: ${product.title} x${quantity}`);
             document.getElementById('qty_' + productId).value = 1;
         }
 
+        function loadCart() {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('cartContent').innerHTML = cart.map(item => `
+                <div style="border:1px solid #333;padding:10px;margin:5px 0;border-radius:5px;">
+                    <strong>${item.title}</strong> - ${item.price} ₽ × ${item.quantity} = ${item.price * item.quantity} ₽
+                </div>
+            `).join('') + `<div style="margin-top:10px;font-weight:bold;">Итого: ${total} ₽</div>`;
+        }
+
         function toggleAdmin() {
+            document.getElementById('catalogBtn').classList.remove('active');
+            document.getElementById('cartBtn').classList.remove('active');
+            document.getElementById('adminBtn').classList.add('active');
             document.getElementById('adminModal').classList.add('show');
         }
 
@@ -331,6 +396,7 @@ Access-Control-Allow-Origin: *
         function closeAdmin() {
             document.getElementById('adminModal').classList.remove('show');
             document.getElementById('adminPassword').value = '';
+            showCatalog();
         }
 
         function addNew() {
@@ -418,6 +484,7 @@ Access-Control-Allow-Origin: *
 
         // Загрузка товаров при старте
         loadProducts();
+        updateCartCount();
     </script>
 </body>
 </html>"""
