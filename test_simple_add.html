@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест добавления товара</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>Тест добавления товара</h1>
+    
+    <form id="testForm">
+        <p>
+            <label>Название:</label><br>
+            <input type="text" id="title" value="Тестовый товар" required>
+        </p>
+        
+        <p>
+            <label>Цена:</label><br>
+            <input type="number" id="price" value="100" required>
+        </p>
+        
+        <p>
+            <label>Описание:</label><br>
+            <input type="text" id="description" value="Описание товара">
+        </p>
+        
+        <p>
+            <button type="submit">Добавить товар</button>
+        </p>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const price = document.getElementById('price').value;
+            const description = document.getElementById('description').value;
+            
+            console.log('Отправляем данные:', { title, price, description });
+            
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Password': 'admin123'
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        price: parseInt(price),
+                        description: description,
+                        image: '📦',
+                        photo: ''
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('Ответ сервера:', result);
+                
+                document.getElementById('result').innerHTML = 
+                    '<h3>Результат:</h3>' +
+                    '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('result').innerHTML = 
+                    '<h3>Ошибка:</h3>' +
+                    '<pre>' + error.message + '</pre>';
+            }
+        });
+    </script>
+</body>
+</html>

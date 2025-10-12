@@ -21,15 +21,31 @@ def save_photo(photo_data, filename):
     try:
         print(f"📷 Получены данные фото: {len(photo_data)} символов")
         
+        # Проверяем размер данных (ограничиваем до 5MB)
+        if len(photo_data) > 5000000:  # 5MB в символах base64
+            print(f"❌ Фото слишком большое: {len(photo_data)} символов")
+            return ""
+        
         # Убираем data:image/jpeg;base64, если есть
         if ',' in photo_data:
             header, photo_data = photo_data.split(',', 1)
             print(f"📷 Заголовок: {header}")
         
+        # Проверяем, что остались данные после разделения
+        if not photo_data or len(photo_data) < 100:
+            print(f"❌ Недостаточно данных фото: {len(photo_data)} символов")
+            return ""
+        
         # Декодируем base64
         try:
             photo_bytes = base64.b64decode(photo_data)
             print(f"📷 Декодировано: {len(photo_bytes)} байт")
+            
+            # Проверяем размер декодированного файла (ограничиваем до 3MB)
+            if len(photo_bytes) > 3000000:  # 3MB
+                print(f"❌ Декодированное фото слишком большое: {len(photo_bytes)} байт")
+                return ""
+                
         except Exception as decode_error:
             print(f"❌ Ошибка декодирования base64: {decode_error}")
             return ""
@@ -141,38 +157,59 @@ Access-Control-Allow-Origin: *
                             break
                     
                     if content_length > 0:
-                        post_data = request.split('\r\n\r\n')[1][:content_length]
-                        print(f"📥 Получены данные: {len(post_data)} символов")
-                        
-                        data = json.loads(post_data)
-                        print(f"📥 JSON данные: {list(data.keys())}")
-                        
-                        max_id = max([p['id'] for p in products]) if products else 0
-                        
-                        # Обработка фотографии
-                        photo_url = ""
-                        if data.get('photo'):
-                            filename = f"product_{max_id + 1}_{uuid.uuid4().hex[:8]}.jpg"
-                            print(f"📷 Сохраняем фото: {filename}")
-                            photo_url = save_photo(data['photo'], filename)
+                        # Проверяем размер запроса (ограничиваем до 10MB)
+                        if content_length > 10000000:  # 10MB
+                            print(f"❌ Запрос слишком большой: {content_length} байт")
+                            response_body = json.dumps({"success": False, "error": "Request too large"}, ensure_ascii=False)
+                            response = f"""HTTP/1.1 413 Payload Too Large
+Content-Type: application/json; charset=utf-8
+Content-Length: {len(response_body.encode('utf-8'))}
+Access-Control-Allow-Origin: *
+
+{response_body}"""
                         else:
-                            print("📷 Фото не предоставлено")
-                        
-                        new_product = {
-                            "id": max_id + 1,
-                            "title": data.get('title', 'Новый товар'),
-                            "price": int(data.get('price', 0)),
-                            "description": data.get('description', ''),
-                            "image": data.get('image', '📦'),
-                            "photo": photo_url
-                        }
-                        
-                        products.append(new_product)
-                        save_products(products)
-                        print(f"✅ Добавлен товар: {new_product['title']}")
-                        
-                        response_body = json.dumps({"success": True, "product": new_product}, ensure_ascii=False)
-                        response = f"""HTTP/1.1 200 OK
+                            post_data = request.split('\r\n\r\n')[1][:content_length]
+                            print(f"📥 Получены данные: {len(post_data)} символов")
+                            
+                            try:
+                                data = json.loads(post_data)
+                                print(f"📥 JSON данные: {list(data.keys())}")
+                                
+                                max_id = max([p['id'] for p in products]) if products else 0
+                                
+                                # Обработка фотографии
+                                photo_url = ""
+                                if data.get('photo'):
+                                    filename = f"product_{max_id + 1}_{uuid.uuid4().hex[:8]}.jpg"
+                                    print(f"📷 Сохраняем фото: {filename}")
+                                    photo_url = save_photo(data['photo'], filename)
+                                else:
+                                    print("📷 Фото не предоставлено")
+                                
+                                new_product = {
+                                    "id": max_id + 1,
+                                    "title": data.get('title', 'Новый товар'),
+                                    "price": int(data.get('price', 0)),
+                                    "description": data.get('description', ''),
+                                    "image": data.get('image', '📦'),
+                                    "photo": photo_url
+                                }
+                                
+                                products.append(new_product)
+                                save_products(products)
+                                print(f"✅ Добавлен товар: {new_product['title']}")
+                                
+                                response_body = json.dumps({"success": True, "product": new_product}, ensure_ascii=False)
+                                response = f"""HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Content-Length: {len(response_body.encode('utf-8'))}
+Access-Control-Allow-Origin: *
+
+{response_body}"""
+                            except json.JSONDecodeError as json_error:
+                                print(f"❌ Ошибка JSON: {json_error}")
+                                response_body = json.dumps({"success": False, "error": "Invalid JSON"}, ensure_ascii=False)
+                                response = f"""HTTP/1.1 400 Bad Request
 Content-Type: application/json; charset=utf-8
 Content-Length: {len(response_body.encode('utf-8'))}
 Access-Control-Allow-Origin: *
@@ -284,6 +321,15 @@ Content-Length: {len(html_content.encode('utf-8'))}
         # Тестовая страница для фото
         elif parsed_path.path == '/test-photo':
             with open('test_photo.html', 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            response = f"""HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: {len(html_content.encode('utf-8'))}
+
+{html_content}"""
+        
+        elif parsed_path.path == '/test-simple':
+            with open('test_simple_add.html', 'r', encoding='utf-8') as f:
                 html_content = f.read()
             response = f"""HTTP/1.1 200 OK
 Content-Type: text/html; charset=utf-8

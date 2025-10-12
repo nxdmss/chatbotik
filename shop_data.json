@@ -51,5 +51,21 @@
     "description": "",
     "image": "📷",
     "photo": ""
+  },
+  {
+    "id": 8,
+    "title": "Тест JPG фото",
+    "price": 888,
+    "description": "",
+    "image": "📷",
+    "photo": ""
+  },
+  {
+    "id": 9,
+    "title": "Тест без фото",
+    "price": 777,
+    "description": "Простой тест",
+    "image": "📦",
+    "photo": ""
   }
 ]
