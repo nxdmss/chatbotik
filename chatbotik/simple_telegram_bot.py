@@ -50,11 +50,8 @@ class DarkShopBot:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 price INTEGER NOT NULL,
-                description TEXT DEFAULT '',
-                category TEXT DEFAULT 'general',
                 image_url TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -73,25 +70,25 @@ class DarkShopBot:
         cursor.execute('SELECT COUNT(*) FROM products')
         if cursor.fetchone()[0] == 0:
             test_products = [
-                ('iPhone 15 Pro', 99999, 'Новейший смартфон Apple', 'electronics', ''),
-                ('MacBook Air M3', 129999, 'Мощный ноутбук', 'electronics', ''),
-                ('Nike Air Max', 8999, 'Спортивные кроссовки', 'clothing', ''),
-                ('Кофе Starbucks', 299, 'Премиальный кофе', 'food', ''),
-                ('Книга Python', 1999, 'Программирование', 'books', ''),
-                ('Samsung Galaxy', 89999, 'Флагманский смартфон', 'electronics', ''),
-                ('Adidas Boost', 12999, 'Беговые кроссовки', 'clothing', ''),
-                ('Чай Earl Grey', 599, 'Элитный чай', 'food', ''),
-                ('iPad Pro', 79999, 'Планшет Apple', 'electronics', ''),
-                ('Nike Dunk', 7999, 'Классические кроссовки', 'clothing', ''),
-                ('Кофе Lavazza', 399, 'Итальянский кофе', 'food', ''),
-                ('Книга JavaScript', 2499, 'Веб-разработка', 'books', '')
+                ('iPhone 15 Pro', 99999, ''),
+                ('MacBook Air M3', 129999, ''),
+                ('Nike Air Max', 8999, ''),
+                ('Кофе Starbucks', 299, ''),
+                ('Книга Python', 1999, ''),
+                ('Samsung Galaxy', 89999, ''),
+                ('Adidas Boost', 12999, ''),
+                ('Чай Earl Grey', 599, ''),
+                ('iPad Pro', 79999, ''),
+                ('Nike Dunk', 7999, ''),
+                ('Кофе Lavazza', 399, ''),
+                ('Книга JavaScript', 2499, '')
             ]
             
-            for title, price, description, category, image_url in test_products:
+            for title, price, image_url in test_products:
                 cursor.execute('''
-                    INSERT INTO products (title, price, description, category, image_url)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (title, price, description, category, image_url))
+                    INSERT INTO products (title, price, image_url)
+                    VALUES (?, ?, ?)
+                ''', (title, price, image_url))
         
         conn.commit()
         conn.close()
@@ -247,11 +244,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'id': product[0],
                         'title': product[1],
                         'price': product[2],
-                        'description': product[3] or '',
-                        'category': product[4] or 'general',
-                        'image_url': product[5] or '',
-                        'created_at': product[6],
-                        'updated_at': product[7]
+                        'image_url': product[3] or '',
+                        'created_at': product[4]
                     })
                 
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
@@ -314,9 +308,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 title = data.get('title', '')
                 price = int(data.get('price', 0))
-                description = data.get('description', '')
-                category = data.get('category', 'general')
                 image_data = data.get('image', '')
+                
+                print(f"📝 Получены данные: title='{title}', price={price}, image_data_len={len(image_data)}")
                 
                 if title and price > 0:
                     # Сохраняем изображение
@@ -326,14 +320,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
                     cursor.execute('''
-                        INSERT INTO products (title, price, description, category, image_url)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (title, price, description, category, image_url))
+                        INSERT INTO products (title, price, image_url)
+                        VALUES (?, ?, ?)
+                    ''', (title, price, image_url))
                     conn.commit()
                     conn.close()
                     
+                    print(f"✅ Товар добавлен: {title} - {price} ₽")
                     response = {'success': True, 'message': 'Товар добавлен успешно!'}
                 else:
+                    print(f"❌ Неверные данные: title='{title}', price={price}")
                     response = {'success': False, 'message': 'Неверные данные товара'}
                 
                 self.send_response(200)
@@ -344,7 +340,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
             except Exception as e:
                 print(f"❌ Ошибка добавления товара: {e}")
-                response = {'success': False, 'message': 'Ошибка добавления товара'}
+                response = {'success': False, 'message': f'Ошибка добавления товара: {str(e)}'}
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -361,8 +357,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 title = data.get('title', '')
                 price = int(data.get('price', 0))
-                description = data.get('description', '')
-                category = data.get('category', 'general')
                 image_data = data.get('image', '')
                 
                 if title and price > 0:
@@ -375,15 +369,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         image_url = bot.save_image(image_data)
                         cursor.execute('''
                             UPDATE products 
-                            SET title = ?, price = ?, description = ?, category = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP
+                            SET title = ?, price = ?, image_url = ?
                             WHERE id = ?
-                        ''', (title, price, description, category, image_url, product_id))
+                        ''', (title, price, image_url, product_id))
                     else:
                         cursor.execute('''
                             UPDATE products 
-                            SET title = ?, price = ?, description = ?, category = ?, updated_at = CURRENT_TIMESTAMP
+                            SET title = ?, price = ?
                             WHERE id = ?
-                        ''', (title, price, description, category, product_id))
+                        ''', (title, price, product_id))
                     
                     conn.commit()
                     conn.close()
@@ -1086,20 +1080,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <input type="number" id="productPrice" min="1" required>
                 </div>
                 <div class="form-group">
-                    <label for="productCategory">Категория</label>
-                    <select id="productCategory" required>
-                        <option value="electronics">Электроника</option>
-                        <option value="clothing">Одежда</option>
-                        <option value="food">Еда</option>
-                        <option value="books">Книги</option>
-                        <option value="general">Общее</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="productDescription">Описание</label>
-                    <textarea id="productDescription" rows="3"></textarea>
-                </div>
-                <div class="form-group">
                     <label for="productImage">Фотография</label>
                     <div class="file-input-wrapper">
                         <input type="file" id="productImage" class="file-input" accept="image/*" onchange="handleImageUpload(this)">
@@ -1175,7 +1155,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         }
                     </div>
                     <div class="product-title">${product.title}</div>
-                    ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         В корзину
@@ -1238,7 +1217,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         }
                     </div>
                     <div class="product-title">${product.title}</div>
-                    ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         В корзину
@@ -1367,8 +1345,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             const title = document.getElementById('productTitle').value;
             const price = parseInt(document.getElementById('productPrice').value);
-            const description = document.getElementById('productDescription').value;
-            const category = document.getElementById('productCategory').value;
+            
+            console.log('📝 Данные формы:', { title, price, imageData: selectedImageData ? 'есть' : 'нет' });
             
             if (!title || !price || price <= 0) {
                 showAdminMessage('Пожалуйста, заполните все обязательные поля!', 'error');
@@ -1388,13 +1366,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     body: JSON.stringify({
                         title: title,
                         price: price,
-                        description: description,
-                        category: category,
                         image: selectedImageData
                     })
                 });
                 
                 const result = await response.json();
+                
+                console.log('📥 Ответ сервера:', result);
                 
                 if (result.success) {
                     showAdminMessage(
@@ -1421,8 +1399,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             document.getElementById('productTitle').value = product.title;
             document.getElementById('productPrice').value = product.price;
-            document.getElementById('productDescription').value = product.description || '';
-            document.getElementById('productCategory').value = product.category || 'general';
             
             if (product.image_url) {
                 selectedImageData = '';
