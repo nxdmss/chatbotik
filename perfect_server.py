@@ -352,8 +352,16 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
                 
-                # Парсим JSON
-                data = json.loads(post_data.decode('utf-8'))
+                # Проверяем Content-Type
+                content_type = self.headers.get('Content-Type', '')
+                print(f"📋 Content-Type: {content_type}")
+                
+                # Парсим в зависимости от типа
+                if 'multipart/form-data' in content_type:
+                    print("📝 Обнаружен multipart/form-data, парсим форму...")
+                    data = self._parse_multipart(post_data, content_type)
+                else:
+                    data = json.loads(post_data.decode('utf-8'))
                 
                 # Обновляем товар
                 success = product_manager.update_product(
