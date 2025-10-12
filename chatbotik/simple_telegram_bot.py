@@ -14,6 +14,13 @@ from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import time
+try:
+    from PIL import Image
+    from io import BytesIO
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    print("⚠️ PIL не установлен, изображения будут сохраняться без сжатия")
 
 try:
     import requests
@@ -89,13 +96,15 @@ class DarkShopBot:
                     INSERT INTO products (title, price, image_url)
                     VALUES (?, ?, ?)
                 ''', (title, price, image_url))
+            
+            print("✅ Добавлены тестовые товары без изображений")
         
         conn.commit()
         conn.close()
         print("✅ База данных инициализирована")
     
     def save_image(self, base64_data):
-        """Сохранение изображения из base64"""
+        """Сохранение и сжатие изображения из base64"""
         try:
             if not base64_data:
                 print("⚠️ Пустые данные изображения")
@@ -115,17 +124,58 @@ class DarkShopBot:
             
             # Декодируем base64
             image_data = base64.b64decode(base64_data)
+            original_size = len(image_data)
             
-            # Генерируем уникальное имя файла
-            filename = f"product_{uuid.uuid4().hex[:8]}.{extension}"
-            filepath = os.path.join(UPLOADS_DIR, filename)
+            # Открываем изображение с PIL для сжатия (если доступен)
+            if PIL_AVAILABLE:
+                try:
+                    image = Image.open(BytesIO(image_data))
+                
+                    # Конвертируем в RGB если нужно (для JPEG)
+                    if image.mode in ('RGBA', 'LA', 'P'):
+                        image = image.convert('RGB')
+                    
+                    # Изменяем размер изображения (максимум 400x400 пикселей)
+                    max_size = 400
+                    if image.width > max_size or image.height > max_size:
+                        image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                        print(f"📐 Изображение уменьшено до {image.width}x{image.height}")
+                    
+                    # Генерируем уникальное имя файла (всегда JPEG для лучшего сжатия)
+                    filename = f"product_{uuid.uuid4().hex[:8]}.jpg"
+                    filepath = os.path.join(UPLOADS_DIR, filename)
+                    
+                    # Сохраняем с качеством 85% для баланса размера и качества
+                    image.save(filepath, 'JPEG', quality=85, optimize=True)
+                    
+                    compressed_size = os.path.getsize(filepath)
+                    print(f"✅ Изображение сохранено: {filename}")
+                    print(f"📊 Размер: {original_size} -> {compressed_size} байт ({compressed_size/original_size*100:.1f}%)")
+                    
+                    return f"/uploads/{filename}"
+                    
+                except Exception as pil_error:
+                    print(f"⚠️ Ошибка обработки с PIL: {pil_error}, сохраняем как есть")
+                    # Если PIL не работает, сохраняем оригинал
+                    filename = f"product_{uuid.uuid4().hex[:8]}.{extension}"
+                    filepath = os.path.join(UPLOADS_DIR, filename)
+                    
+                    with open(filepath, 'wb') as f:
+                        f.write(image_data)
+                    
+                    print(f"✅ Изображение сохранено без сжатия: {filename} ({len(image_data)} байт)")
+                    return f"/uploads/{filename}"
+            else:
+                # PIL недоступен, сохраняем как есть
+                filename = f"product_{uuid.uuid4().hex[:8]}.{extension}"
+                filepath = os.path.join(UPLOADS_DIR, filename)
+                
+                with open(filepath, 'wb') as f:
+                    f.write(image_data)
+                
+                print(f"✅ Изображение сохранено без сжатия: {filename} ({len(image_data)} байт)")
+                return f"/uploads/{filename}"
             
-            # Сохраняем файл
-            with open(filepath, 'wb') as f:
-                f.write(image_data)
-            
-            print(f"✅ Изображение сохранено: {filename} ({len(image_data)} байт)")
-            return f"/uploads/{filename}"
         except Exception as e:
             print(f"❌ Ошибка сохранения изображения: {e}")
             import traceback
@@ -568,12 +618,19 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             justify-content: center;
             color: #666;
             font-size: 24px;
+            position: relative;
         }
         
         .product-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-image img:hover {
+            transform: scale(1.05);
         }
         
         .product-title {
@@ -1182,7 +1239,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <div class="product-image">
                         ${product.image_url ? 
                             `<img src="${product.image_url}" alt="${product.title}" 
-                                 onerror="console.error('Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 loading="lazy"
+                                 onload="console.log('✅ Изображение загружено:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
                              <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
                             '<div style="color: #666; font-size: 24px;">📷</div>'
                         }
@@ -1245,7 +1304,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <div class="product-image">
                         ${product.image_url ? 
                             `<img src="${product.image_url}" alt="${product.title}" 
-                                 onerror="console.error('Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 loading="lazy"
+                                 onload="console.log('✅ Изображение загружено:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
                              <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
                             '<div style="color: #666; font-size: 24px;">📷</div>'
                         }
