@@ -67,66 +67,81 @@ class PerfectShopApp {
         }
     }
 
-    // ===== ПРОВЕРКА АДМИНСКИХ ПРАВ =====
+    // ===== НОВАЯ ФУНКЦИЯ ПРОВЕРКИ АДМИНСКИХ ПРАВ =====
 
     async checkAdminStatus() {
+        console.log('🔒 НОВАЯ ЛОГИКА: Проверяем админские права...');
+        
+        // ПО УМОЛЧАНИЮ НЕ АДМИН
+        this.isAdmin = false;
+        
         try {
-            console.log('🔍 Проверяем админские права...');
+            // Проверяем, запущено ли в Telegram WebApp
+            const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
+            console.log('📱 Telegram WebApp:', isTelegramWebApp ? 'ДА' : 'НЕТ');
             
-            const ADMIN_ID = '1593426947';
-            let userId = null;
-            
-            // Получаем user_id из Telegram WebApp
-            if (window.Telegram && window.Telegram.WebApp) {
-                console.log('✅ Telegram WebApp обнаружен');
+            if (isTelegramWebApp) {
+                console.log('🔍 Проверяем Telegram WebApp...');
                 
+                // Получаем данные пользователя
+                let userId = null;
+                
+                // Пробуем получить user_id
                 if (this.userInfo && this.userInfo.id) {
                     userId = this.userInfo.id.toString();
-                    console.log('📱 User ID из Telegram:', userId);
-                    
-                    // СТРОГОЕ СРАВНЕНИЕ
-                    if (userId === ADMIN_ID) {
-                        this.isAdmin = true;
-                        console.log('👑 ВЫ АДМИН! ID совпадает:', userId);
-                    } else {
-                        this.isAdmin = false;
-                        console.log('👤 ВЫ КЛИЕНТ! ID:', userId);
+                    console.log('📱 User ID найден:', userId);
+                }
+                
+                // Если user_id не найден, пробуем другие способы
+                if (!userId && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+                    userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+                    console.log('📱 User ID из initDataUnsafe:', userId);
+                }
+                
+                // Если все еще не найден, пробуем парсить initData
+                if (!userId && window.Telegram.WebApp.initData) {
+                    try {
+                        const params = new URLSearchParams(window.Telegram.WebApp.initData);
+                        const userParam = params.get('user');
+                        if (userParam) {
+                            const userData = JSON.parse(decodeURIComponent(userParam));
+                            userId = userData.id.toString();
+                            console.log('📱 User ID из initData:', userId);
+                        }
+                    } catch (e) {
+                        console.log('❌ Ошибка парсинга initData:', e);
                     }
-                } else {
-                    console.log('❌ User ID не найден в Telegram WebApp');
-                    this.isAdmin = false;
                 }
-            } else {
-                console.log('🌐 Запущено в браузере - проверяем отладочный режим');
                 
-                // Проверяем hostname для отладочного режима
-                const isLocalhost = window.location.hostname === 'localhost';
-                const isReplit = window.location.hostname.includes('replit.com') || 
-                                window.location.hostname.includes('replit.dev');
+                console.log('🔍 Итоговый User ID:', userId);
                 
-                if (isLocalhost || isReplit) {
-                    console.log('🔧 Отладочный режим: localhost/Replit обнаружен');
+                // СТРОГАЯ ПРОВЕРКА: только ваш ID
+                if (userId === '1593426947') {
                     this.isAdmin = true;
-                    console.log('🔧 Админские права для отладки в браузере');
+                    console.log('👑 ВЫ ЕДИНСТВЕННЫЙ АДМИН! ID:', userId);
                 } else {
-                    console.log('❌ Продакшн режим: админские права НЕ предоставлены');
                     this.isAdmin = false;
+                    console.log('👤 ВЫ КЛИЕНТ! ID:', userId || 'неизвестен');
                 }
-            }
-            
-            console.log('📊 РЕЗУЛЬТАТ:');
-            console.log('   User ID:', userId);
-            console.log('   Админ:', this.isAdmin ? 'ДА' : 'НЕТ');
-            
-            if (this.isAdmin) {
-                this.showAdminPanel();
-                console.log('✅ Админ панель активирована');
+                
             } else {
-                console.log('❌ Админ панель НЕ показана - вы клиент');
+                console.log('🌐 Запущено в браузере - НЕ АДМИН');
+                this.isAdmin = false;
             }
+            
         } catch (error) {
             console.error('❌ Ошибка проверки прав:', error);
             this.isAdmin = false;
+        }
+        
+        console.log('📊 ИТОГОВЫЙ СТАТУС:');
+        console.log('   Админ:', this.isAdmin ? 'ДА' : 'НЕТ');
+        
+        if (this.isAdmin) {
+            this.showAdminPanel();
+            console.log('✅ Админ панель активирована');
+        } else {
+            console.log('❌ Админ панель НЕ показана');
         }
     }
 
