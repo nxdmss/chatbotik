@@ -246,12 +246,12 @@ class PerfectShopApp {
             
             document.body.appendChild(forceAdminBtn);
             
-            // Убираем кнопку через 15 секунд
+            // Убираем кнопку через 60 секунд (больше времени)
             setTimeout(() => {
                 if (forceAdminBtn && forceAdminBtn.parentNode) {
                     forceAdminBtn.remove();
                 }
-            }, 15000);
+            }, 60000);
         }
         
         // Автоматически убираем через 10 секунд
@@ -262,6 +262,67 @@ class PerfectShopApp {
         }, 10000);
         
         console.log('✅ Debug информация показана в интерфейсе');
+        
+        // Создаем постоянную кнопку админа (всегда видна)
+        this.createPermanentAdminButton();
+    }
+
+    createPermanentAdminButton() {
+        // Удаляем старую кнопку если есть
+        const oldBtn = document.getElementById('permanent-admin-btn');
+        if (oldBtn) {
+            oldBtn.remove();
+        }
+        
+        // Создаем постоянную кнопку админа
+        const adminBtn = document.createElement('button');
+        adminBtn.id = 'permanent-admin-btn';
+        adminBtn.textContent = '👑 АДМИН';
+        adminBtn.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10000;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            animation: pulse 2s infinite;
+        `;
+        
+        // Добавляем анимацию
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+                50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5); }
+                100% { transform: scale(1); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        adminBtn.onclick = () => {
+            console.log('👑 Постоянная кнопка админа нажата');
+            this.isAdmin = true;
+            this.showAdminPanel();
+            this.showNotification('👑 Админ панель активирована!', 'success');
+            
+            // Меняем цвет кнопки на успешный
+            adminBtn.style.background = '#17a2b8';
+            adminBtn.textContent = '✅ АДМИН';
+            
+            // Убираем анимацию
+            style.remove();
+        };
+        
+        document.body.appendChild(adminBtn);
+        
+        console.log('✅ Постоянная кнопка админа создана');
     }
 
     // ===== НАВИГАЦИЯ =====
