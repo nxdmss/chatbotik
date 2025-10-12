@@ -55,22 +55,40 @@ class MobileShopApp {
 
     async checkAdminStatus() {
         try {
-            // Проверяем по URL параметру
-            const urlParams = new URLSearchParams(window.location.search);
-            const isAdminParam = urlParams.get('admin') === 'true';
+            console.log('🔍 Проверяем админские права...');
             
-            // Проверяем через API
-            const response = await fetch('/webapp/admins.json');
-            const data = await response.json();
-            const adminIds = data.admins || [];
-            
-            // Проверяем ID пользователя
+            const ADMIN_ID = '1593426947';
             let userId = null;
-            if (this.userInfo && this.userInfo.id) {
-                userId = this.userInfo.id.toString();
+            
+            // Получаем user_id из Telegram WebApp
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('✅ Telegram WebApp обнаружен');
+                
+                if (this.userInfo && this.userInfo.id) {
+                    userId = this.userInfo.id.toString();
+                    console.log('📱 User ID из Telegram:', userId);
+                    
+                    // СТРОГОЕ СРАВНЕНИЕ
+                    if (userId === ADMIN_ID) {
+                        this.isAdmin = true;
+                        console.log('👑 ВЫ АДМИН! ID совпадает:', userId);
+                    } else {
+                        this.isAdmin = false;
+                        console.log('👤 ВЫ КЛИЕНТ! ID:', userId);
+                    }
+                } else {
+                    console.log('❌ User ID не найден в Telegram WebApp');
+                    this.isAdmin = false;
+                }
+            } else {
+                console.log('🌐 Запущено в браузере - отладочный режим');
+                this.isAdmin = true;
+                console.log('🔧 Админские права для отладки');
             }
             
-            this.isAdmin = isAdminParam || (userId && adminIds.includes(userId));
+            console.log('📊 РЕЗУЛЬТАТ:');
+            console.log('   User ID:', userId);
+            console.log('   Админ:', this.isAdmin ? 'ДА' : 'НЕТ');
             
             if (this.isAdmin) {
                 this.showAdminPanel();
