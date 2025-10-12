@@ -486,7 +486,7 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
             return
             
         # Статические файлы для простого приложения
-        elif self.path == '/webapp/static/app_simple.js':
+        elif self.path == '/webapp/app_simple.js':
             self.serve_static_file('webapp/app_simple.js', 'application/javascript')
             return
         
