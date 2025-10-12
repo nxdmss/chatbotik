@@ -70,77 +70,15 @@ class PerfectShopApp {
     // ===== НОВАЯ ФУНКЦИЯ ПРОВЕРКИ АДМИНСКИХ ПРАВ =====
 
     async checkAdminStatus() {
-        console.log('🔒 SENIOR APPROACH: Простая и надежная проверка');
+        console.log('🔧 ПРОСТАЯ ПРОВЕРКА АДМИНА');
         
-        // По умолчанию НЕ админ
+        // ПО УМОЛЧАНИЮ НЕ АДМИН
         this.isAdmin = false;
         
-        try {
-            // Получаем user ID из Telegram WebApp
-            let userId = null;
-            
-            if (window.Telegram && window.Telegram.WebApp) {
-                console.log('📱 Telegram WebApp найден');
-                
-                // Пробуем разные способы получить user ID
-                if (this.userInfo && this.userInfo.id) {
-                    userId = this.userInfo.id.toString();
-                    console.log('📱 User ID из userInfo:', userId);
-                } else if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-                    userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
-                    console.log('📱 User ID из initDataUnsafe:', userId);
-                }
-                
-                console.log('📱 Итоговый User ID:', userId);
-                
-                // Простая проверка: только ваш ID = админ
-                if (userId === '1593426947') {
-                    this.isAdmin = true;
-                    console.log('✅ ВЫ АДМИН! ID:', userId);
-                } else {
-                    this.isAdmin = false;
-                    console.log('❌ Вы клиент. ID:', userId || 'не найден');
-                }
-            } else {
-                // Проверяем, может быть мы в Telegram но WebApp не определился
-                console.log('🌐 WebApp не найден, проверяем другие признаки...');
-                
-                // Проверяем user agent
-                const userAgent = navigator.userAgent;
-                const isTelegram = userAgent.includes('TelegramBot') || userAgent.includes('Telegram');
-                
-                console.log('📱 User Agent:', userAgent);
-                console.log('🤖 Telegram User Agent:', isTelegram);
-                
-                if (isTelegram) {
-                    // Если это Telegram, но WebApp не определился - даем админские права
-                    console.log('🔧 Telegram обнаружен по User Agent - даем админские права');
-                    this.isAdmin = true;
-                } else {
-                    // В обычном браузере - НЕ админ
-                    this.isAdmin = false;
-                    console.log('🌐 Обычный браузер - НЕ админ');
-                }
-            }
-            
-        } catch (error) {
-            console.error('❌ Ошибка:', error);
-            this.isAdmin = false;
-        }
+        // Показываем кнопку админа всегда
+        this.showAdminButton();
         
-        // Показываем админ панель если админ
-        if (this.isAdmin) {
-            console.log('🔧 Вызываем showAdminPanel()...');
-            this.showAdminPanel();
-            console.log('✅ Админ панель активирована');
-        } else {
-            console.log('❌ Админ панель НЕ показана');
-        }
-        
-        console.log('📊 РЕЗУЛЬТАТ: Админ =', this.isAdmin ? 'ДА' : 'НЕТ');
-        
-        // Показываем результат прямо в интерфейсе
-        this.showDebugInfo();
+        console.log('✅ Кнопка админа показана');
     }
 
     showAdminPanel() {
@@ -173,162 +111,22 @@ class PerfectShopApp {
         console.log('📊 Всего элементов на странице:', document.querySelectorAll('*').length);
     }
 
-    showDebugInfo() {
-        // Создаем видимое уведомление о статусе админа
-        const debugDiv = document.createElement('div');
-        debugDiv.id = 'debug-info';
-        debugDiv.style.cssText = `
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: ${this.isAdmin ? '#28a745' : '#dc3545'};
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 10000;
-            max-width: 300px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        `;
-        
-        let userId = 'не найден';
-        if (this.userInfo && this.userInfo.id) {
-            userId = this.userInfo.id.toString();
-        } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-            userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
-        }
-        
-        debugDiv.innerHTML = `
-            <div>🔒 СТАТУС: ${this.isAdmin ? 'АДМИН' : 'КЛИЕНТ'}</div>
-            <div>📱 ID: ${userId}</div>
-            <div>🌐 WebApp: ${window.Telegram && window.Telegram.WebApp ? 'ДА' : 'НЕТ'}</div>
-            <div>⚙️ Админ панель: ${this.isAdmin ? 'ВКЛЮЧЕНА' : 'ВЫКЛЮЧЕНА'}</div>
-        `;
-        
-        // Удаляем старое уведомление если есть
-        const oldDebug = document.getElementById('debug-info');
-        if (oldDebug) {
-            oldDebug.remove();
-        }
-        
-        // Добавляем новое уведомление
-        document.body.appendChild(debugDiv);
-        
-        // Добавляем кнопку принудительного включения админа если не админ
-        if (!this.isAdmin) {
-            const forceAdminBtn = document.createElement('button');
-            forceAdminBtn.textContent = '🔧 ВКЛЮЧИТЬ АДМИН';
-            forceAdminBtn.style.cssText = `
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                background: #007bff;
-                color: white;
-                border: none;
-                padding: 8px 12px;
-                border-radius: 5px;
-                font-size: 12px;
-                font-weight: bold;
-                cursor: pointer;
-                z-index: 10001;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            `;
-            
-            forceAdminBtn.onclick = () => {
-                console.log('🔧 Принудительное включение админа');
-                this.isAdmin = true;
-                this.showAdminPanel();
-                this.showNotification('Админ панель включена!', 'success');
-                debugDiv.remove();
-                forceAdminBtn.remove();
-            };
-            
-            document.body.appendChild(forceAdminBtn);
-            
-            // Убираем кнопку через 60 секунд (больше времени)
-            setTimeout(() => {
-                if (forceAdminBtn && forceAdminBtn.parentNode) {
-                    forceAdminBtn.remove();
-                }
-            }, 60000);
-        }
-        
-        // Автоматически убираем через 10 секунд
-        setTimeout(() => {
-            if (debugDiv && debugDiv.parentNode) {
-                debugDiv.remove();
-            }
-        }, 10000);
-        
-        console.log('✅ Debug информация показана в интерфейсе');
-        
-        // Создаем постоянную кнопку админа (всегда видна)
-        this.createPermanentAdminButton();
-    }
 
-    createPermanentAdminButton() {
-        // Удаляем старую кнопку если есть
-        const oldBtn = document.getElementById('permanent-admin-btn');
-        if (oldBtn) {
-            oldBtn.remove();
+    showAdminButton() {
+        // Убеждаемся что кнопка админа видна
+        const adminBtn = document.getElementById('enable-admin-btn');
+        if (adminBtn) {
+            adminBtn.style.display = 'block';
+            adminBtn.style.background = '#28a745';
+            adminBtn.style.border = '2px solid #28a745';
+            console.log('✅ Кнопка админа активирована');
         }
-        
-        // Создаем постоянную кнопку админа
-        const adminBtn = document.createElement('button');
-        adminBtn.id = 'permanent-admin-btn';
-        adminBtn.textContent = '👑 АДМИН';
-        adminBtn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 10000;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-            animation: pulse 2s infinite;
-        `;
-        
-        // Добавляем анимацию
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
-                50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5); }
-                100% { transform: scale(1); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        adminBtn.onclick = () => {
-            console.log('👑 Постоянная кнопка админа нажата');
-            this.isAdmin = true;
-            this.showAdminPanel();
-            this.showNotification('👑 Админ панель активирована!', 'success');
-            
-            // Меняем цвет кнопки на успешный
-            adminBtn.style.background = '#17a2b8';
-            adminBtn.textContent = '✅ АДМИН';
-            
-            // Убираем анимацию
-            style.remove();
-        };
-        
-        document.body.appendChild(adminBtn);
-        
-        console.log('✅ Постоянная кнопка админа создана');
     }
 
     // ===== ПРОСТАЯ ФУНКЦИЯ ВКЛЮЧЕНИЯ АДМИНА =====
 
     enableAdmin() {
-        console.log('👑 ПРОСТОЕ ВКЛЮЧЕНИЕ АДМИНА');
+        console.log('👑 ВКЛЮЧАЕМ АДМИНА');
         this.isAdmin = true;
         this.showAdminPanel();
         this.showNotification('👑 Админ панель включена!', 'success');
@@ -344,7 +142,7 @@ class PerfectShopApp {
             adminBtn.style.display = 'block';
         }
         
-        console.log('✅ Админ включен простым способом');
+        console.log('✅ Админ включен');
     }
 
     // ===== НАВИГАЦИЯ =====
