@@ -104,77 +104,51 @@ class DarkShopBot:
         print("✅ База данных инициализирована")
     
     def save_image(self, base64_data):
-        """Сохранение и сжатие изображения из base64"""
+        """Простое сохранение изображения из base64"""
         try:
-            if not base64_data:
+            if not base64_data or base64_data.strip() == '':
                 print("⚠️ Пустые данные изображения")
                 return ''
             
-            # Определяем формат изображения из base64 заголовка
-            if base64_data.startswith('data:'):
-                # Извлекаем MIME тип
-                mime_type = base64_data.split(',')[0].split(':')[1].split(';')[0]
-                extension = mime_type.split('/')[1] if '/' in mime_type else 'jpg'
-                # Убираем заголовок data:image/...;base64,
-                base64_data = base64_data.split(',')[1]
-            else:
-                extension = 'jpg'  # По умолчанию
+            print(f"📸 Получены данные изображения, длина: {len(base64_data)}")
             
-            print(f"📸 Сохранение изображения формата: {extension}")
+            # Простая обработка - убираем заголовок если есть
+            if base64_data.startswith('data:'):
+                # Находим запятую и берем только base64 данные
+                if ',' in base64_data:
+                    base64_data = base64_data.split(',', 1)[1]
+                    print("📸 Убран заголовок data:")
             
             # Декодируем base64
-            image_data = base64.b64decode(base64_data)
-            original_size = len(image_data)
+            try:
+                image_data = base64.b64decode(base64_data)
+                print(f"✅ Base64 декодирован, размер: {len(image_data)} байт")
+            except Exception as decode_error:
+                print(f"❌ Ошибка декодирования base64: {decode_error}")
+                return ''
             
-            # Открываем изображение с PIL для сжатия (если доступен)
-            if PIL_AVAILABLE:
-                try:
-                    image = Image.open(BytesIO(image_data))
-                
-                    # Конвертируем в RGB если нужно (для JPEG)
-                    if image.mode in ('RGBA', 'LA', 'P'):
-                        image = image.convert('RGB')
-                    
-                    # Изменяем размер изображения (максимум 400x400 пикселей)
-                    max_size = 400
-                    if image.width > max_size or image.height > max_size:
-                        image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-                        print(f"📐 Изображение уменьшено до {image.width}x{image.height}")
-                    
-                    # Генерируем уникальное имя файла (всегда JPEG для лучшего сжатия)
-                    filename = f"product_{uuid.uuid4().hex[:8]}.jpg"
-                    filepath = os.path.join(UPLOADS_DIR, filename)
-                    
-                    # Сохраняем с качеством 85% для баланса размера и качества
-                    image.save(filepath, 'JPEG', quality=85, optimize=True)
-                    
-                    compressed_size = os.path.getsize(filepath)
-                    print(f"✅ Изображение сохранено: {filename}")
-                    print(f"📊 Размер: {original_size} -> {compressed_size} байт ({compressed_size/original_size*100:.1f}%)")
-                    
-                    return f"/uploads/{filename}"
-                    
-                except Exception as pil_error:
-                    print(f"⚠️ Ошибка обработки с PIL: {pil_error}, сохраняем как есть")
-                    # Если PIL не работает, сохраняем оригинал
-                    filename = f"product_{uuid.uuid4().hex[:8]}.{extension}"
-                    filepath = os.path.join(UPLOADS_DIR, filename)
-                    
-                    with open(filepath, 'wb') as f:
-                        f.write(image_data)
-                    
-                    print(f"✅ Изображение сохранено без сжатия: {filename} ({len(image_data)} байт)")
-                    return f"/uploads/{filename}"
-            else:
-                # PIL недоступен, сохраняем как есть
-                filename = f"product_{uuid.uuid4().hex[:8]}.{extension}"
-                filepath = os.path.join(UPLOADS_DIR, filename)
-                
-                with open(filepath, 'wb') as f:
-                    f.write(image_data)
-                
-                print(f"✅ Изображение сохранено без сжатия: {filename} ({len(image_data)} байт)")
+            # Генерируем простое имя файла
+            filename = f"img_{uuid.uuid4().hex[:8]}.jpg"
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            
+            # Проверяем что папка существует
+            if not os.path.exists(UPLOADS_DIR):
+                os.makedirs(UPLOADS_DIR)
+                print(f"📁 Создана папка: {UPLOADS_DIR}")
+            
+            # Сохраняем файл
+            with open(filepath, 'wb') as f:
+                f.write(image_data)
+            
+            # Проверяем что файл создался
+            if os.path.exists(filepath):
+                file_size = os.path.getsize(filepath)
+                print(f"✅ Изображение сохранено: {filename} ({file_size} байт)")
+                print(f"📁 Полный путь: {filepath}")
                 return f"/uploads/{filename}"
+            else:
+                print(f"❌ Файл не создался: {filepath}")
+                return ''
             
         except Exception as e:
             print(f"❌ Ошибка сохранения изображения: {e}")
@@ -310,39 +284,81 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'created_at': product[4]
                     })
                 
+                print(f"📦 Отправляем {len(products_data)} товаров")
+                for p in products_data:
+                    print(f"  - {p['title']}: изображение = {p['image_url'] or 'НЕТ'}")
+                
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 print(f"❌ Ошибка получения товаров: {e}")
                 self.wfile.write(json.dumps([]).encode('utf-8'))
         
+        elif self.path == '/test-image':
+            # Тестовый эндпоинт для проверки изображений
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            
+            test_html = '''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Тест изображений</title></head>
+            <body>
+                <h1>Тест изображений</h1>
+                <p>Папка uploads:</p>
+                <ul>
+            '''
+            
+            if os.path.exists(UPLOADS_DIR):
+                files = os.listdir(UPLOADS_DIR)
+                for file in files:
+                    test_html += f'<li><a href="/uploads/{file}">{file}</a></li>'
+                    test_html += f'<li><img src="/uploads/{file}" style="width:100px; height:100px; object-fit:cover; border:1px solid #ccc; margin:5px;"></li>'
+            else:
+                test_html += '<li>Папка uploads не существует</li>'
+            
+            test_html += '''
+                </ul>
+                <p><a href="/">Вернуться к магазину</a></p>
+            </body>
+            </html>
+            '''
+            
+            self.wfile.write(test_html.encode('utf-8'))
+        
         elif self.path.startswith('/uploads/'):
-            # Обслуживание статических файлов изображений
+            # Простая обработка изображений
             filename = self.path[9:]  # Убираем '/uploads/'
             filepath = os.path.join(UPLOADS_DIR, filename)
             
-            print(f"🖼️ Запрос изображения: {self.path} -> {filepath}")
+            print(f"🖼️ Запрос: {self.path}")
+            print(f"📁 Ищем файл: {filepath}")
             
             if os.path.exists(filepath):
-                # Определяем MIME тип по расширению
-                if filename.lower().endswith('.png'):
-                    content_type = 'image/png'
-                elif filename.lower().endswith('.gif'):
-                    content_type = 'image/gif'
-                elif filename.lower().endswith('.webp'):
-                    content_type = 'image/webp'
-                else:
-                    content_type = 'image/jpeg'
+                file_size = os.path.getsize(filepath)
+                print(f"✅ Файл найден, размер: {file_size} байт")
                 
                 self.send_response(200)
-                self.send_header('Content-type', content_type)
-                self.send_header('Cache-Control', 'public, max-age=3600')
+                self.send_header('Content-type', 'image/jpeg')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 
-                with open(filepath, 'rb') as f:
-                    self.wfile.write(f.read())
-                print(f"✅ Изображение отправлено: {filename}")
+                try:
+                    with open(filepath, 'rb') as f:
+                        content = f.read()
+                        self.wfile.write(content)
+                    print(f"✅ Изображение отправлено: {filename} ({len(content)} байт)")
+                except Exception as e:
+                    print(f"❌ Ошибка чтения файла: {e}")
             else:
-                print(f"❌ Изображение не найдено: {filepath}")
+                print(f"❌ Файл не найден: {filepath}")
+                # Показываем содержимое папки для отладки
+                if os.path.exists(UPLOADS_DIR):
+                    files = os.listdir(UPLOADS_DIR)
+                    print(f"📁 Файлы в папке uploads: {files}")
+                else:
+                    print(f"📁 Папка uploads не существует!")
+                
                 self.send_response(404)
                 self.end_headers()
                 self.wfile.write(b'Image not found')
@@ -1239,9 +1255,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <div class="product-image">
                         ${product.image_url ? 
                             `<img src="${product.image_url}" alt="${product.title}" 
-                                 loading="lazy"
-                                 onload="console.log('✅ Изображение загружено:', this.src)"
-                                 onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 onload="console.log('✅ Загружено:', this.src)"
+                                 onerror="console.error('❌ Ошибка:', this.src); this.parentElement.innerHTML='<div style=&quot;color: #666; font-size: 24px;&quot;>📷</div>';">
                              <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
                             '<div style="color: #666; font-size: 24px;">📷</div>'
                         }
@@ -1304,9 +1319,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <div class="product-image">
                         ${product.image_url ? 
                             `<img src="${product.image_url}" alt="${product.title}" 
-                                 loading="lazy"
-                                 onload="console.log('✅ Изображение загружено:', this.src)"
-                                 onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 onload="console.log('✅ Загружено:', this.src)"
+                                 onerror="console.error('❌ Ошибка:', this.src); this.parentElement.innerHTML='<div style=&quot;color: #666; font-size: 24px;&quot;>📷</div>';">
                              <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
                             '<div style="color: #666; font-size: 24px;">📷</div>'
                         }
@@ -1320,21 +1334,38 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             `).join('');
         }
         
-        // Обработка загрузки изображения
+        // Простая обработка загрузки изображения
         function handleImageUpload(input) {
             const file = input.files[0];
             if (file) {
-                console.log('📸 Выбран файл:', file.name, 'размер:', file.size, 'тип:', file.type);
+                console.log('📸 Выбран файл:', file.name, 'размер:', file.size);
+                
+                // Проверяем размер файла (максимум 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Файл слишком большой! Максимум 5MB.');
+                    input.value = '';
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     selectedImageData = e.target.result;
-                    console.log('📸 Base64 данные готовы, длина:', selectedImageData.length);
+                    console.log('📸 Base64 готов, длина:', selectedImageData.length);
+                    
+                    // Показываем превью
                     const preview = document.getElementById('imagePreview');
-                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 120px; object-fit: cover;">`;
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
                 };
+                
+                reader.onerror = function() {
+                    console.error('❌ Ошибка чтения файла');
+                    alert('Ошибка чтения файла!');
+                };
+                
                 reader.readAsDataURL(file);
             } else {
                 selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
                 console.log('📸 Файл не выбран');
             }
         }
