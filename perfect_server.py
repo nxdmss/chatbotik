@@ -11,6 +11,7 @@ import os
 import sqlite3
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
+import traceback
 
 PORT = 8000
 DB_PATH = "shop.db"
@@ -93,23 +94,29 @@ class ProductManager:
     
     def add_product(self, title, description, price, sizes, photo="/webapp/static/uploads/default.jpg"):
         """Добавить новый товар"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO products (title, description, price, sizes, photo, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, 1, ?)
-            """, (
-                title,
-                description,
-                price,
-                json.dumps(sizes),
-                photo,
-                datetime.now().isoformat()
-            ))
-            conn.commit()
-            product_id = cursor.lastrowid
-            print(f"✅ Товар добавлен: ID={product_id}, {title}")
-            return product_id
+        try:
+            print(f"🔧 Добавляем товар в БД: title={title}, price={price}, sizes={sizes}")
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO products (title, description, price, sizes, photo, is_active, created_at)
+                    VALUES (?, ?, ?, ?, ?, 1, ?)
+                """, (
+                    title,
+                    description,
+                    price,
+                    json.dumps(sizes),
+                    photo,
+                    datetime.now().isoformat()
+                ))
+                conn.commit()
+                product_id = cursor.lastrowid
+                print(f"✅ Товар добавлен в БД: ID={product_id}, {title}")
+                return product_id
+        except Exception as e:
+            print(f"❌ Ошибка добавления в БД: {e}")
+            traceback.print_exc()
+            raise
     
     def update_product(self, product_id, title=None, description=None, price=None, sizes=None, photo=None):
         """Обновить товар"""
@@ -251,7 +258,16 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 title = data.get('title', 'Новый товар')
                 description = data.get('description', '')
                 price = float(data.get('price', 1000))
-                sizes = data.get('sizes', ['M', 'L'])
+                
+                # Обработка sizes - может быть массив или строка
+                sizes_raw = data.get('sizes', ['M', 'L'])
+                if isinstance(sizes_raw, str):
+                    sizes = [s.strip() for s in sizes_raw.split(',') if s.strip()]
+                elif isinstance(sizes_raw, list):
+                    sizes = sizes_raw
+                else:
+                    sizes = ['M', 'L']
+                
                 photo = data.get('photo', '/webapp/static/uploads/default.jpg')
                 
                 print(f"📝 Создаем товар: {title}, цена: {price}")
