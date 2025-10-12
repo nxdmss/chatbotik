@@ -709,6 +709,12 @@ class MobileShopApp {
         console.log('🔍 Доступно товаров:', this.products.length);
         console.log('🔍 Доступно админ-товаров:', this.adminProducts?.length || 0);
         
+        // Принудительно загружаем админ-товары если их нет
+        if (!this.adminProducts || this.adminProducts.length === 0) {
+            console.log('🔄 Загружаем админ-товары...');
+            await this.loadAdminProducts();
+        }
+        
         // Ищем товар сначала в adminProducts, потом в products
         let product = this.adminProducts?.find(p => p.id === productId);
         if (!product) {
@@ -801,6 +807,12 @@ class MobileShopApp {
         console.log('🗑️ Удаляем товар:', productId);
         console.log('🔍 Тип productId:', typeof productId);
         console.log('🔍 this.isAdmin:', this.isAdmin);
+        
+        // Принудительно загружаем админ-товары если их нет
+        if (!this.adminProducts || this.adminProducts.length === 0) {
+            console.log('🔄 Загружаем админ-товары...');
+            await this.loadAdminProducts();
+        }
         
         // Проверяем, что productId валидный
         if (!productId || productId === 'undefined' || productId === 'null') {
