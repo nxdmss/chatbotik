@@ -323,6 +323,23 @@ product_manager = ProductManager(DB_PATH)
 class PerfectHandler(http.server.SimpleHTTPRequestHandler):
     """Идеальный обработчик запросов"""
     
+    def is_admin(self, query_params):
+        """Проверка админских прав"""
+        # Проверяем user_id в параметрах запроса
+        user_id = query_params.get('user_id', [''])[0]
+        
+        # Единственный администратор - ваш Telegram ID
+        ADMIN_USER_ID = '1593426947'
+        
+        is_admin = (user_id == ADMIN_USER_ID)
+        
+        if is_admin:
+            print(f"👑 Админский доступ разрешен для user_id: {user_id}")
+        else:
+            print(f"🔒 Доступ запрещен для user_id: {user_id}")
+        
+        return is_admin
+    
     def _parse_multipart(self, post_data, content_type):
         """Парсинг multipart/form-data"""
         try:
@@ -462,6 +479,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         
         # API: Получить все товары (для админа)
         elif self.path.startswith('/webapp/admin/products'):
+            # Проверяем админские права
+            query_params = parse_qs(urlparse(self.path).query)
+            if not self.is_admin(query_params):
+                self.send_json(403, {"error": "Доступ запрещен"})
+                return
+            
             products = product_manager.get_all_products(active_only=False)
             self.send_json(200, {"products": products})
             return
@@ -535,6 +558,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         print(f"📥 POST {self.path}")
         
         if self.path.startswith('/webapp/admin/products') or self.path.startswith('/api/admin/products'):
+            # Проверяем админские права
+            query_params = parse_qs(urlparse(self.path).query)
+            if not self.is_admin(query_params):
+                self.send_json(403, {"error": "Доступ запрещен"})
+                return
+            
             try:
                 # Читаем данные
                 content_length = int(self.headers.get('Content-Length', 0))
@@ -610,6 +639,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         print(f"📥 PUT {self.path}")
         
         if self.path.startswith('/webapp/admin/products/'):
+            # Проверяем админские права
+            query_params = parse_qs(urlparse(self.path).query)
+            if not self.is_admin(query_params):
+                self.send_json(403, {"error": "Доступ запрещен"})
+                return
+            
             try:
                 # Извлекаем ID товара
                 path_parts = self.path.split('/')
@@ -697,6 +732,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         print(f"📥 DELETE {self.path}")
         
         if self.path.startswith('/webapp/admin/products/'):
+            # Проверяем админские права
+            query_params = parse_qs(urlparse(self.path).query)
+            if not self.is_admin(query_params):
+                self.send_json(403, {"error": "Доступ запрещен"})
+                return
+            
             try:
                 # Извлекаем ID товара
                 path_parts = self.path.split('/')

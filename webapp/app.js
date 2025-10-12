@@ -62,11 +62,6 @@ class MobileShopApp {
             await this.checkAdminStatus();
             this.loadCart();
             
-            // ПРИНУДИТЕЛЬНО: Даем админские права для тестирования
-            this.isAdmin = true;
-            this.showAdminPanel();
-            console.log('🔧 ПРИНУДИТЕЛЬНО ВКЛЮЧЕНЫ АДМИНСКИЕ ПРАВА');
-            
             // Настройка интерфейса
             this.setupEventListeners();
             this.renderCurrentPage();
@@ -81,9 +76,9 @@ class MobileShopApp {
             console.log('✅ Приложение инициализировано');
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
-            // В случае ошибки все равно даем админские права
-            this.isAdmin = true;
-            this.showAdminPanel();
+            // В случае ошибки НЕ даем админские права
+            this.isAdmin = false;
+            console.log('🔒 Админские права НЕ предоставлены из-за ошибки');
         }
     }
 
@@ -139,7 +134,7 @@ class MobileShopApp {
                 }
             } catch (fallbackError) {
                 console.error('❌ Ошибка загрузки из статического файла:', fallbackError);
-                this.products = [];
+            this.products = [];
                 this.showNotification('Не удалось загрузить товары. Проверьте подключение к серверу.', 'error');
             }
         }
@@ -190,9 +185,9 @@ class MobileShopApp {
             }
         } catch (error) {
             console.warn('Не удалось проверить статус администратора:', error);
-            // В случае ошибки даем админские права для тестирования
-            this.isAdmin = true;
-            this.showAdminPanel();
+            // В случае ошибки НЕ даем админские права
+            this.isAdmin = false;
+            console.log('🔒 Админские права НЕ предоставлены из-за ошибки проверки');
         }
     }
 
@@ -347,7 +342,7 @@ class MobileShopApp {
                         <select class="size-select" data-product-id="${product.id}">
                             <option value="">Выберите размер</option>
                             ${product.sizes.map(size => `<option value="${size}">${size}</option>`).join('')}
-                        </select>
+        </select>
                     ` : ''}
                     
                     <div class="qty-controls">
@@ -450,11 +445,11 @@ class MobileShopApp {
             console.log('📡 Ответ админ-API:', response.status, response.statusText);
             
             if (response.ok) {
-                const data = await response.json();
+            const data = await response.json();
                 console.log('📋 Данные админ-API:', data);
-                this.adminProducts = data.products || [];
+            this.adminProducts = data.products || [];
                 console.log('✅ Загружено товаров для админа:', this.adminProducts.length);
-                this.renderAdminProducts(this.adminProducts);
+            this.renderAdminProducts(this.adminProducts);
             } else {
                 console.error('❌ Ошибка загрузки товаров для админа:', response.status);
                 // Используем основные товары как fallback
@@ -515,16 +510,16 @@ class MobileShopApp {
                     </div>
                     <div class="admin-product-status ${isActive ? 'active' : 'inactive'}">
                         ${isActive ? '✅ Активен' : '❌ Неактивен'}
-                    </div>
-                </div>
+        </div>
+      </div>
                 <div class="admin-product-actions">
                     ${isActive ? `
                         <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})" title="Редактировать товар">
-                            ✏️ Редактировать
-                        </button>
+                        ✏️ Редактировать
+                    </button>
                         <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})" title="Удалить товар">
-                            🗑️ Удалить
-                        </button>
+                        🗑️ Удалить
+                    </button>
                     ` : `
                         <button class="btn btn-secondary btn-sm" disabled title="Товар удален">
                             ❌ Удален
@@ -534,8 +529,8 @@ class MobileShopApp {
                         </button>
                     `}
                 </div>
-            </div>
-        `;
+      </div>
+    `;
     }
 
     updateAdminStats() {
@@ -674,8 +669,12 @@ class MobileShopApp {
     showAddProductModal() {
         console.log('➕ Показываем форму добавления товара, isAdmin:', this.isAdmin);
         
-        // Принудительно даем админские права
-        this.isAdmin = true;
+        // Проверяем админские права
+        if (!this.isAdmin) {
+            console.log('❌ Доступ запрещен: нет админских прав');
+            this.showNotification('Доступ запрещен', 'error');
+            return;
+        }
         
         this.editingProduct = null;
         document.getElementById('product-modal-title').textContent = '➕ Добавить товар';
@@ -695,8 +694,12 @@ class MobileShopApp {
     }
 
     async editProduct(productId) {
-        // Принудительно даем админские права
-        this.isAdmin = true;
+        // Проверяем админские права
+        if (!this.isAdmin) {
+            console.log('❌ Доступ запрещен: нет админских прав');
+            this.showNotification('Доступ запрещен', 'error');
+            return;
+        }
         
         console.log('✏️ Редактируем товар:', productId);
         console.log('🔍 Доступно товаров:', this.products.length);
@@ -748,6 +751,13 @@ class MobileShopApp {
     }
 
     async restoreProduct(productId) {
+        // Проверяем админские права
+        if (!this.isAdmin) {
+            console.log('❌ Доступ запрещен: нет админских прав');
+            this.showNotification('Доступ запрещен', 'error');
+            return;
+        }
+        
         console.log('🔄 Восстанавливаем товар:', productId);
         
         if (!confirm(`Вы уверены, что хотите восстановить товар #${productId}?`)) {
@@ -794,8 +804,12 @@ class MobileShopApp {
     }
 
     async deleteProduct(productId) {
-        // Принудительно даем админские права
-        this.isAdmin = true;
+        // Проверяем админские права
+        if (!this.isAdmin) {
+            console.log('❌ Доступ запрещен: нет админских прав');
+            this.showNotification('Доступ запрещен', 'error');
+            return;
+        }
         
         console.log('🗑️ Удаляем товар:', productId);
         console.log('🔍 Тип productId:', typeof productId);
@@ -1575,7 +1589,7 @@ function contactAdmin() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Инициализация приложения...');
     try {
-        window.mobileShopApp = new MobileShopApp();
+    window.mobileShopApp = new MobileShopApp();
         console.log('✅ Приложение инициализировано успешно');
         console.log('🔍 mobileShopApp:', window.mobileShopApp);
     } catch (error) {
