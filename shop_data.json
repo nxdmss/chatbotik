@@ -27,5 +27,29 @@
     "description": "",
     "image": "✅",
     "photo": ""
+  },
+  {
+    "id": 5,
+    "title": "Тест в Replit",
+    "price": 555,
+    "description": "",
+    "image": "🚀",
+    "photo": ""
+  },
+  {
+    "id": 6,
+    "title": "Рабочий тест",
+    "price": 333,
+    "description": "",
+    "image": "✅",
+    "photo": ""
+  },
+  {
+    "id": 7,
+    "title": "Тест с фото",
+    "price": 999,
+    "description": "",
+    "image": "📷",
+    "photo": ""
   }
 ]

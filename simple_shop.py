@@ -19,19 +19,27 @@ if not os.path.exists(UPLOADS_DIR):
 def save_photo(photo_data, filename):
     """Сохранение фотографии"""
     try:
+        print(f"📷 Получены данные фото: {len(photo_data)} символов")
+        
         # Убираем data:image/jpeg;base64, если есть
         if ',' in photo_data:
-            photo_data = photo_data.split(',')[1]
+            header, photo_data = photo_data.split(',', 1)
+            print(f"📷 Заголовок: {header}")
         
         # Декодируем base64
-        photo_bytes = base64.b64decode(photo_data)
+        try:
+            photo_bytes = base64.b64decode(photo_data)
+            print(f"📷 Декодировано: {len(photo_bytes)} байт")
+        except Exception as decode_error:
+            print(f"❌ Ошибка декодирования base64: {decode_error}")
+            return ""
         
         # Сохраняем файл
         filepath = os.path.join(UPLOADS_DIR, filename)
         with open(filepath, 'wb') as f:
             f.write(photo_bytes)
         
-        print(f"📷 Фото сохранено: {filename}")
+        print(f"✅ Фото сохранено: {filename} ({len(photo_bytes)} байт)")
         return f"/uploads/{filename}"
     except Exception as e:
         print(f"❌ Ошибка сохранения фото: {e}")
@@ -134,7 +142,10 @@ Access-Control-Allow-Origin: *
                     
                     if content_length > 0:
                         post_data = request.split('\r\n\r\n')[1][:content_length]
+                        print(f"📥 Получены данные: {len(post_data)} символов")
+                        
                         data = json.loads(post_data)
+                        print(f"📥 JSON данные: {list(data.keys())}")
                         
                         max_id = max([p['id'] for p in products]) if products else 0
                         
@@ -142,7 +153,10 @@ Access-Control-Allow-Origin: *
                         photo_url = ""
                         if data.get('photo'):
                             filename = f"product_{max_id + 1}_{uuid.uuid4().hex[:8]}.jpg"
+                            print(f"📷 Сохраняем фото: {filename}")
                             photo_url = save_photo(data['photo'], filename)
+                        else:
+                            print("📷 Фото не предоставлено")
                         
                         new_product = {
                             "id": max_id + 1,
@@ -219,17 +233,29 @@ Access-Control-Allow-Origin: *
         elif parsed_path.path.startswith('/uploads/'):
             try:
                 file_path = parsed_path.path[1:]  # Убираем первый /
+                print(f"📷 Запрос файла: {file_path}")
+                
                 if os.path.exists(file_path):
                     with open(file_path, 'rb') as f:
                         file_content = f.read()
                     
+                    # Определяем тип файла по расширению
+                    content_type = "image/jpeg"
+                    if file_path.lower().endswith('.png'):
+                        content_type = "image/png"
+                    elif file_path.lower().endswith('.gif'):
+                        content_type = "image/gif"
+                    
+                    print(f"📷 Отдаем файл: {file_path} ({len(file_content)} байт, {content_type})")
+                    
                     response = f"""HTTP/1.1 200 OK
-Content-Type: image/jpeg
+Content-Type: {content_type}
 Content-Length: {len(file_content)}
 
 """
                     response = response.encode() + file_content
                 else:
+                    print(f"❌ Файл не найден: {file_path}")
                     response_body = "<h1>404 - File not found</h1>"
                     response = f"""HTTP/1.1 404 Not Found
 Content-Type: text/html; charset=utf-8
@@ -248,6 +274,16 @@ Content-Length: {len(response_body.encode('utf-8'))}
         # Тестовая страница
         elif parsed_path.path == '/test':
             with open('test_add.html', 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            response = f"""HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: {len(html_content.encode('utf-8'))}
+
+{html_content}"""
+        
+        # Тестовая страница для фото
+        elif parsed_path.path == '/test-photo':
+            with open('test_photo.html', 'r', encoding='utf-8') as f:
                 html_content = f.read()
             response = f"""HTTP/1.1 200 OK
 Content-Type: text/html; charset=utf-8

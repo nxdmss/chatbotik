@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест фото</title>
+</head>
+<body>
+    <h1>Тест загрузки фото</h1>
+    <input type="file" id="photoInput" accept="image/*">
+    <button onclick="testPhoto()">Тест фото</button>
+    <div id="result"></div>
+
+    <script>
+        let selectedPhoto = null;
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedPhoto = e.target.result;
+                    document.getElementById('result').innerHTML = 
+                        `<p>Фото выбрано: ${file.name} (${Math.round(file.size/1024)} KB)</p>`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function testPhoto() {
+            if (!selectedPhoto) {
+                alert('Выберите фото!');
+                return;
+            }
+
+            try {
+                const data = {
+                    title: "Тест фото из браузера",
+                    price: 555,
+                    description: "",
+                    image: "📷",
+                    photo: selectedPhoto
+                };
+                
+                console.log('Отправляем данные:', {
+                    title: data.title,
+                    price: data.price,
+                    photoLength: data.photo.length
+                });
+                
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Password': 'admin123'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML += 
+                    `<p>Результат: ${JSON.stringify(result)}</p>`;
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML += 
+                    `<p>Ошибка: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
