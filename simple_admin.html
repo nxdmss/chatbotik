@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Админ Панель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px 0;
+            border-bottom: 2px solid #4CAF50;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+        
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-btn:hover {
+            background: #555;
+        }
+        
+        .admin-section {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1em;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        
+        .products-list {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .product-item {
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .product-info h3 {
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        
+        .product-info p {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+        
+        .product-price {
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .success {
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .product-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .product-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Назад в магазин</a>
+        
+        <!-- Заголовок -->
+        <div class="header">
+            <h1>⚙️ Админ Панель</h1>
+            <p>Управление товарами</p>
+        </div>
+        
+        <!-- Добавление товара -->
+        <div class="admin-section">
+            <h2 class="section-title">➕ Добавить товар</h2>
+            <form id="addProductForm">
+                <div class="form-group">
+                    <label for="title">Название товара:</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Описание:</label>
+                    <textarea id="description" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="price">Цена (₽):</label>
+                    <input type="number" id="price" name="price" min="0" step="1" required>
+                </div>
+                <button type="submit" class="btn">➕ Добавить товар</button>
+            </form>
+        </div>
+        
+        <!-- Список товаров -->
+        <div class="admin-section">
+            <h2 class="section-title">📦 Список товаров</h2>
+            <div id="productsList" class="loading">
+                📦 Загружаем товары...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Загрузка товаров
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/products');
+                const products = await response.json();
+                renderProducts(products);
+            } catch (error) {
+                document.getElementById('productsList').innerHTML = 
+                    '<div class="error">❌ Ошибка загрузки товаров</div>';
+            }
+        }
+        
+        // Отображение товаров
+        function renderProducts(products) {
+            const container = document.getElementById('productsList');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="loading">😔 Товары не найдены</div>';
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <div class="product-item">
+                    <div class="product-info">
+                        <h3>${product.title}</h3>
+                        <p>${product.description}</p>
+                        <div class="product-price">${product.price} ₽</div>
+                    </div>
+                    <div class="product-actions">
+                        <button class="btn btn-danger" onclick="deleteProduct(${product.id})">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Добавление товара
+        document.getElementById('addProductForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const productData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                price: parseInt(formData.get('price'))
+            };
+            
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(productData)
+                });
+                
+                if (response.ok) {
+                    showMessage('✅ Товар успешно добавлен!', 'success');
+                    e.target.reset();
+                    loadProducts();
+                } else {
+                    showMessage('❌ Ошибка добавления товара', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Ошибка сети', 'error');
+            }
+        });
+        
+        // Удаление товара
+        async function deleteProduct(productId) {
+            if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/products/${productId}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    showMessage('✅ Товар успешно удален!', 'success');
+                    loadProducts();
+                } else {
+                    showMessage('❌ Ошибка удаления товара', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Ошибка сети', 'error');
+            }
+        }
+        
+        // Показ сообщений
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            
+            document.querySelector('.container').insertBefore(messageDiv, document.querySelector('.admin-section'));
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+        
+        // Запуск
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+        });
+    </script>
+</body>
+</html>
