@@ -122,6 +122,9 @@ class PerfectShopApp {
         }
         
         console.log('📊 РЕЗУЛЬТАТ: Админ =', this.isAdmin ? 'ДА' : 'НЕТ');
+        
+        // Показываем результат прямо в интерфейсе
+        this.showDebugInfo();
     }
 
     showAdminPanel() {
@@ -152,6 +155,58 @@ class PerfectShopApp {
         // Дополнительная проверка
         console.log('📊 Статус админа:', this.isAdmin);
         console.log('📊 Всего элементов на странице:', document.querySelectorAll('*').length);
+    }
+
+    showDebugInfo() {
+        // Создаем видимое уведомление о статусе админа
+        const debugDiv = document.createElement('div');
+        debugDiv.id = 'debug-info';
+        debugDiv.style.cssText = `
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: ${this.isAdmin ? '#28a745' : '#dc3545'};
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 10000;
+            max-width: 300px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        `;
+        
+        let userId = 'не найден';
+        if (this.userInfo && this.userInfo.id) {
+            userId = this.userInfo.id.toString();
+        } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+        }
+        
+        debugDiv.innerHTML = `
+            <div>🔒 СТАТУС: ${this.isAdmin ? 'АДМИН' : 'КЛИЕНТ'}</div>
+            <div>📱 ID: ${userId}</div>
+            <div>🌐 WebApp: ${window.Telegram && window.Telegram.WebApp ? 'ДА' : 'НЕТ'}</div>
+            <div>⚙️ Админ панель: ${this.isAdmin ? 'ВКЛЮЧЕНА' : 'ВЫКЛЮЧЕНА'}</div>
+        `;
+        
+        // Удаляем старое уведомление если есть
+        const oldDebug = document.getElementById('debug-info');
+        if (oldDebug) {
+            oldDebug.remove();
+        }
+        
+        // Добавляем новое уведомление
+        document.body.appendChild(debugDiv);
+        
+        // Автоматически убираем через 10 секунд
+        setTimeout(() => {
+            if (debugDiv && debugDiv.parentNode) {
+                debugDiv.remove();
+            }
+        }, 10000);
+        
+        console.log('✅ Debug информация показана в интерфейсе');
     }
 
     // ===== НАВИГАЦИЯ =====
