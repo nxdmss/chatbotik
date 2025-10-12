@@ -364,13 +364,6 @@ class MobileShopApp {
                             ⚡ Быстрая покупка
                         </button>
                     </div>
-                    
-                    ${this.isAdmin ? `
-                        <div class="admin-product-actions" style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: center;">
-                            <button class="btn btn-sm" onclick="window.mobileShopApp.editProduct('${product.id}')" style="background: #2a2a2a; color: #fff; border: 1px solid #3a3a3a; padding: 0.25rem 0.5rem; font-size: 0.7rem;">✏️ Редактировать</button>
-                            <button class="btn btn-sm" onclick="deleteProduct(${product.id})" style="background: #d32f2f; color: #fff; border: 1px solid #f44336; padding: 0.25rem 0.5rem; font-size: 0.7rem;">🗑️ Удалить</button>
-                        </div>
-                    ` : ''}
                 </div>
             </div>
         `;

@@ -1,19 +1,19 @@
 /* Чистые стили для Telegram WebApp магазина */
 
 :root {
-    --primary-color: #1a237e;
-    --accent-color: #3f51b5;
-    --success-color: #2e7d32;
-    --danger-color: #c62828;
-    --warning-color: #f57c00;
-    --dark-color: #0d1421;
-    --light-color: #263238;
-    --border-color: #37474f;
+    --primary-color: #000000;
+    --accent-color: #1a1a1a;
+    --success-color: #00ff00;
+    --danger-color: #ff0000;
+    --warning-color: #ffff00;
+    --dark-color: #000000;
+    --light-color: #1a1a1a;
+    --border-color: #333333;
     --text-color: #ffffff;
-    --text-light: #b0bec5;
-    --shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.4);
-    --border-radius: 12px;
+    --text-light: #cccccc;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.9);
+    --border-radius: 8px;
     --transition: all 0.3s ease;
 }
 
@@ -25,7 +25,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0a0e1a;
+    background: #000000;
     color: var(--text-color);
     line-height: 1.5;
     min-height: 100vh;
@@ -44,12 +44,12 @@ body {
 /* ===== ЗАГОЛОВОК ===== */
 
 .header {
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    background: transparent;
     color: white;
     padding: 1rem;
     text-align: center;
     position: relative;
-    box-shadow: var(--shadow);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .header h1 {
@@ -161,19 +161,19 @@ body {
 /* ===== КАРТОЧКА ТОВАРА ===== */
 
 .product-card {
-    background: #1a1a1a;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    background: #000000;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
     overflow: hidden;
     transition: all 0.2s ease;
-    border: 1px solid #2a2a2a;
+    border: 1px solid #333333;
     padding: 0.75rem;
 }
 
 .product-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    border-color: #3a3a3a;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+    border-color: #555555;
 }
 
 .product-image {
@@ -401,15 +401,16 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-    color: white;
-    box-shadow: 0 2px 8px rgba(26, 35, 126, 0.4);
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #333333;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+    background: #cccccc;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(26, 35, 126, 0.5);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
 }
 
 .btn-outline {
@@ -716,11 +717,11 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: #1a1a1a;
-    border-top: 1px solid #2a2a2a;
+    background: #000000;
+    border-top: 1px solid #333333;
     display: flex;
     padding: 0.5rem;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.8);
     z-index: 1000;
 }
 
@@ -741,12 +742,12 @@ body {
 }
 
 .nav-item:hover {
-    background: #2a2a2a;
+    background: #333333;
     color: #ffffff;
 }
 
 .nav-item.active {
-    background: #3a3a3a;
+    background: #555555;
     color: #ffffff;
 }
 
