@@ -325,6 +325,28 @@ class PerfectShopApp {
         console.log('✅ Постоянная кнопка админа создана');
     }
 
+    // ===== ПРОСТАЯ ФУНКЦИЯ ВКЛЮЧЕНИЯ АДМИНА =====
+
+    enableAdmin() {
+        console.log('👑 ПРОСТОЕ ВКЛЮЧЕНИЕ АДМИНА');
+        this.isAdmin = true;
+        this.showAdminPanel();
+        this.showNotification('👑 Админ панель включена!', 'success');
+        
+        // Скрываем кнопку включения и показываем админ кнопку
+        const enableBtn = document.getElementById('enable-admin-btn');
+        const adminBtn = document.getElementById('admin-nav-btn');
+        
+        if (enableBtn) {
+            enableBtn.style.display = 'none';
+        }
+        if (adminBtn) {
+            adminBtn.style.display = 'block';
+        }
+        
+        console.log('✅ Админ включен простым способом');
+    }
+
     // ===== НАВИГАЦИЯ =====
 
     setupEventListeners() {
