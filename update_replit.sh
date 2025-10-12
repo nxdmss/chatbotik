@@ -27,16 +27,24 @@ fi
 echo ""
 echo "🛑 Останавливаем старый сервер..."
 
+# Агрессивная остановка всех Python процессов
+echo "🔪 Убиваем все Python процессы..."
+pkill -9 -f "python" 2>/dev/null
+pkill -9 -f "perfect_server" 2>/dev/null
+pkill -9 -f "main.py" 2>/dev/null
+
 # Пытаемся использовать lsof (если есть)
 if command -v lsof &> /dev/null; then
+    echo "🔍 Ищем процессы на порту 8000..."
     lsof -ti :8000 | xargs kill -9 2>/dev/null
-else
-    # Альтернатива для систем без lsof (например, некоторые версии Replit)
-    pkill -9 -f "python.*perfect_server" 2>/dev/null
-    pkill -9 -f "python.*main.py" 2>/dev/null
 fi
 
-sleep 2
+# Дополнительные попытки
+fuser -k 8000/tcp 2>/dev/null
+killall -9 python 2>/dev/null
+killall -9 python3 2>/dev/null
+
+sleep 3
 echo "✅ Сервер остановлен"
 
 # Проверяем базу данных
