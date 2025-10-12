@@ -296,23 +296,63 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
             return
         
         # Фото товаров - перенаправляем с /webapp/static/uploads/ на /webapp/uploads/
-        elif '/webapp/static/uploads/' in self.path:
-            # Заменяем путь
-            real_path = self.path.replace('/webapp/static/uploads/', 'webapp/uploads/')
+        elif '/webapp/static/uploads/' in self.path or '/webapp/uploads/' in self.path:
+            # Убираем query параметры если есть
+            clean_path = self.path.split('?')[0]
+            
+            # Заменяем путь на реальный
+            if '/webapp/static/uploads/' in clean_path:
+                real_path = clean_path.replace('/webapp/static/uploads/', 'webapp/uploads/')
+            else:
+                real_path = clean_path.replace('/webapp/uploads/', 'webapp/uploads/')
+            
+            print(f"🖼️ Запрос фото: {self.path} -> {real_path}")
+            
             try:
                 with open(real_path, 'rb') as f:
                     self.send_response(200)
-                    if real_path.endswith('.jpg') or real_path.endswith('.jpeg'):
+                    # Определяем MIME тип
+                    if real_path.lower().endswith(('.jpg', '.jpeg')):
                         self.send_header('Content-type', 'image/jpeg')
-                    elif real_path.endswith('.png'):
+                    elif real_path.lower().endswith('.png'):
                         self.send_header('Content-type', 'image/png')
-                    elif real_path.endswith('.gif'):
+                    elif real_path.lower().endswith('.gif'):
                         self.send_header('Content-type', 'image/gif')
+                    elif real_path.lower().endswith('.webp'):
+                        self.send_header('Content-type', 'image/webp')
+                    else:
+                        self.send_header('Content-type', 'application/octet-stream')
+                    
+                    # Добавляем заголовки кеширования
+                    self.send_header('Cache-Control', 'public, max-age=86400')
                     self.end_headers()
                     self.wfile.write(f.read())
+                print(f"✅ Фото отправлено: {real_path}")
                 return
             except FileNotFoundError:
+                print(f"❌ Фото не найдено: {real_path}")
+                # Пытаемся найти в альтернативных местах
+                alt_paths = [
+                    real_path.replace('webapp/uploads/', 'webapp/static/uploads/'),
+                    'webapp/static/uploads/default.jpg'
+                ]
+                for alt_path in alt_paths:
+                    try:
+                        with open(alt_path, 'rb') as f:
+                            self.send_response(200)
+                            self.send_header('Content-type', 'image/jpeg')
+                            self.end_headers()
+                            self.wfile.write(f.read())
+                        print(f"✅ Фото найдено в альтернативном месте: {alt_path}")
+                        return
+                    except FileNotFoundError:
+                        continue
+                
                 self.send_error(404, f"File not found: {real_path}")
+                return
+            except Exception as e:
+                print(f"❌ Ошибка чтения фото: {e}")
+                self.send_error(500, f"Error reading file: {str(e)}")
                 return
         
         # Статические файлы
