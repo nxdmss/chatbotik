@@ -10,7 +10,25 @@ class MobileShopApp {
         this.currentPage = 'catalog';
         this.editingProduct = null;
         
+        // Определяем базовый URL для API
+        this.API_BASE = this.getApiBase();
+        console.log('🔗 API Base URL:', this.API_BASE);
+        
         this.init();
+    }
+    
+    getApiBase() {
+        // Если запущено в Telegram Web App, используем полный URL
+        if (window.Telegram?.WebApp?.initDataUnsafe) {
+            // Получаем URL из текущего окна или используем стандартный
+            const currentUrl = window.location.origin;
+            // В Replit обычно URL вида https://PROJECT-NAME.USERNAME.repl.co
+            if (currentUrl.includes('repl.co') || currentUrl.includes('replit')) {
+                return currentUrl;
+            }
+        }
+        // Для локальной разработки и обычного браузера
+        return '';  // Относительные пути
     }
 
     async init() {
@@ -76,7 +94,7 @@ class MobileShopApp {
             console.log('📦 Загружаем товары...');
             
             // Сначала пытаемся загрузить из API
-            const response = await fetch('/webapp/products.json', {
+            const response = await fetch(`${this.API_BASE}/webapp/products.json`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -97,7 +115,7 @@ class MobileShopApp {
             // Если товаров нет, загружаем из статического файла как fallback
             if (this.products.length === 0) {
                 console.log('⚠️ Товары не найдены в API, загружаем из статического файла...');
-                const fallbackResponse = await fetch('/webapp/static/products.json');
+                const fallbackResponse = await fetch(`${this.API_BASE}/webapp/static/products.json`);
                 if (fallbackResponse.ok) {
                     const fallbackData = await fallbackResponse.json();
                     this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
@@ -111,7 +129,7 @@ class MobileShopApp {
             // В случае ошибки пытаемся загрузить из статического файла
             try {
                 console.log('🔄 Пытаемся загрузить из статического файла...');
-                const fallbackResponse = await fetch('/webapp/static/products.json');
+                const fallbackResponse = await fetch(`${this.API_BASE}/webapp/static/products.json`);
                 if (fallbackResponse.ok) {
                     const fallbackData = await fallbackResponse.json();
                     this.products = Array.isArray(fallbackData) ? fallbackData : (fallbackData.products || []);
@@ -426,7 +444,10 @@ class MobileShopApp {
     async loadAdminProducts() {
         try {
             console.log('📦 Загружаем товары для админ-панели...');
-            const response = await fetch('/webapp/admin/products?user_id=admin', {
+            const url = `${this.API_BASE}/webapp/admin/products?user_id=admin`;
+            console.log('📡 Запрос к:', url);
+            
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -744,7 +765,7 @@ class MobileShopApp {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
             
-            const response = await fetch(`/webapp/admin/products/${numericId}?user_id=admin`, {
+            const response = await fetch(`${this.API_BASE}/webapp/admin/products/${numericId}?user_id=admin`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -814,8 +835,8 @@ class MobileShopApp {
             console.log('📋 Данные формы:', Object.fromEntries(formData.entries()));
             
             const url = this.editingProduct 
-                ? `/webapp/admin/products/${this.editingProduct.id}?user_id=admin`
-                : '/webapp/admin/products?user_id=admin';
+                ? `${this.API_BASE}/webapp/admin/products/${this.editingProduct.id}?user_id=admin`
+                : `${this.API_BASE}/webapp/admin/products?user_id=admin`;
             
             const method = this.editingProduct ? 'PUT' : 'POST';
             
