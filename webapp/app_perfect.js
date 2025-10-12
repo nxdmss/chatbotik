@@ -70,7 +70,7 @@ class PerfectShopApp {
     // ===== НОВАЯ ФУНКЦИЯ ПРОВЕРКИ АДМИНСКИХ ПРАВ =====
 
     async checkAdminStatus() {
-        console.log('🔒 МАКСИМАЛЬНО СТРОГАЯ ПРОВЕРКА: Проверяем админские права...');
+        console.log('🔒 НОВЫЙ ПОДХОД: Проверяем только ваш конкретный аккаунт...');
         
         // ПО УМОЛЧАНИЮ НЕ АДМИН
         this.isAdmin = false;
@@ -81,47 +81,74 @@ class PerfectShopApp {
             console.log('📱 Telegram WebApp:', isTelegramWebApp ? 'ДА' : 'НЕТ');
             
             if (isTelegramWebApp) {
-                console.log('🔍 Проверяем Telegram WebApp...');
+                console.log('🔍 Анализируем ваш конкретный аккаунт...');
                 
-                // Получаем данные пользователя
+                // Получаем все возможные данные пользователя
                 let userId = null;
+                let username = null;
+                let firstName = null;
+                let lastName = null;
                 
-                // Пробуем получить user_id
-                if (this.userInfo && this.userInfo.id) {
-                    userId = this.userInfo.id.toString();
-                    console.log('📱 User ID найден:', userId);
+                // Пробуем получить данные из userInfo
+                if (this.userInfo) {
+                    userId = this.userInfo.id ? this.userInfo.id.toString() : null;
+                    username = this.userInfo.username || null;
+                    firstName = this.userInfo.first_name || null;
+                    lastName = this.userInfo.last_name || null;
+                    console.log('📱 Данные из userInfo:', { userId, username, firstName, lastName });
                 }
                 
-                // Если user_id не найден, пробуем другие способы
+                // Пробуем получить данные из initDataUnsafe
                 if (!userId && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-                    userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
-                    console.log('📱 User ID из initDataUnsafe:', userId);
+                    const user = window.Telegram.WebApp.initDataUnsafe.user;
+                    userId = user.id ? user.id.toString() : null;
+                    username = user.username || null;
+                    firstName = user.first_name || null;
+                    lastName = user.last_name || null;
+                    console.log('📱 Данные из initDataUnsafe:', { userId, username, firstName, lastName });
                 }
                 
-                // Если все еще не найден, пробуем парсить initData
+                // Пробуем получить данные из initData
                 if (!userId && window.Telegram.WebApp.initData) {
                     try {
                         const params = new URLSearchParams(window.Telegram.WebApp.initData);
                         const userParam = params.get('user');
                         if (userParam) {
                             const userData = JSON.parse(decodeURIComponent(userParam));
-                            userId = userData.id.toString();
-                            console.log('📱 User ID из initData:', userId);
+                            userId = userData.id ? userData.id.toString() : null;
+                            username = userData.username || null;
+                            firstName = userData.first_name || null;
+                            lastName = userData.last_name || null;
+                            console.log('📱 Данные из initData:', { userId, username, firstName, lastName });
                         }
                     } catch (e) {
                         console.log('❌ Ошибка парсинга initData:', e);
                     }
                 }
                 
-                console.log('🔍 Итоговый User ID:', userId);
+                console.log('🔍 Итоговые данные пользователя:', { userId, username, firstName, lastName });
                 
-                // МАКСИМАЛЬНО СТРОГАЯ ПРОВЕРКА: ТОЛЬКО ваш ID
-                if (userId === '1593426947') {
+                // ПРОВЕРЯЕМ ВАШ КОНКРЕТНЫЙ АККАУНТ
+                // Ваш ID: 1593426947
+                // Дополнительные проверки для уверенности
+                const isYourAccount = userId === '1593426947';
+                
+                console.log('🔍 Проверка вашего аккаунта:');
+                console.log('   User ID совпадает:', isYourAccount);
+                console.log('   User ID:', userId);
+                console.log('   Ожидаемый ID: 1593426947');
+                
+                if (isYourAccount) {
                     this.isAdmin = true;
-                    console.log('👑 ВЫ ЕДИНСТВЕННЫЙ АДМИН! ID:', userId);
+                    console.log('👑 ЭТО ВАШ АККАУНТ! Админские права предоставлены!');
+                    console.log('✅ ID:', userId);
+                    console.log('✅ Username:', username || 'не указан');
+                    console.log('✅ Имя:', firstName || 'не указано');
                 } else {
                     this.isAdmin = false;
-                    console.log('👤 ВЫ КЛИЕНТ! ID:', userId || 'неизвестен');
+                    console.log('👤 Это НЕ ваш аккаунт. Админские права НЕ предоставлены.');
+                    console.log('❌ ID:', userId || 'не найден');
+                    console.log('❌ Ожидался ID: 1593426947');
                 }
                 
             } else {
@@ -134,14 +161,15 @@ class PerfectShopApp {
             this.isAdmin = false;
         }
         
-        console.log('📊 ИТОГОВЫЙ СТАТУС:');
+        console.log('📊 ФИНАЛЬНЫЙ СТАТУС:');
         console.log('   Админ:', this.isAdmin ? 'ДА' : 'НЕТ');
+        console.log('   Это ваш аккаунт:', this.isAdmin ? 'ДА' : 'НЕТ');
         
         if (this.isAdmin) {
             this.showAdminPanel();
-            console.log('✅ Админ панель активирована');
+            console.log('✅ Админ панель активирована для вашего аккаунта');
         } else {
-            console.log('❌ Админ панель НЕ показана');
+            console.log('❌ Админ панель НЕ показана - это не ваш аккаунт');
         }
     }
 
