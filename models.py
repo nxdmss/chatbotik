@@ -221,3 +221,37 @@ class AdminAction(BaseModel):
         if v not in allowed_actions:
             raise ValueError(f'Недопустимое действие: {v}')
         return v
+
+
+class Review(BaseModel):
+    """Модель отзыва"""
+    id: Optional[int] = None
+    user_id: str = Field(..., min_length=1)
+    username: str = Field(..., min_length=1, max_length=100)
+    text: str = Field(..., min_length=10, max_length=1000)
+    rating: int = Field(..., ge=1, le=5)
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    is_approved: bool = Field(default=False)
+    
+    @field_validator('text')
+    @classmethod
+    def validate_text(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Текст отзыва не может быть пустым')
+        # Очищаем от потенциально опасных символов
+        cleaned = re.sub(r'[<>"\']', '', v.strip())
+        if len(cleaned) < 10:
+            raise ValueError('Отзыв слишком короткий (минимум 10 символов)')
+        if len(cleaned) > 1000:
+            raise ValueError('Отзыв слишком длинный (максимум 1000 символов)')
+        return cleaned
+    
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Имя пользователя не может быть пустым')
+        cleaned = re.sub(r'[<>"\']', '', v.strip())
+        if len(cleaned) < 1:
+            raise ValueError('Имя пользователя слишком короткое')
+        return cleaned

@@ -48,6 +48,19 @@ class Database:
                 )
             """)
             
+            # Таблица отзывов
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS reviews (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_approved BOOLEAN DEFAULT FALSE
+                )
+            """)
+            
             # Таблица заказов
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS orders (
@@ -414,6 +427,133 @@ class Database:
             except Exception as e:
                 logger.error(f"Ошибка создания товара: {e}")
                 return None
+    
+    def create_reviews_table(self):
+        """Создает таблицу отзывов"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS reviews (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_approved BOOLEAN DEFAULT FALSE
+                )
+            """)
+            conn.commit()
+            logger.info("Таблица отзывов создана/проверена")
+    
+    async def add_review(self, user_id: str, username: str, text: str, rating: int) -> bool:
+        """Добавляет новый отзыв"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Проверяем, есть ли уже отзыв от этого пользователя
+                cursor.execute("SELECT COUNT(*) FROM reviews WHERE user_id = ?", (user_id,))
+                existing_reviews = cursor.fetchone()[0]
+                
+                if existing_reviews > 0:
+                    logger.warning(f"Пользователь {user_id} уже оставлял отзыв")
+                    return False
+                
+                cursor.execute("""
+                    INSERT INTO reviews (user_id, username, text, rating, is_approved)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user_id, username, text, rating, False))
+                
+                conn.commit()
+                logger.info(f"Добавлен отзыв от пользователя {user_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Ошибка добавления отзыва: {e}")
+            return False
+    
+    async def get_approved_reviews(self, limit: int = 10) -> List[Dict]:
+        """Получает одобренные отзывы"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT * FROM reviews 
+                    WHERE is_approved = TRUE 
+                    ORDER BY created_at DESC 
+                    LIMIT ?
+                """, (limit,))
+                
+                reviews = [dict(row) for row in cursor.fetchall()]
+                logger.info(f"Получено {len(reviews)} одобренных отзывов")
+                return reviews
+        except Exception as e:
+            logger.error(f"Ошибка получения отзывов: {e}")
+            return []
+    
+    async def get_all_reviews(self, limit: int = 50) -> List[Dict]:
+        """Получает все отзывы (для админа)"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT * FROM reviews 
+                    ORDER BY created_at DESC 
+                    LIMIT ?
+                """, (limit,))
+                
+                reviews = [dict(row) for row in cursor.fetchall()]
+                logger.info(f"Получено {len(reviews)} отзывов")
+                return reviews
+        except Exception as e:
+            logger.error(f"Ошибка получения всех отзывов: {e}")
+            return []
+    
+    async def approve_review(self, review_id: int) -> bool:
+        """Одобряет отзыв"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    UPDATE reviews 
+                    SET is_approved = TRUE 
+                    WHERE id = ?
+                """, (review_id,))
+                
+                if cursor.rowcount > 0:
+                    conn.commit()
+                    logger.info(f"Отзыв {review_id} одобрен")
+                    return True
+                else:
+                    logger.warning(f"Отзыв {review_id} не найден")
+                    return False
+        except Exception as e:
+            logger.error(f"Ошибка одобрения отзыва: {e}")
+            return False
+    
+    async def delete_review(self, review_id: int) -> bool:
+        """Удаляет отзыв"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("DELETE FROM reviews WHERE id = ?", (review_id,))
+                
+                if cursor.rowcount > 0:
+                    conn.commit()
+                    logger.info(f"Отзыв {review_id} удален")
+                    return True
+                else:
+                    logger.warning(f"Отзыв {review_id} не найден")
+                    return False
+        except Exception as e:
+            logger.error(f"Ошибка удаления отзыва: {e}")
+            return False
 
 # Создаем глобальный экземпляр базы данных
 db = Database()

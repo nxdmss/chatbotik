@@ -27,7 +27,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from datetime import datetime
 
 # Импортируем наши модули
-from models import Product, CartItem, OrderCreate, Order
+from models import Product, CartItem, OrderCreate, Order, Review
 from logger_config import setup_logging, bot_logger
 from error_handlers import handle_errors, safe_send_message, validate_user_input, ValidationError
 from database import db
@@ -62,6 +62,9 @@ dp = Dispatcher(storage=storage)
 class AdminStates(StatesGroup):
     waiting_for_note = State()
 
+class ReviewStates(StatesGroup):
+    waiting_for_review = State()
+
 # ======================
 # 🔹 Вспомогательные функции
 # ======================
@@ -90,7 +93,8 @@ def main_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🛒 Каталог", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [KeyboardButton(text="📞 Связаться с нами"), KeyboardButton(text="❓ FAQ")]
+            [KeyboardButton(text="📞 Связаться с администратором"), KeyboardButton(text="⭐ Отзывы")],
+            [KeyboardButton(text="❓ FAQ")]
         ],
         resize_keyboard=True
     )
@@ -101,7 +105,19 @@ def admin_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="🛒 Каталог", web_app=WebAppInfo(url=WEBAPP_URL))],
             [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Клиенты")],
-            [KeyboardButton(text="📞 Связаться с нами"), KeyboardButton(text="❓ FAQ")]
+            [KeyboardButton(text="📞 Связаться с нами"), KeyboardButton(text="⭐ Отзывы")],
+            [KeyboardButton(text="❓ FAQ")]
+        ],
+        resize_keyboard=True
+    )
+
+def reviews_kb() -> ReplyKeyboardMarkup:
+    """Клавиатура отзывов"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✍️ Написать отзыв")],
+            [KeyboardButton(text="👀 Посмотреть отзывы")],
+            [KeyboardButton(text="🔙 Назад")]
         ],
         resize_keyboard=True
     )
@@ -194,6 +210,119 @@ async def faq(msg: Message):
         "A: Обычно 1-3 рабочих дня\n\n"
         "**Q: Можно ли отменить заказ?**\n"
         "A: Да, в течение 1 часа после оформления",
+        reply_markup=get_user_kb(user_id)
+    )
+
+@dp.message(F.text == "📞 Связаться с администратором")
+@handle_errors
+async def contact_admin(msg: Message):
+    """Обработчик кнопки 'Связаться с администратором'"""
+    user_id = str(msg.chat.id)
+    
+    await msg.answer(
+        "📞 **Связь с администратором**\n\n"
+        "Напишите ваше сообщение, и администратор свяжется с вами в ближайшее время.\n\n"
+        "💬 Просто отправьте текстовое сообщение в этот чат.\n"
+        "⏰ Время ответа: до 24 часов",
+        reply_markup=get_user_kb(user_id)
+    )
+
+@dp.message(F.text == "⭐ Отзывы")
+@handle_errors
+async def reviews_menu(msg: Message):
+    """Обработчик кнопки 'Отзывы'"""
+    user_id = str(msg.chat.id)
+    
+    await msg.answer(
+        "⭐ **Отзывы**\n\n"
+        "Здесь вы можете:\n"
+        "• ✍️ Написать свой отзыв о нашем магазине\n"
+        "• 👀 Посмотреть отзывы других покупателей\n\n"
+        "Выберите действие:",
+        reply_markup=reviews_kb()
+    )
+
+@dp.message(F.text == "✍️ Написать отзыв")
+@handle_errors
+async def write_review(msg: Message, state: FSMContext):
+    """Обработчик кнопки 'Написать отзыв'"""
+    user_id = str(msg.chat.id)
+    
+    # Проверяем, есть ли уже отзыв от этого пользователя
+    reviews = await db.get_all_reviews()
+    user_review = next((r for r in reviews if r['user_id'] == user_id), None)
+    
+    if user_review:
+        await msg.answer(
+            "⚠️ **Вы уже оставляли отзыв!**\n\n"
+            f"Ваш отзыв:\n"
+            f"⭐ Рейтинг: {user_review['rating']}/5\n"
+            f"📝 Текст: {user_review['text']}\n"
+            f"📅 Дата: {user_review['created_at']}\n"
+            f"✅ Статус: {'Одобрен' if user_review['is_approved'] else 'На модерации'}",
+            reply_markup=reviews_kb()
+        )
+        return
+    
+    await msg.answer(
+        "✍️ **Написать отзыв**\n\n"
+        "Пожалуйста, отправьте ваш отзыв в следующем формате:\n\n"
+        "**Рейтинг (1-5):** [оценка]\n"
+        "**Отзыв:** [текст отзыва]\n\n"
+        "**Пример:**\n"
+        "Рейтинг: 5\n"
+        "Отзыв: Отличный магазин! Быстрая доставка, качественные товары. Рекомендую!",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="🔙 Назад")]],
+            resize_keyboard=True
+        )
+    )
+    
+    await state.set_state(ReviewStates.waiting_for_review)
+
+@dp.message(F.text == "👀 Посмотреть отзывы")
+@handle_errors
+async def view_reviews(msg: Message):
+    """Обработчик кнопки 'Посмотреть отзывы'"""
+    user_id = str(msg.chat.id)
+    
+    reviews = await db.get_approved_reviews(limit=10)
+    
+    if not reviews:
+        await msg.answer(
+            "👀 **Отзывы**\n\n"
+            "😔 Пока нет одобренных отзывов.\n"
+            "Станьте первым, кто оставит отзыв!",
+            reply_markup=reviews_kb()
+        )
+        return
+    
+    response = "👀 **Отзывы наших покупателей**\n\n"
+    
+    for i, review in enumerate(reviews, 1):
+        stars = "⭐" * review['rating']
+        username = review['username']
+        text = review['text']
+        date = review['created_at'][:10]  # Только дата
+        
+        response += f"**{i}. {username}** {stars}\n"
+        response += f"📝 {text}\n"
+        response += f"📅 {date}\n\n"
+    
+    if len(response) > 4000:
+        response = response[:4000] + "\n\n... (показаны последние отзывы)"
+    
+    await msg.answer(response, reply_markup=reviews_kb())
+
+@dp.message(F.text == "🔙 Назад")
+@handle_errors
+async def back_to_main(msg: Message, state: FSMContext):
+    """Обработчик кнопки 'Назад'"""
+    user_id = str(msg.chat.id)
+    await state.clear()
+    
+    await msg.answer(
+        "🔙 Возвращаемся в главное меню",
         reply_markup=get_user_kb(user_id)
     )
 
@@ -342,6 +471,106 @@ async def process_add_product(msg: Message, data: dict):
     except Exception as e:
         bot_logger.logger.error("Error adding product", error=str(e))
         await msg.answer("❌ Ошибка при добавлении товара.")
+
+# ======================
+# 🔹 Обработчики состояний
+# ======================
+
+@dp.message(ReviewStates.waiting_for_review)
+@handle_errors
+async def process_review(msg: Message, state: FSMContext):
+    """Обработчик получения отзыва"""
+    user_id = str(msg.chat.id)
+    text = msg.text
+    
+    try:
+        # Парсим отзыв
+        lines = text.strip().split('\n')
+        rating = None
+        review_text = ""
+        
+        for line in lines:
+            line = line.strip()
+            if line.lower().startswith('рейтинг'):
+                try:
+                    rating = int(line.split(':')[1].strip())
+                    if rating < 1 or rating > 5:
+                        rating = None
+                except (ValueError, IndexError):
+                    rating = None
+            elif line.lower().startswith('отзыв'):
+                review_text = ':'.join(line.split(':')[1:]).strip()
+        
+        # Валидация
+        if not rating:
+            await msg.answer(
+                "❌ **Ошибка в рейтинге**\n\n"
+                "Пожалуйста, укажите рейтинг от 1 до 5.\n"
+                "**Пример:** Рейтинг: 5",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard=[[KeyboardButton(text="🔙 Назад")]],
+                    resize_keyboard=True
+                )
+            )
+            return
+        
+        if not review_text or len(review_text) < 10:
+            await msg.answer(
+                "❌ **Ошибка в тексте отзыва**\n\n"
+                "Пожалуйста, напишите отзыв минимум 10 символов.\n"
+                "**Пример:** Отзыв: Отличный магазин! Рекомендую!",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard=[[KeyboardButton(text="🔙 Назад")]],
+                    resize_keyboard=True
+                )
+            )
+            return
+        
+        # Получаем имя пользователя
+        username = msg.from_user.username or msg.from_user.first_name or "Пользователь"
+        
+        # Добавляем отзыв в базу данных
+        success = await db.add_review(user_id, username, review_text, rating)
+        
+        if success:
+            await msg.answer(
+                "✅ **Отзыв отправлен на модерацию!**\n\n"
+                f"⭐ **Рейтинг:** {rating}/5\n"
+                f"📝 **Отзыв:** {review_text}\n\n"
+                "Спасибо за ваш отзыв! После модерации он появится в списке отзывов.",
+                reply_markup=get_user_kb(user_id)
+            )
+            
+            # Уведомляем админа
+            for admin_id in ADMINS:
+                try:
+                    await bot.send_message(
+                        admin_id,
+                        f"📝 **Новый отзыв на модерацию**\n\n"
+                        f"👤 **Пользователь:** {username} (ID: {user_id})\n"
+                        f"⭐ **Рейтинг:** {rating}/5\n"
+                        f"📝 **Отзыв:** {review_text}\n\n"
+                        f"Используйте команду /admin для управления отзывами"
+                    )
+                except Exception as e:
+                    bot_logger.logger.error(f"Failed to notify admin {admin_id}: {e}")
+        else:
+            await msg.answer(
+                "⚠️ **Ошибка отправки отзыва**\n\n"
+                "Возможно, вы уже оставляли отзыв ранее. Попробуйте позже.",
+                reply_markup=get_user_kb(user_id)
+            )
+    
+    except Exception as e:
+        bot_logger.logger.error(f"Error processing review: {e}")
+        await msg.answer(
+            "❌ **Ошибка обработки отзыва**\n\n"
+            "Пожалуйста, проверьте формат и попробуйте снова.",
+            reply_markup=get_user_kb(user_id)
+        )
+    
+    finally:
+        await state.clear()
 
 # ======================
 # 🔹 Обработчики платежей
