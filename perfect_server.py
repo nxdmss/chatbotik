@@ -10,6 +10,7 @@ import json
 import os
 import sqlite3
 import time
+import shutil
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 import traceback
@@ -22,7 +23,10 @@ class ProductManager:
     
     def __init__(self, db_path):
         self.db_path = db_path
+        self.backup_dir = "db_backups"
+        self.json_backup = "products_backup.json"
         self.init_database()
+        self.auto_backup()  # Автобэкап при запуске
     
     def init_database(self):
         """Инициализация базы данных"""
@@ -42,6 +46,50 @@ class ProductManager:
             """)
             conn.commit()
             print("✅ База данных инициализирована")
+    
+    def auto_backup(self):
+        """Автоматическое резервное копирование"""
+        try:
+            if not os.path.exists(self.db_path):
+                return
+            
+            # Создаем директорию для бэкапов
+            os.makedirs(self.backup_dir, exist_ok=True)
+            
+            # Бэкап файла БД
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = os.path.join(self.backup_dir, f"shop_backup_{timestamp}.db")
+            shutil.copy2(self.db_path, backup_path)
+            
+            # Экспорт в JSON
+            self.export_to_json()
+            
+            # Удаляем старые бэкапы (оставляем 10 последних)
+            self.cleanup_old_backups()
+            
+            print(f"💾 Автобэкап создан: {backup_path}")
+        except Exception as e:
+            print(f"⚠️ Ошибка автобэкапа: {e}")
+    
+    def export_to_json(self):
+        """Экспортировать товары в JSON"""
+        try:
+            products = self.get_all_products(active_only=False)
+            with open(self.json_backup, 'w', encoding='utf-8') as f:
+                json.dump(products, f, ensure_ascii=False, indent=2)
+            print(f"📄 JSON бэкап: {self.json_backup} ({len(products)} товаров)")
+        except Exception as e:
+            print(f"⚠️ Ошибка экспорта JSON: {e}")
+    
+    def cleanup_old_backups(self, keep_count=10):
+        """Удалить старые бэкапы"""
+        try:
+            backups = [f for f in os.listdir(self.backup_dir) if f.endswith('.db')]
+            backups.sort(reverse=True)
+            for backup in backups[keep_count:]:
+                os.remove(os.path.join(self.backup_dir, backup))
+        except Exception as e:
+            print(f"⚠️ Ошибка очистки бэкапов: {e}")
     
     def get_all_products(self, active_only=True):
         """Получить все товары"""
@@ -113,6 +161,10 @@ class ProductManager:
                 conn.commit()
                 product_id = cursor.lastrowid
                 print(f"✅ Товар добавлен в БД: ID={product_id}, {title}")
+                
+                # Автосохранение после добавления
+                self.export_to_json()
+                
                 return product_id
         except Exception as e:
             print(f"❌ Ошибка добавления в БД: {e}")
@@ -157,6 +209,10 @@ class ProductManager:
             cursor.execute(query, params)
             conn.commit()
             print(f"✅ Товар обновлен: ID={product_id}")
+            
+            # Автосохранение после обновления
+            self.export_to_json()
+            
             return True
     
     def delete_product(self, product_id):
@@ -177,6 +233,10 @@ class ProductManager:
             
             if result and result[0] == 0:
                 print(f"✅ Товар удален: ID={product_id}, {product['title']}")
+                
+                # Автосохранение после удаления
+                self.export_to_json()
+                
                 return True
             else:
                 print(f"❌ Ошибка удаления товара ID={product_id}")

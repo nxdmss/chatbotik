@@ -185,3 +185,6 @@ logs/
 *.log
 admin_msgs.json
 orders.json
+
+# Database backups (keep only products_backup.json in git)
+db_backups/
