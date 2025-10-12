@@ -80,14 +80,18 @@ class PerfectShopApp {
             let userId = null;
             
             if (window.Telegram && window.Telegram.WebApp) {
+                console.log('📱 Telegram WebApp найден');
+                
                 // Пробуем разные способы получить user ID
                 if (this.userInfo && this.userInfo.id) {
                     userId = this.userInfo.id.toString();
+                    console.log('📱 User ID из userInfo:', userId);
                 } else if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
                     userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+                    console.log('📱 User ID из initDataUnsafe:', userId);
                 }
                 
-                console.log('📱 User ID:', userId);
+                console.log('📱 Итоговый User ID:', userId);
                 
                 // Простая проверка: только ваш ID = админ
                 if (userId === '1593426947') {
@@ -110,6 +114,7 @@ class PerfectShopApp {
         
         // Показываем админ панель если админ
         if (this.isAdmin) {
+            console.log('🔧 Вызываем showAdminPanel()...');
             this.showAdminPanel();
             console.log('✅ Админ панель активирована');
         } else {
@@ -124,17 +129,29 @@ class PerfectShopApp {
         
         // Показываем кнопку админ-панели в навигации
         const adminNavBtn = document.getElementById('admin-nav-btn');
+        console.log('🔍 Ищем кнопку админа в навигации:', adminNavBtn);
+        
         if (adminNavBtn) {
             adminNavBtn.style.display = 'block';
             console.log('✅ Кнопка админ-панели показана');
+        } else {
+            console.log('❌ Кнопка админ-панели НЕ найдена!');
         }
         
         // Показываем кнопку добавления товара в каталоге
         const adminActions = document.getElementById('admin-actions');
+        console.log('🔍 Ищем кнопку добавления товара:', adminActions);
+        
         if (adminActions) {
             adminActions.style.display = 'block';
             console.log('✅ Кнопка добавления товара показана');
+        } else {
+            console.log('❌ Кнопка добавления товара НЕ найдена!');
         }
+        
+        // Дополнительная проверка
+        console.log('📊 Статус админа:', this.isAdmin);
+        console.log('📊 Всего элементов на странице:', document.querySelectorAll('*').length);
     }
 
     // ===== НАВИГАЦИЯ =====
