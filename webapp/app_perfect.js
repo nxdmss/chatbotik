@@ -57,13 +57,43 @@ class PerfectShopApp {
 
     async fetchProducts() {
         try {
-            const response = await fetch('/webapp/products.json');
-            const data = await response.json();
-            this.products = data.products || [];
-            console.log('📦 Загружено товаров:', this.products.length);
+            console.log('📦 Загружаем товары...');
+            const response = await fetch('/api/products');
+            if (response.ok) {
+                const products = await response.json();
+                this.products = products || [];
+                console.log('📦 Загружено товаров из API:', this.products.length);
+            } else {
+                console.log('⚠️ API недоступен, пробуем JSON файл...');
+                const response2 = await fetch('/webapp/products.json');
+                const data = await response2.json();
+                this.products = data.products || [];
+                console.log('📦 Загружено товаров из JSON:', this.products.length);
+            }
         } catch (error) {
             console.error('❌ Ошибка загрузки товаров:', error);
-            this.products = [];
+            // Создаем тестовые товары если ничего не загрузилось
+            this.products = [
+                {
+                    id: 1,
+                    title: 'Тестовый товар 1',
+                    description: 'Описание товара',
+                    price: 1000,
+                    sizes: ['M', 'L'],
+                    photo: '/webapp/static/uploads/default.jpg',
+                    active: true
+                },
+                {
+                    id: 2,
+                    title: 'Тестовый товар 2',
+                    description: 'Описание товара',
+                    price: 2000,
+                    sizes: ['S', 'M'],
+                    photo: '/webapp/static/uploads/default.jpg',
+                    active: true
+                }
+            ];
+            console.log('📦 Созданы тестовые товары:', this.products.length);
         }
     }
 
