@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест добавления</title>
+</head>
+<body>
+    <h1>Тест добавления товара</h1>
+    <button onclick="testAdd()">Добавить товар</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAdd() {
+            try {
+                const data = {
+                    title: "Тест из браузера",
+                    price: 999,
+                    description: "",
+                    image: "🧪",
+                    photo: ""
+                };
+                
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Password': 'admin123'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = 
+                    `<p>Результат: ${JSON.stringify(result)}</p>`;
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<p>Ошибка: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

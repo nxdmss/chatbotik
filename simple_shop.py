@@ -245,6 +245,16 @@ Content-Length: {len(response_body.encode('utf-8'))}
 
 {response_body}"""
         
+        # Тестовая страница
+        elif parsed_path.path == '/test':
+            with open('test_add.html', 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            response = f"""HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: {len(html_content.encode('utf-8'))}
+
+{html_content}"""
+        
         # Главная страница
         elif parsed_path.path == '/':
             html_content = """<!DOCTYPE html>
