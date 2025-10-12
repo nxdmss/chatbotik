@@ -187,6 +187,42 @@ product_manager = ProductManager(DB_PATH)
 class PerfectHandler(http.server.SimpleHTTPRequestHandler):
     """Идеальный обработчик запросов"""
     
+    def _parse_multipart(self, post_data, content_type):
+        """Парсинг multipart/form-data"""
+        try:
+            # Извлекаем boundary
+            boundary = content_type.split('boundary=')[1]
+            if boundary.startswith('"') and boundary.endswith('"'):
+                boundary = boundary[1:-1]
+            
+            # Разбиваем на части
+            parts = post_data.split(f'------{boundary}'.encode())
+            
+            result = {}
+            for part in parts:
+                if b'Content-Disposition' in part:
+                    # Ищем name
+                    try:
+                        name_start = part.find(b'name="') + 6
+                        name_end = part.find(b'"', name_start)
+                        name = part[name_start:name_end].decode('utf-8')
+                        
+                        # Ищем значение (после двойного переноса строки)
+                        value_start = part.find(b'\r\n\r\n') + 4
+                        value_end = part.rfind(b'\r\n')
+                        
+                        if value_start > 3 and value_end > value_start:
+                            value = part[value_start:value_end].decode('utf-8')
+                            result[name] = value
+                    except:
+                        continue
+            
+            print(f"🔧 Распарсен multipart: {result}")
+            return result
+        except Exception as e:
+            print(f"❌ Ошибка парсинга multipart: {e}")
+            return {}
+    
     def end_headers(self):
         # CORS заголовки для всех запросов
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -250,8 +286,19 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 
                 print(f"📦 Получены данные: {post_data[:200]}")  # Первые 200 байт
                 
-                # Парсим JSON
-                data = json.loads(post_data.decode('utf-8'))
+                # Проверяем Content-Type
+                content_type = self.headers.get('Content-Type', '')
+                print(f"📋 Content-Type: {content_type}")
+                
+                # Парсим в зависимости от типа
+                if 'multipart/form-data' in content_type:
+                    print("📝 Обнаружен multipart/form-data, парсим форму...")
+                    # Парсим multipart form data
+                    data = self._parse_multipart(post_data, content_type)
+                else:
+                    # Парсим JSON
+                    data = json.loads(post_data.decode('utf-8'))
+                
                 print(f"✅ Распарсены данные: {data}")
                 
                 # Извлекаем данные

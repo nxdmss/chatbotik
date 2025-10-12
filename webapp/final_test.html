@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Финальный тест</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        #log { border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Финальный тест добавления товара</h1>
+    
+    <button onclick="testAdd()">Добавить товар</button>
+    <button onclick="testDelete()">Удалить товар ID=1</button>
+    <button onclick="loadProducts()">Загрузить товары</button>
+    
+    <div id="log"></div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            log.innerHTML += '<br>' + msg;
+            console.log(msg);
+        }
+        
+        async function testAdd() {
+            try {
+                addLog('🚀 Отправляем запрос на добавление...');
+                
+                const productData = {
+                    title: "Тестовый товар",
+                    description: "Описание теста",
+                    price: 1500,
+                    sizes: ["M", "L", "XL"]
+                };
+                
+                addLog('📦 Данные: ' + JSON.stringify(productData));
+                
+                const response = await fetch(`${API_BASE}/webapp/admin/products?user_id=admin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(productData)
+                });
+                
+                addLog('📡 Ответ: ' + response.status);
+                
+                const result = await response.json();
+                addLog('✅ Результат: ' + JSON.stringify(result));
+                
+                if (result.success) {
+                    alert('✅ Товар добавлен! ID: ' + result.product_id);
+                }
+            } catch (error) {
+                addLog('❌ Ошибка: ' + error.message);
+                alert('❌ Ошибка: ' + error.message);
+            }
+        }
+        
+        async function testDelete() {
+            try {
+                addLog('🗑️ Удаляем товар...');
+                
+                const response = await fetch(`${API_BASE}/webapp/admin/products/1?user_id=admin`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                addLog('✅ Результат: ' + JSON.stringify(result));
+                alert('✅ Товар удален!');
+            } catch (error) {
+                addLog('❌ Ошибка: ' + error.message);
+            }
+        }
+        
+        async function loadProducts() {
+            try {
+                addLog('📦 Загружаем товары...');
+                
+                const response = await fetch(`${API_BASE}/webapp/products.json`);
+                const products = await response.json();
+                
+                addLog('✅ Загружено товаров: ' + products.length);
+                products.forEach(p => {
+                    addLog(`  - ${p.id}. ${p.title} - ${p.price} руб`);
+                });
+            } catch (error) {
+                addLog('❌ Ошибка: ' + error.message);
+            }
+        }
+        
+        addLog('✅ Страница загружена. Нажмите кнопку для теста!');
+    </script>
+</body>
+</html>
+
