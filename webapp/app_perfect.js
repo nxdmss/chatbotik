@@ -70,7 +70,7 @@ class PerfectShopApp {
     // ===== НОВАЯ ФУНКЦИЯ ПРОВЕРКИ АДМИНСКИХ ПРАВ =====
 
     async checkAdminStatus() {
-        console.log('🔒 КАРДИНАЛЬНО НОВЫЙ ПОДХОД: Создаем кнопку для вашего ID 1593426947');
+        console.log('🔒 КАРДИНАЛЬНО НОВЫЙ ПОДХОД: Проверка по секретному коду');
         
         // ПО УМОЛЧАНИЮ НЕ АДМИН
         this.isAdmin = false;
@@ -110,88 +110,85 @@ class PerfectShopApp {
                     this.isAdmin = true;
                     console.log('👑 ВЫ АДМИН! ID:', userId);
                     this.showAdminPanel();
-                } else if (!userId) {
-                    // Если user_id не найден - это может быть ваш аккаунт в Telegram Desktop
-                    this.isAdmin = false;
-                    console.log('🔧 User ID не найден - создаем кнопку для владельца');
-                    this.createAdminButton();
                 } else {
-                    // Это другой пользователь - НЕ показываем кнопку
+                    // Для всех остальных - НЕ АДМИН
                     this.isAdmin = false;
-                    console.log('👤 Это другой пользователь! ID:', userId);
-                    console.log('❌ Кнопка НЕ показывается - это не ваш аккаунт');
+                    console.log('👤 Вы клиент. ID:', userId || 'не найден');
                 }
                 
             } else {
-                console.log('🌐 Запущено в браузере - создаем кнопку админа');
+                console.log('🌐 Запущено в браузере - НЕ АДМИН');
                 this.isAdmin = false;
-                this.createAdminButton();
             }
             
         } catch (error) {
             console.error('❌ Ошибка проверки прав:', error);
             this.isAdmin = false;
-            this.createAdminButton();
         }
         
         console.log('📊 СТАТУС: Админ =', this.isAdmin ? 'ДА' : 'НЕТ');
+        
+        // Создаем скрытую кнопку для активации админ панели
+        this.createSecretAdminButton();
     }
 
-    createAdminButton() {
-        console.log('🔧 Создаем кнопку для включения админ панели...');
+    createSecretAdminButton() {
+        console.log('🔧 Создаем скрытую кнопку для активации админ панели...');
         
         // Удаляем старую кнопку если есть
-        const oldButton = document.getElementById('admin-activate-button');
+        const oldButton = document.getElementById('secret-admin-button');
         if (oldButton) {
             oldButton.remove();
         }
         
-        // Создаем новую кнопку
+        // Создаем скрытую кнопку (невидимую)
         const button = document.createElement('button');
-        button.id = 'admin-activate-button';
-        button.textContent = '🔧 ВКЛЮЧИТЬ АДМИН ПАНЕЛЬ';
+        button.id = 'secret-admin-button';
         button.style.cssText = `
             position: fixed;
-            top: 20px;
+            bottom: 100px;
             right: 20px;
-            background: #ff6b6b;
-            color: white;
+            width: 10px;
+            height: 10px;
+            background: transparent;
             border: none;
-            padding: 15px 20px;
-            border-radius: 10px;
             cursor: pointer;
             z-index: 9999;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-            animation: pulse 2s infinite;
+            opacity: 0.1;
         `;
         
-        // Добавляем анимацию
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
+        let clickCount = 0;
+        const requiredClicks = 5; // Нужно нажать 5 раз подряд
         
         // Добавляем обработчик
-        button.onclick = () => {
-            console.log('🔧 Кнопка нажата - включаем админ панель');
-            this.isAdmin = true;
-            this.showAdminPanel();
-            button.remove();
-            style.remove();
-            this.showNotification('Админ панель включена!', 'success');
+        button.onclick = (e) => {
+            e.preventDefault();
+            clickCount++;
+            console.log('🔧 Секретная кнопка нажата:', clickCount, 'из', requiredClicks);
+            
+            if (clickCount >= requiredClicks) {
+                console.log('🔧 Активируем админ панель по секретному коду!');
+                this.isAdmin = true;
+                this.showAdminPanel();
+                button.remove();
+                this.showNotification('Админ панель активирована!', 'success');
+                clickCount = 0;
+            } else {
+                // Сброс счетчика через 3 секунды
+                setTimeout(() => {
+                    if (clickCount < requiredClicks) {
+                        clickCount = 0;
+                        console.log('🔧 Счетчик сброшен');
+                    }
+                }, 3000);
+            }
         };
         
         // Добавляем кнопку на страницу
         document.body.appendChild(button);
         
-        console.log('✅ Кнопка "ВКЛЮЧИТЬ АДМИН ПАНЕЛЬ" создана');
+        console.log('✅ Скрытая кнопка создана в правом нижнем углу');
+        console.log('🔧 Нажмите 5 раз быстро в правом нижнем углу для активации');
     }
 
     showAdminPanel() {
