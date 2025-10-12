@@ -9,6 +9,7 @@ import socketserver
 import json
 import os
 import sqlite3
+import time
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 import traceback
@@ -224,8 +225,42 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                         
                         # Проверяем, это файл или текст
                         if b'filename=' in part:
-                            # Это файл, пропускаем пока
-                            print(f"   📎 Часть {i}: {name} - файл, пропускаем")
+                            # Это файл - сохраняем его!
+                            filename_start = part.find(b'filename="') + 10
+                            filename_end = part.find(b'"', filename_start)
+                            filename = part[filename_start:filename_end].decode('utf-8')
+                            
+                            if filename:  # Если файл выбран
+                                # Извлекаем данные файла
+                                file_data_start = part.find(b'\r\n\r\n') + 4
+                                file_data_end = part.rfind(b'\r\n')
+                                
+                                if file_data_start > 3 and file_data_end > file_data_start:
+                                    file_data = part[file_data_start:file_data_end]
+                                    
+                                    # Генерируем уникальное имя файла
+                                    timestamp = int(time.time())
+                                    ext = os.path.splitext(filename)[1]
+                                    new_filename = f"photo_{timestamp}{ext}"
+                                    
+                                    # Создаем директории если нужно
+                                    os.makedirs('webapp/uploads', exist_ok=True)
+                                    os.makedirs('webapp/static/uploads', exist_ok=True)
+                                    
+                                    # Сохраняем файл в оба места
+                                    file_path_1 = os.path.join('webapp/uploads', new_filename)
+                                    file_path_2 = os.path.join('webapp/static/uploads', new_filename)
+                                    
+                                    with open(file_path_1, 'wb') as f:
+                                        f.write(file_data)
+                                    with open(file_path_2, 'wb') as f:
+                                        f.write(file_data)
+                                    
+                                    # Сохраняем путь к файлу
+                                    result['photo'] = f'/webapp/static/uploads/{new_filename}'
+                                    print(f"   📸 Часть {i}: {name} - файл сохранен: {new_filename} ({len(file_data)} байт)")
+                            else:
+                                print(f"   📎 Часть {i}: {name} - файл не выбран")
                             continue
                         
                         # Ищем значение (после двойного переноса строки)
@@ -239,6 +274,7 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                                 print(f"   ✅ Часть {i}: {name} = {value[:50]}...")
                     except Exception as e:
                         print(f"   ❌ Ошибка обработки части {i}: {e}")
+                        traceback.print_exc()
                         continue
             
             print(f"🔧 Распарсен multipart: {result}")
