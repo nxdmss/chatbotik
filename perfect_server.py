@@ -26,6 +26,7 @@ class ProductManager:
         self.backup_dir = "db_backups"
         self.json_backup = "products_backup.json"
         self.init_database()
+        self.restore_from_backup()  # Восстанавливаем данные при запуске
         self.auto_backup()  # Автобэкап при запуске
     
     def init_database(self):
@@ -90,6 +91,72 @@ class ProductManager:
                 os.remove(os.path.join(self.backup_dir, backup))
         except Exception as e:
             print(f"⚠️ Ошибка очистки бэкапов: {e}")
+    
+    def restore_from_backup(self):
+        """Восстановить данные из бэкапа при запуске"""
+        try:
+            # Проверяем, есть ли данные в БД
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM products")
+                count = cursor.fetchone()[0]
+            
+            if count > 0:
+                print(f"📦 База данных содержит {count} товаров")
+                return
+            
+            # Если БД пустая, пытаемся восстановить из JSON
+            if os.path.exists(self.json_backup):
+                print("🔄 Восстанавливаем данные из JSON бэкапа...")
+                self.restore_from_json()
+                return
+            
+            # Если JSON нет, ищем последний DB бэкап
+            if os.path.exists(self.backup_dir):
+                backups = [f for f in os.listdir(self.backup_dir) if f.endswith('.db')]
+                if backups:
+                    backups.sort(reverse=True)
+                    latest_backup = os.path.join(self.backup_dir, backups[0])
+                    print(f"🔄 Восстанавливаем из DB бэкапа: {latest_backup}")
+                    shutil.copy2(latest_backup, self.db_path)
+                    return
+            
+            print("ℹ️ Бэкапы не найдены, создаем новую БД")
+            
+        except Exception as e:
+            print(f"⚠️ Ошибка восстановления из бэкапа: {e}")
+    
+    def restore_from_json(self):
+        """Восстановить данные из JSON файла"""
+        try:
+            with open(self.json_backup, 'r', encoding='utf-8') as f:
+                products = json.load(f)
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                for product in products:
+                    created_at = product.get("created_at", datetime.now().isoformat())
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO products (id, title, description, price, sizes, photo, is_active, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        product.get("id"),
+                        product.get("title", ""),
+                        product.get("description", ""),
+                        product.get("price", 0),
+                        json.dumps(product.get("sizes", [])),
+                        product.get("photo", ""),
+                        1 if product.get("is_active", True) else 0,
+                        created_at
+                    ))
+                
+                conn.commit()
+            
+            print(f"✅ Восстановлено {len(products)} товаров из JSON")
+            
+        except Exception as e:
+            print(f"❌ Ошибка восстановления из JSON: {e}")
     
     def get_all_products(self, active_only=True):
         """Получить все товары"""
@@ -163,7 +230,7 @@ class ProductManager:
                 print(f"✅ Товар добавлен в БД: ID={product_id}, {title}")
                 
                 # Автосохранение после добавления
-                self.export_to_json()
+                self.auto_backup()
                 
                 return product_id
         except Exception as e:
@@ -214,7 +281,7 @@ class ProductManager:
             print(f"✅ Товар обновлен: ID={product_id}")
             
             # Автосохранение после обновления
-            self.export_to_json()
+            self.auto_backup()
             
             return True
     
@@ -243,7 +310,7 @@ class ProductManager:
                 print(f"✅ Товар удален: ID={product_id}, {product['title']}")
                 
                 # Автосохранение после удаления
-                self.export_to_json()
+                self.auto_backup()
                 
                 return True
             else:
