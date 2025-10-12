@@ -12,7 +12,7 @@ python3 perfect_server.py &
 SERVER_PID=$!
 
 echo "✅ ИДЕАЛЬНЫЙ сервер запущен!"
-echo "🌐 Магазин: http://localhost:8001"
+echo "🌐 Магазин: http://localhost:8000"
 echo "🔑 АДМИН ПАРОЛЬ: admin123"
 echo "📷 Фотографии: папка uploads/"
 echo "💾 Данные: products_data.json"
