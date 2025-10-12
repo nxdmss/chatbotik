@@ -19,12 +19,19 @@ if not os.path.exists(UPLOADS_DIR):
 def save_photo(photo_data, filename):
     """Сохранение фотографии"""
     try:
+        # Убираем data:image/jpeg;base64, если есть
         if ',' in photo_data:
             photo_data = photo_data.split(',')[1]
+        
+        # Декодируем base64
         photo_bytes = base64.b64decode(photo_data)
+        
+        # Сохраняем файл
         filepath = os.path.join(UPLOADS_DIR, filename)
         with open(filepath, 'wb') as f:
             f.write(photo_bytes)
+        
+        print(f"📷 Фото сохранено: {filename}")
         return f"/uploads/{filename}"
     except Exception as e:
         print(f"❌ Ошибка сохранения фото: {e}")
@@ -102,48 +109,73 @@ Access-Control-Allow-Origin: *
         
         # Добавление товара
         elif parsed_path.path == '/api/products' and method == 'POST':
-            admin_password = ""
-            for line in lines:
-                if line.startswith('X-Admin-Password:'):
-                    admin_password = line.split(':')[1].strip()
-                    break
-            
-            if admin_password != ADMIN_PASSWORD:
-                response_body = json.dumps({"success": False, "error": "Access denied"}, ensure_ascii=False)
-                response = f"""HTTP/1.1 403 Forbidden
+            try:
+                admin_password = ""
+                for line in lines:
+                    if line.startswith('X-Admin-Password:'):
+                        admin_password = line.split(':')[1].strip()
+                        break
+                
+                if admin_password != ADMIN_PASSWORD:
+                    response_body = json.dumps({"success": False, "error": "Access denied"}, ensure_ascii=False)
+                    response = f"""HTTP/1.1 403 Forbidden
 Content-Type: application/json; charset=utf-8
 Content-Length: {len(response_body.encode('utf-8'))}
 Access-Control-Allow-Origin: *
 
 {response_body}"""
-            else:
-                content_length = int(request.split('Content-Length: ')[1].split('\n')[0])
-                post_data = request.split('\r\n\r\n')[1][:content_length]
-                data = json.loads(post_data)
-                
-                max_id = max([p['id'] for p in products]) if products else 0
-                
-                # Обработка фотографии
-                photo_url = ""
-                if data.get('photo'):
-                    filename = f"product_{max_id + 1}_{uuid.uuid4().hex[:8]}.jpg"
-                    photo_url = save_photo(data['photo'], filename)
-                
-                new_product = {
-                    "id": max_id + 1,
-                    "title": data.get('title', 'Новый товар'),
-                    "price": data.get('price', 0),
-                    "description": data.get('description', ''),
-                    "image": data.get('image', '📦'),
-                    "photo": photo_url
-                }
-                
-                products.append(new_product)
-                save_products(products)
-                print(f"✅ Добавлен товар: {new_product['title']}")
-                
-                response_body = json.dumps({"success": True, "product": new_product}, ensure_ascii=False)
-                response = f"""HTTP/1.1 200 OK
+                else:
+                    # Получаем длину контента
+                    content_length = 0
+                    for line in lines:
+                        if line.startswith('Content-Length:'):
+                            content_length = int(line.split(':')[1].strip())
+                            break
+                    
+                    if content_length > 0:
+                        post_data = request.split('\r\n\r\n')[1][:content_length]
+                        data = json.loads(post_data)
+                        
+                        max_id = max([p['id'] for p in products]) if products else 0
+                        
+                        # Обработка фотографии
+                        photo_url = ""
+                        if data.get('photo'):
+                            filename = f"product_{max_id + 1}_{uuid.uuid4().hex[:8]}.jpg"
+                            photo_url = save_photo(data['photo'], filename)
+                        
+                        new_product = {
+                            "id": max_id + 1,
+                            "title": data.get('title', 'Новый товар'),
+                            "price": int(data.get('price', 0)),
+                            "description": data.get('description', ''),
+                            "image": data.get('image', '📦'),
+                            "photo": photo_url
+                        }
+                        
+                        products.append(new_product)
+                        save_products(products)
+                        print(f"✅ Добавлен товар: {new_product['title']}")
+                        
+                        response_body = json.dumps({"success": True, "product": new_product}, ensure_ascii=False)
+                        response = f"""HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Content-Length: {len(response_body.encode('utf-8'))}
+Access-Control-Allow-Origin: *
+
+{response_body}"""
+                    else:
+                        response_body = json.dumps({"success": False, "error": "No data received"}, ensure_ascii=False)
+                        response = f"""HTTP/1.1 400 Bad Request
+Content-Type: application/json; charset=utf-8
+Content-Length: {len(response_body.encode('utf-8'))}
+Access-Control-Allow-Origin: *
+
+{response_body}"""
+            except Exception as e:
+                print(f"❌ Ошибка добавления товара: {e}")
+                response_body = json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+                response = f"""HTTP/1.1 500 Internal Server Error
 Content-Type: application/json; charset=utf-8
 Content-Length: {len(response_body.encode('utf-8'))}
 Access-Control-Allow-Origin: *
@@ -185,20 +217,29 @@ Access-Control-Allow-Origin: *
         
         # Статические файлы (фотографии)
         elif parsed_path.path.startswith('/uploads/'):
-            file_path = parsed_path.path[1:]  # Убираем первый /
-            if os.path.exists(file_path):
-                with open(file_path, 'rb') as f:
-                    file_content = f.read()
-                
-                response = f"""HTTP/1.1 200 OK
+            try:
+                file_path = parsed_path.path[1:]  # Убираем первый /
+                if os.path.exists(file_path):
+                    with open(file_path, 'rb') as f:
+                        file_content = f.read()
+                    
+                    response = f"""HTTP/1.1 200 OK
 Content-Type: image/jpeg
 Content-Length: {len(file_content)}
 
 """
-                response = response.encode() + file_content
-            else:
-                response_body = "<h1>404 - File not found</h1>"
-                response = f"""HTTP/1.1 404 Not Found
+                    response = response.encode() + file_content
+                else:
+                    response_body = "<h1>404 - File not found</h1>"
+                    response = f"""HTTP/1.1 404 Not Found
+Content-Type: text/html; charset=utf-8
+Content-Length: {len(response_body.encode('utf-8'))}
+
+{response_body}"""
+            except Exception as e:
+                print(f"❌ Ошибка загрузки файла: {e}")
+                response_body = "<h1>500 - Server Error</h1>"
+                response = f"""HTTP/1.1 500 Internal Server Error
 Content-Type: text/html; charset=utf-8
 Content-Length: {len(response_body.encode('utf-8'))}
 
