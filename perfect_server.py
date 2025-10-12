@@ -295,6 +295,26 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json(200, {"products": products})
             return
         
+        # Фото товаров - перенаправляем с /webapp/static/uploads/ на /webapp/uploads/
+        elif '/webapp/static/uploads/' in self.path:
+            # Заменяем путь
+            real_path = self.path.replace('/webapp/static/uploads/', 'webapp/uploads/')
+            try:
+                with open(real_path, 'rb') as f:
+                    self.send_response(200)
+                    if real_path.endswith('.jpg') or real_path.endswith('.jpeg'):
+                        self.send_header('Content-type', 'image/jpeg')
+                    elif real_path.endswith('.png'):
+                        self.send_header('Content-type', 'image/png')
+                    elif real_path.endswith('.gif'):
+                        self.send_header('Content-type', 'image/gif')
+                    self.end_headers()
+                    self.wfile.write(f.read())
+                return
+            except FileNotFoundError:
+                self.send_error(404, f"File not found: {real_path}")
+                return
+        
         # Статические файлы
         else:
             super().do_GET()
