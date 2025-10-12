@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-🤖 SIMPLE TELEGRAM BOT WITH WEBAPP
-==================================
-Простой Telegram бот с веб-приложением для Replit
+🌙 DARK SHOP BOT V3 - С ФОТОГРАФИЯМИ И РЕДАКТИРОВАНИЕМ
+========================================================
+Версия с загрузкой фотографий и редактированием товаров
 """
 
 import os
 import json
 import sqlite3
+import base64
+import uuid
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
@@ -23,11 +25,15 @@ except ImportError:
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 PORT = int(os.getenv('PORT', 8000))
 WEBAPP_URL = f'http://localhost:{PORT}'
+UPLOADS_DIR = 'uploads'
+
+# Создаем папку для загрузок
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # База данных
 DATABASE_PATH = 'shop.db'
 
-class SimpleTelegramBot:
+class DarkShopBot:
     def __init__(self):
         self.token = BOT_TOKEN
         self.webapp_url = WEBAPP_URL
@@ -38,16 +44,17 @@ class SimpleTelegramBot:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         
-        # Создаем таблицы
+        # Создаем таблицы с правильной структурой
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 price INTEGER NOT NULL,
-                description TEXT,
+                description TEXT DEFAULT '',
                 category TEXT DEFAULT 'general',
-                image_url TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                image_url TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -66,22 +73,55 @@ class SimpleTelegramBot:
         cursor.execute('SELECT COUNT(*) FROM products')
         if cursor.fetchone()[0] == 0:
             test_products = [
-                ('iPhone 15 Pro', 99999, 'Новейший смартфон Apple', 'electronics'),
-                ('MacBook Air M3', 129999, 'Мощный ноутбук для работы', 'electronics'),
-                ('Nike Air Max', 8999, 'Спортивные кроссовки', 'clothing'),
-                ('Кофе Starbucks', 299, 'Премиальный кофе', 'food'),
-                ('Книга Python', 1999, 'Программирование на Python', 'books')
+                ('iPhone 15 Pro', 99999, 'Новейший смартфон Apple', 'electronics', ''),
+                ('MacBook Air M3', 129999, 'Мощный ноутбук', 'electronics', ''),
+                ('Nike Air Max', 8999, 'Спортивные кроссовки', 'clothing', ''),
+                ('Кофе Starbucks', 299, 'Премиальный кофе', 'food', ''),
+                ('Книга Python', 1999, 'Программирование', 'books', ''),
+                ('Samsung Galaxy', 89999, 'Флагманский смартфон', 'electronics', ''),
+                ('Adidas Boost', 12999, 'Беговые кроссовки', 'clothing', ''),
+                ('Чай Earl Grey', 599, 'Элитный чай', 'food', ''),
+                ('iPad Pro', 79999, 'Планшет Apple', 'electronics', ''),
+                ('Nike Dunk', 7999, 'Классические кроссовки', 'clothing', ''),
+                ('Кофе Lavazza', 399, 'Итальянский кофе', 'food', ''),
+                ('Книга JavaScript', 2499, 'Веб-разработка', 'books', '')
             ]
             
-            for title, price, description, category in test_products:
+            for title, price, description, category, image_url in test_products:
                 cursor.execute('''
-                    INSERT INTO products (title, price, description, category)
-                    VALUES (?, ?, ?, ?)
-                ''', (title, price, description, category))
+                    INSERT INTO products (title, price, description, category, image_url)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (title, price, description, category, image_url))
         
         conn.commit()
         conn.close()
         print("✅ База данных инициализирована")
+    
+    def save_image(self, base64_data):
+        """Сохранение изображения из base64"""
+        try:
+            if not base64_data:
+                return ''
+            
+            # Убираем data:image/jpeg;base64, если есть
+            if ',' in base64_data:
+                base64_data = base64_data.split(',')[1]
+            
+            # Декодируем base64
+            image_data = base64.b64decode(base64_data)
+            
+            # Генерируем уникальное имя файла
+            filename = f"product_{uuid.uuid4().hex[:8]}.jpg"
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            
+            # Сохраняем файл
+            with open(filepath, 'wb') as f:
+                f.write(image_data)
+            
+            return f"/uploads/{filename}"
+        except Exception as e:
+            print(f"❌ Ошибка сохранения изображения: {e}")
+            return ''
     
     def send_message(self, chat_id, text, reply_markup=None):
         """Отправка сообщения в Telegram"""
@@ -122,71 +162,6 @@ class SimpleTelegramBot:
                 [{'text': '🛍️ Открыть магазин', 'web_app': {'url': self.webapp_url}}],
                 [{'text': '📦 Каталог', 'callback_data': 'catalog'}],
                 [{'text': '📞 Контакты', 'callback_data': 'contact'}]
-            ]
-        }
-        
-        self.send_message(chat_id, text, keyboard)
-    
-    def handle_catalog(self, chat_id):
-        """Обработка команды /catalog"""
-        try:
-            conn = sqlite3.connect(DATABASE_PATH)
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM products LIMIT 5')
-            products = cursor.fetchall()
-            conn.close()
-            
-            if not products:
-                self.send_message(chat_id, '📦 Каталог пока пуст. Зайдите позже!')
-                return
-            
-            text = '🛍️ **Каталог товаров:**\n\n'
-            
-            for i, product in enumerate(products, 1):
-                text += f'{i}. **{product[1]}**\n'
-                text += f'   💰 {product[2]:,} ₽\n'.replace(',', ' ')
-                if product[3]:
-                    text += f'   📝 {product[3][:50]}...\n'
-                text += '\n'
-            
-            text += 'Нажмите кнопку ниже, чтобы открыть полный каталог!'
-            
-            keyboard = {
-                'inline_keyboard': [
-                    [{'text': '🛍️ Открыть полный каталог', 'web_app': {'url': self.webapp_url}}]
-                ]
-            }
-            
-            self.send_message(chat_id, text, keyboard)
-        except Exception as e:
-            print(f"❌ Ошибка в каталоге: {e}")
-            self.send_message(chat_id, '❌ Ошибка загрузки каталога')
-    
-    def handle_contact(self, chat_id):
-        """Обработка команды /contact"""
-        text = '''📞 **Связаться с нами:**
-
-🕐 **Время работы:** 9:00 - 21:00 (МСК)
-
-📱 **Телефон:** +7 (999) 123-45-67
-📧 **Email:** support@eshoppro.ru
-💬 **Telegram:** @eshoppro_support
-
-🏢 **Адрес:**
-г. Москва, ул. Примерная, д. 123
-
-❓ **Частые вопросы:**
-• Доставка по всей России
-• Оплата картой или наличными
-• Возврат в течение 14 дней
-• Гарантия на все товары
-
-Напишите нам, и мы обязательно поможем!'''
-        
-        keyboard = {
-            'inline_keyboard': [
-                [{'text': '💬 Написать в поддержку', 'url': 'https://t.me/eshoppro_support'}],
-                [{'text': '🛍️ Вернуться в магазин', 'web_app': {'url': self.webapp_url}}]
             ]
         }
         
@@ -242,7 +217,7 @@ class SimpleTelegramBot:
             print(f"❌ Ошибка обработки данных WebApp: {e}")
             self.send_message(chat_id, '❌ Произошла ошибка при обработке данных')
 
-class WebAppHandler(BaseHTTPRequestHandler):
+class DarkWebAppHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Обработка GET запросов"""
         if self.path == '/':
@@ -250,7 +225,7 @@ class WebAppHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             
-            html_content = self.get_main_page()
+            html_content = self.get_dark_page_v3()
             self.wfile.write(html_content.encode('utf-8'))
             
         elif self.path == '/api/products':
@@ -272,16 +247,34 @@ class WebAppHandler(BaseHTTPRequestHandler):
                         'id': product[0],
                         'title': product[1],
                         'price': product[2],
-                        'description': product[3],
-                        'category': product[4],
-                        'image_url': product[5] if product[5] else '',
-                        'created_at': product[6]
+                        'description': product[3] or '',
+                        'category': product[4] or 'general',
+                        'image_url': product[5] or '',
+                        'created_at': product[6],
+                        'updated_at': product[7]
                     })
                 
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 print(f"❌ Ошибка получения товаров: {e}")
                 self.wfile.write(json.dumps([]).encode('utf-8'))
+        
+        elif self.path.startswith('/uploads/'):
+            # Обслуживание статических файлов изображений
+            filename = self.path[9:]  # Убираем '/uploads/'
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            
+            if os.path.exists(filepath):
+                self.send_response(200)
+                self.send_header('Content-type', 'image/jpeg')
+                self.end_headers()
+                
+                with open(filepath, 'rb') as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b'Image not found')
         
         else:
             self.send_response(404)
@@ -312,116 +305,828 @@ class WebAppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'Internal Server Error')
         
+        elif self.path == '/api/add-product':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                
+                title = data.get('title', '')
+                price = int(data.get('price', 0))
+                description = data.get('description', '')
+                category = data.get('category', 'general')
+                image_data = data.get('image', '')
+                
+                if title and price > 0:
+                    # Сохраняем изображение
+                    bot = DarkShopBot()
+                    image_url = bot.save_image(image_data)
+                    
+                    conn = sqlite3.connect(DATABASE_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO products (title, price, description, category, image_url)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (title, price, description, category, image_url))
+                    conn.commit()
+                    conn.close()
+                    
+                    response = {'success': True, 'message': 'Товар добавлен успешно!'}
+                else:
+                    response = {'success': False, 'message': 'Неверные данные товара'}
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                
+            except Exception as e:
+                print(f"❌ Ошибка добавления товара: {e}")
+                response = {'success': False, 'message': 'Ошибка добавления товара'}
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+        
+        elif self.path.startswith('/api/update-product/'):
+            product_id = self.path.split('/')[-1]
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                
+                title = data.get('title', '')
+                price = int(data.get('price', 0))
+                description = data.get('description', '')
+                category = data.get('category', 'general')
+                image_data = data.get('image', '')
+                
+                if title and price > 0:
+                    conn = sqlite3.connect(DATABASE_PATH)
+                    cursor = conn.cursor()
+                    
+                    # Если есть новое изображение, сохраняем его
+                    if image_data:
+                        bot = DarkShopBot()
+                        image_url = bot.save_image(image_data)
+                        cursor.execute('''
+                            UPDATE products 
+                            SET title = ?, price = ?, description = ?, category = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?
+                        ''', (title, price, description, category, image_url, product_id))
+                    else:
+                        cursor.execute('''
+                            UPDATE products 
+                            SET title = ?, price = ?, description = ?, category = ?, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?
+                        ''', (title, price, description, category, product_id))
+                    
+                    conn.commit()
+                    conn.close()
+                    
+                    response = {'success': True, 'message': 'Товар обновлен успешно!'}
+                else:
+                    response = {'success': False, 'message': 'Неверные данные товара'}
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                
+            except Exception as e:
+                print(f"❌ Ошибка обновления товара: {e}")
+                response = {'success': False, 'message': 'Ошибка обновления товара'}
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+        
+        elif self.path.startswith('/api/delete-product/'):
+            product_id = self.path.split('/')[-1]
+            
+            try:
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM products WHERE id = ?', (product_id,))
+                conn.commit()
+                conn.close()
+                
+                response = {'success': True, 'message': 'Товар удален успешно!'}
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                
+            except Exception as e:
+                print(f"❌ Ошибка удаления товара: {e}")
+                response = {'success': False, 'message': 'Ошибка удаления товара'}
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+        
         else:
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b'Not Found')
     
-    def get_main_page(self):
-        """Главная страница WebApp"""
+    def get_dark_page_v3(self):
+        """Главная страница WebApp с фотографиями и редактированием"""
         return '''<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🛍️ E-Shop Pro - Telegram Mini App</title>
+    <title>🛍️ Dark Shop - Telegram Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            padding: 16px;
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
         }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 16px;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+        
         .header {
             text-align: center;
             margin-bottom: 24px;
             padding: 20px;
-            background: var(--tg-theme-secondary-bg-color, #f1f1f1);
+            background: #2d2d2d;
             border-radius: 12px;
+            border: 1px solid #333;
         }
+        
         .header h1 {
             font-size: 24px;
             margin-bottom: 8px;
+            color: #ffffff;
         }
+        
+        .header p {
+            color: #cccccc;
+            font-size: 14px;
+        }
+        
+        .search-box {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            background: #2d2d2d;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px 16px 12px 40px;
+            color: #ffffff;
+            font-size: 16px;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #1e40af;
+        }
+        
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+        
         .products-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 16px;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
             margin-bottom: 24px;
         }
+        
         .product-card {
-            background: var(--tg-theme-bg-color, #ffffff);
-            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
-            border-radius: 12px;
-            padding: 16px;
-            transition: transform 0.2s;
+            background: #2d2d2d;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s ease;
+            position: relative;
         }
+        
         .product-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+            border-color: #1e40af;
         }
+        
+        .product-image {
+            width: 100%;
+            height: 80px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 24px;
+        }
+        
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
         .product-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
+            margin-bottom: 6px;
+            color: #ffffff;
+            line-height: 1.3;
+        }
+        
+        .product-description {
+            color: #aaaaaa;
+            font-size: 11px;
+            margin-bottom: 8px;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .product-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #3b82f6;
             margin-bottom: 8px;
         }
-        .product-price {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--tg-theme-button-color, #2481cc);
-        }
+        
         .add-to-cart-btn {
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
+            background: #1e40af;
+            color: #ffffff;
             border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
             cursor: pointer;
-            margin-top: 12px;
+            font-size: 12px;
+            font-weight: 600;
             width: 100%;
+            transition: all 0.3s ease;
         }
+        
+        .add-to-cart-btn:hover {
+            background: #1d4ed8;
+            transform: scale(1.02);
+        }
+        
         .cart-section {
-            background: var(--tg-theme-secondary-bg-color, #f1f1f1);
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 20px;
+            border: 1px solid #333;
         }
+        
+        .cart-section h2 {
+            color: #3b82f6;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
         .checkout-btn {
-            background: #28a745;
+            background: #1e40af;
             color: white;
             border: none;
-            padding: 16px;
-            border-radius: 12px;
+            padding: 14px;
+            border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             margin-top: 16px;
+            transition: all 0.3s ease;
         }
+        
+        .checkout-btn:hover:not(.hidden) {
+            background: #1d4ed8;
+            transform: scale(1.02);
+        }
+        
         .loading {
             text-align: center;
             padding: 40px;
-            color: var(--tg-theme-hint-color, #999);
+            color: #aaaaaa;
+            font-size: 16px;
         }
-        .hidden { display: none; }
+        
+        .hidden { 
+            display: none; 
+        }
+        
+        .admin-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        
+        .admin-section h2 {
+            color: #3b82f6;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .admin-form {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .form-group label {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #1e40af;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-button {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-button:hover {
+            background: #1d4ed8;
+        }
+        
+        .image-preview {
+            width: 100%;
+            height: 120px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .add-product-btn {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .add-product-btn:hover {
+            background: #1d4ed8;
+            transform: scale(1.02);
+        }
+        
+        .success-message {
+            background: #1e40af;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .error-message {
+            background: #dc2626;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #333;
+        }
+        
+        .cart-item-info {
+            flex: 1;
+        }
+        
+        .cart-item-title {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .cart-item-price {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .quantity-btn {
+            background: #333;
+            color: #ffffff;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+        
+        .quantity-btn:hover {
+            background: #1e40af;
+        }
+        
+        .quantity-input {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 4px;
+            color: #ffffff;
+            width: 40px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .remove-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            margin-left: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .remove-btn:hover {
+            background: #b91c1c;
+        }
+        
+        /* Нижняя навигация */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2d2d2d;
+            border-top: 1px solid #333;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+        }
+        
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: transparent;
+            border: none;
+            color: #aaaaaa;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .nav-btn.active {
+            color: #3b82f6;
+            background: rgba(30, 64, 175, 0.1);
+        }
+        
+        .nav-btn i {
+            font-size: 18px;
+        }
+        
+        .nav-btn span {
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .cart-count {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #dc2626;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        /* Админ панель - список товаров */
+        .admin-products-list {
+            margin-bottom: 20px;
+        }
+        
+        .admin-product-item {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .admin-product-image {
+            width: 60px;
+            height: 60px;
+            background: #2d2d2d;
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .admin-product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .admin-product-info {
+            flex: 1;
+        }
+        
+        .admin-product-title {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .admin-product-price {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .admin-product-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .edit-btn {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .edit-btn:hover {
+            background: #1d4ed8;
+        }
+        
+        .delete-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #b91c1c;
+        }
+        
+        @media (max-width: 768px) {
+            .products-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            
+            .product-card {
+                padding: 8px;
+            }
+            
+            .product-title {
+                font-size: 12px;
+            }
+            
+            .product-description {
+                font-size: 10px;
+            }
+            
+            .product-price {
+                font-size: 14px;
+            }
+            
+            .add-to-cart-btn {
+                padding: 6px 8px;
+                font-size: 10px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🛍️ E-Shop Pro</h1>
+        <h1>🛍️ Dark Shop</h1>
         <p>Добро пожаловать в наш магазин!</p>
     </div>
     
-    <div id="productsContainer" class="loading">
-        <div>Загрузка товаров...</div>
+    <div id="catalog" class="tab-content active">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Поиск товаров..." onkeyup="filterProducts()">
+        </div>
+        
+        <div id="productsContainer" class="loading">
+            <div>Загрузка товаров...</div>
+        </div>
     </div>
     
-    <div class="cart-section">
-        <h2>🛒 Корзина</h2>
-        <div id="cartItems">Корзина пуста</div>
-        <div id="cartTotal">Итого: 0 ₽</div>
-        <button id="checkoutBtn" class="checkout-btn hidden">Оформить заказ</button>
+    <div id="cart" class="tab-content">
+        <div class="cart-section">
+            <h2>🛒 Корзина покупок</h2>
+            <div id="cartItems">Корзина пуста</div>
+            <div id="cartTotal" style="font-size: 16px; font-weight: 600; color: #3b82f6; margin-top: 16px;">Итого: 0 ₽</div>
+            <button id="checkoutBtn" class="checkout-btn hidden">💳 Оформить заказ</button>
+        </div>
+    </div>
+    
+    <div id="admin" class="tab-content">
+        <div class="admin-section">
+            <h2>⚙️ Панель администратора</h2>
+            <div id="adminMessage"></div>
+            
+            <!-- Список товаров -->
+            <div class="admin-products-list" id="adminProductsList">
+                <div class="loading">Загрузка товаров...</div>
+            </div>
+            
+            <!-- Форма добавления/редактирования -->
+            <form class="admin-form" id="adminForm">
+                <div class="form-group">
+                    <label for="productTitle">Название товара</label>
+                    <input type="text" id="productTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="productPrice">Цена (₽)</label>
+                    <input type="number" id="productPrice" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="productCategory">Категория</label>
+                    <select id="productCategory" required>
+                        <option value="electronics">Электроника</option>
+                        <option value="clothing">Одежда</option>
+                        <option value="food">Еда</option>
+                        <option value="books">Книги</option>
+                        <option value="general">Общее</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="productDescription">Описание</label>
+                    <textarea id="productDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="productImage">Фотография</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="productImage" class="file-input" accept="image/*" onchange="handleImageUpload(this)">
+                        <button type="button" class="file-input-button">📷 Выбрать фото</button>
+                    </div>
+                    <div class="image-preview" id="imagePreview">Выберите изображение</div>
+                </div>
+                <button type="submit" class="add-product-btn" id="submitBtn">➕ Добавить товар</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Нижняя навигация -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="showTab('catalog')">
+            <span>📦</span>
+            <span>Каталог</span>
+        </button>
+        <button class="nav-btn" onclick="showTab('cart')">
+            <span>🛒</span>
+            <span>Корзина</span>
+            <span class="cart-count" id="cartCount">0</span>
+        </button>
+        <button class="nav-btn" onclick="showTab('admin')">
+            <span>⚙️</span>
+            <span>Админ</span>
+        </button>
     </div>
 
     <script>
@@ -431,6 +1136,8 @@ class WebAppHandler(BaseHTTPRequestHandler):
         
         let products = [];
         let cart = [];
+        let currentEditingProduct = null;
+        let selectedImageData = '';
         
         // Загрузка товаров
         async function loadProducts() {
@@ -438,27 +1145,120 @@ class WebAppHandler(BaseHTTPRequestHandler):
                 const response = await fetch('/api/products');
                 products = await response.json();
                 renderProducts();
+                if (document.getElementById('adminProductsList')) {
+                    renderAdminProducts();
+                }
             } catch (error) {
                 document.getElementById('productsContainer').innerHTML = 
                     '<div class="loading">Ошибка загрузки товаров</div>';
+                console.error('Error loading products:', error);
             }
         }
         
-        // Отображение товаров
+        // Отображение товаров в каталоге
         function renderProducts() {
             const container = document.getElementById('productsContainer');
             container.className = 'products-grid';
             
+            if (products.length === 0) {
+                container.innerHTML = '<div class="loading">Товары не найдены</div>';
+                return;
+            }
+            
             container.innerHTML = products.map(product => `
                 <div class="product-card">
+                    <div class="product-image">
+                        ${product.image_url ? 
+                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none;">📷</div>` : 
+                            '📷'
+                        }
+                    </div>
                     <div class="product-title">${product.title}</div>
-                    ${product.description ? `<div style="margin-bottom: 8px; color: #666;">${product.description}</div>` : ''}
+                    ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         В корзину
                     </button>
                 </div>
             `).join('');
+        }
+        
+        // Отображение товаров в админ панели
+        function renderAdminProducts() {
+            const container = document.getElementById('adminProductsList');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="loading">Товары не найдены</div>';
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <div class="admin-product-item">
+                    <div class="admin-product-image">
+                        ${product.image_url ? 
+                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none;">📷</div>` : 
+                            '📷'
+                        }
+                    </div>
+                    <div class="admin-product-info">
+                        <div class="admin-product-title">${product.title}</div>
+                        <div class="admin-product-price">${product.price.toLocaleString()} ₽</div>
+                    </div>
+                    <div class="admin-product-actions">
+                        <button class="edit-btn" onclick="editProduct(${product.id})">✏️</button>
+                        <button class="delete-btn" onclick="deleteProduct(${product.id})">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Фильтрация товаров
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredProducts = products.filter(product => 
+                product.title.toLowerCase().includes(searchTerm) ||
+                (product.description && product.description.toLowerCase().includes(searchTerm))
+            );
+            
+            const container = document.getElementById('productsContainer');
+            if (filteredProducts.length === 0) {
+                container.innerHTML = '<div class="loading">Товары не найдены</div>';
+                return;
+            }
+            
+            container.innerHTML = filteredProducts.map(product => `
+                <div class="product-card">
+                    <div class="product-image">
+                        ${product.image_url ? 
+                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none;">📷</div>` : 
+                            '📷'
+                        }
+                    </div>
+                    <div class="product-title">${product.title}</div>
+                    ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
+                    <div class="product-price">${product.price.toLocaleString()} ₽</div>
+                    <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
+                        В корзину
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        // Обработка загрузки изображения
+        function handleImageUpload(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedImageData = e.target.result;
+                    const preview = document.getElementById('imagePreview');
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                };
+                reader.readAsDataURL(file);
+            }
         }
         
         // Добавление в корзину
@@ -481,23 +1281,58 @@ class WebAppHandler(BaseHTTPRequestHandler):
             tg.showAlert(`${product.title} добавлен в корзину!`);
         }
         
+        // Удаление из корзины
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.product_id !== productId);
+            updateCartUI();
+        }
+        
+        // Обновление количества
+        function updateQuantity(productId, quantity) {
+            if (quantity <= 0) {
+                removeFromCart(productId);
+                return;
+            }
+            
+            const item = cart.find(item => item.product_id === productId);
+            if (item) {
+                item.quantity = quantity;
+                updateCartUI();
+            }
+        }
+        
         // Обновление интерфейса корзины
         function updateCartUI() {
             const cartItems = document.getElementById('cartItems');
             const cartTotal = document.getElementById('cartTotal');
             const checkoutBtn = document.getElementById('checkoutBtn');
+            const cartCount = document.getElementById('cartCount');
+            
+            // Обновляем счетчик в навигации
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            cartCount.style.display = totalItems > 0 ? 'block' : 'none';
             
             if (cart.length === 0) {
-                cartItems.innerHTML = 'Корзина пуста';
+                cartItems.innerHTML = '<div style="text-align: center; color: #aaaaaa; padding: 20px;">Корзина пуста</div>';
                 cartTotal.innerHTML = 'Итого: 0 ₽';
                 checkoutBtn.classList.add('hidden');
                 return;
             }
             
             cartItems.innerHTML = cart.map(item => `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span>${item.product.title} x${item.quantity}</span>
-                    <span>${(item.product.price * item.quantity).toLocaleString()} ₽</span>
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-title">${item.product.title}</div>
+                        <div class="cart-item-price">${item.product.price.toLocaleString()} ₽</div>
+                    </div>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1})">-</button>
+                        <input type="number" class="quantity-input" value="${item.quantity}" min="1" 
+                               onchange="updateQuantity(${item.product_id}, parseInt(this.value))">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1})">+</button>
+                        <button class="remove-btn" onclick="removeFromCart(${item.product_id})">🗑️</button>
+                    </div>
                 </div>
             `).join('');
             
@@ -526,8 +1361,153 @@ class WebAppHandler(BaseHTTPRequestHandler):
             updateCartUI();
         }
         
+        // Добавление/обновление товара
+        async function addProduct(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('productTitle').value;
+            const price = parseInt(document.getElementById('productPrice').value);
+            const description = document.getElementById('productDescription').value;
+            const category = document.getElementById('productCategory').value;
+            
+            if (!title || !price || price <= 0) {
+                showAdminMessage('Пожалуйста, заполните все обязательные поля!', 'error');
+                return;
+            }
+            
+            try {
+                const url = currentEditingProduct ? 
+                    `/api/update-product/${currentEditingProduct}` : 
+                    '/api/add-product';
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        price: price,
+                        description: description,
+                        category: category,
+                        image: selectedImageData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAdminMessage(
+                        currentEditingProduct ? 'Товар обновлен успешно!' : 'Товар добавлен успешно!', 
+                        'success'
+                    );
+                    resetForm();
+                    await loadProducts();
+                } else {
+                    showAdminMessage(result.message || 'Ошибка сохранения товара', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving product:', error);
+                showAdminMessage('Ошибка сохранения товара', 'error');
+            }
+        }
+        
+        // Редактирование товара
+        function editProduct(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            currentEditingProduct = productId;
+            
+            document.getElementById('productTitle').value = product.title;
+            document.getElementById('productPrice').value = product.price;
+            document.getElementById('productDescription').value = product.description || '';
+            document.getElementById('productCategory').value = product.category || 'general';
+            
+            if (product.image_url) {
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = `<img src="${product.image_url}" alt="${product.title}">`;
+            } else {
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            }
+            
+            document.getElementById('submitBtn').textContent = '💾 Сохранить изменения';
+            
+            // Прокручиваем к форме
+            document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Удаление товара
+        async function deleteProduct(productId) {
+            if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/delete-product/${productId}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAdminMessage('Товар удален успешно!', 'success');
+                    await loadProducts();
+                } else {
+                    showAdminMessage('Ошибка удаления товара', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                showAdminMessage('Ошибка удаления товара', 'error');
+            }
+        }
+        
+        // Сброс формы
+        function resetForm() {
+            currentEditingProduct = null;
+            selectedImageData = '';
+            document.getElementById('adminForm').reset();
+            document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            document.getElementById('submitBtn').textContent = '➕ Добавить товар';
+        }
+        
+        // Показать сообщение админу
+        function showAdminMessage(message, type) {
+            const messageDiv = document.getElementById('adminMessage');
+            messageDiv.innerHTML = `<div class="${type}-message">${message}</div>`;
+            
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+        
+        // Переключение табов
+        function showTab(tabName) {
+            // Скрыть все табы
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Показать выбранный таб
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Обновить данные для определенных табов
+            if (tabName === 'cart') {
+                updateCartUI();
+            } else if (tabName === 'admin') {
+                renderAdminProducts();
+            }
+        }
+        
         // Обработчики событий
         document.getElementById('checkoutBtn').addEventListener('click', checkout);
+        document.getElementById('adminForm').addEventListener('submit', addProduct);
         
         // Запуск
         loadProducts();
@@ -538,7 +1518,7 @@ class WebAppHandler(BaseHTTPRequestHandler):
 def start_web_server():
     """Запуск веб-сервера"""
     try:
-        server = HTTPServer(('0.0.0.0', PORT), WebAppHandler)
+        server = HTTPServer(('0.0.0.0', PORT), DarkWebAppHandler)
         print(f"🌐 Веб-сервер запущен на http://0.0.0.0:{PORT}")
         server.serve_forever()
     except Exception as e:
@@ -546,10 +1526,10 @@ def start_web_server():
 
 def main():
     """Главная функция"""
-    print("🚀 ЗАПУСК SIMPLE TELEGRAM BOT")
+    print("🌙 ЗАПУСК DARK SHOP BOT V3")
     print("=" * 40)
     
-    bot = SimpleTelegramBot()
+    bot = DarkShopBot()
     
     if not bot.token:
         print("⚠️ BOT_TOKEN не найден - бот отключен")
