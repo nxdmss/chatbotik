@@ -16,7 +16,7 @@ if ('caches' in window) {
     });
 }
 
-console.log('🚀 Загружается приложение версии 4.0 с исправленной админ панелью для Telegram WebApp');
+console.log('🚀 Загружается приложение версии 5.0 с большой кнопкой для включения админ панели');
 
 // Дополнительная очистка кэша
 localStorage.clear();
@@ -163,29 +163,56 @@ class MobileShopApp {
     addDebugAdminButton() {
         // Добавляем отладочную кнопку для принудительного включения админ панели
         const debugButton = document.createElement('button');
-        debugButton.textContent = '🔧 Включить админ панель (отладка)';
+        debugButton.textContent = '🔧 ВКЛЮЧИТЬ АДМИН ПАНЕЛЬ';
         debugButton.style.cssText = `
             position: fixed;
-            top: 10px;
-            right: 10px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: #ff6b6b;
             color: white;
             border: none;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 20px 30px;
+            border-radius: 10px;
             cursor: pointer;
             z-index: 9999;
-            font-size: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            animation: pulse 2s infinite;
         `;
+        
+        // Добавляем анимацию
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: translate(-50%, -50%) scale(1); }
+                50% { transform: translate(-50%, -50%) scale(1.05); }
+                100% { transform: translate(-50%, -50%) scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
         
         debugButton.onclick = () => {
             this.isAdmin = true;
             this.showAdminPanel();
             debugButton.remove();
+            style.remove();
             console.log('🔧 Админ панель принудительно включена');
+            
+            // Показываем уведомление
+            this.showNotification('✅ Админ панель включена!', 'success');
         };
         
         document.body.appendChild(debugButton);
+        
+        // Автоматически скрываем кнопку через 10 секунд
+        setTimeout(() => {
+            if (debugButton.parentNode) {
+                debugButton.remove();
+                style.remove();
+            }
+        }, 10000);
     }
 
     async checkAdminStatus() {
@@ -298,13 +325,9 @@ class MobileShopApp {
             // Единственный администратор - 1593426947
             this.isAdmin = (userId === '1593426947');
             
-            // Временная отладочная кнопка для принудительного включения админ панели
-            const isLocalhost = window.location.hostname === 'localhost';
-            const isReplit = window.location.hostname.includes('replit.com') || 
-                            window.location.hostname.includes('replit.dev');
-            
-            if (!this.isAdmin && (isLocalhost || isReplit)) {
-                console.log('🔧 Отладочный режим: добавляем кнопку принудительного админа');
+            // Кнопка для принудительного включения админ панели (всегда показываем)
+            if (!this.isAdmin) {
+                console.log('🔧 Добавляем кнопку принудительного админа');
                 this.addDebugAdminButton();
             }
             
