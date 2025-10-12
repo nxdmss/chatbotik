@@ -215,6 +215,45 @@ class PerfectShopApp {
         // Добавляем новое уведомление
         document.body.appendChild(debugDiv);
         
+        // Добавляем кнопку принудительного включения админа если не админ
+        if (!this.isAdmin) {
+            const forceAdminBtn = document.createElement('button');
+            forceAdminBtn.textContent = '🔧 ВКЛЮЧИТЬ АДМИН';
+            forceAdminBtn.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 5px;
+                font-size: 12px;
+                font-weight: bold;
+                cursor: pointer;
+                z-index: 10001;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            `;
+            
+            forceAdminBtn.onclick = () => {
+                console.log('🔧 Принудительное включение админа');
+                this.isAdmin = true;
+                this.showAdminPanel();
+                this.showNotification('Админ панель включена!', 'success');
+                debugDiv.remove();
+                forceAdminBtn.remove();
+            };
+            
+            document.body.appendChild(forceAdminBtn);
+            
+            // Убираем кнопку через 15 секунд
+            setTimeout(() => {
+                if (forceAdminBtn && forceAdminBtn.parentNode) {
+                    forceAdminBtn.remove();
+                }
+            }, 15000);
+        }
+        
         // Автоматически убираем через 10 секунд
         setTimeout(() => {
             if (debugDiv && debugDiv.parentNode) {
