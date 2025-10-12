@@ -98,26 +98,38 @@ class DarkShopBot:
         """Сохранение изображения из base64"""
         try:
             if not base64_data:
+                print("⚠️ Пустые данные изображения")
                 return ''
             
-            # Убираем data:image/jpeg;base64, если есть
-            if ',' in base64_data:
+            # Определяем формат изображения из base64 заголовка
+            if base64_data.startswith('data:'):
+                # Извлекаем MIME тип
+                mime_type = base64_data.split(',')[0].split(':')[1].split(';')[0]
+                extension = mime_type.split('/')[1] if '/' in mime_type else 'jpg'
+                # Убираем заголовок data:image/...;base64,
                 base64_data = base64_data.split(',')[1]
+            else:
+                extension = 'jpg'  # По умолчанию
+            
+            print(f"📸 Сохранение изображения формата: {extension}")
             
             # Декодируем base64
             image_data = base64.b64decode(base64_data)
             
             # Генерируем уникальное имя файла
-            filename = f"product_{uuid.uuid4().hex[:8]}.jpg"
+            filename = f"product_{uuid.uuid4().hex[:8]}.{extension}"
             filepath = os.path.join(UPLOADS_DIR, filename)
             
             # Сохраняем файл
             with open(filepath, 'wb') as f:
                 f.write(image_data)
             
+            print(f"✅ Изображение сохранено: {filename} ({len(image_data)} байт)")
             return f"/uploads/{filename}"
         except Exception as e:
             print(f"❌ Ошибка сохранения изображения: {e}")
+            import traceback
+            traceback.print_exc()
             return ''
     
     def send_message(self, chat_id, text, reply_markup=None):
@@ -258,14 +270,29 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             filename = self.path[9:]  # Убираем '/uploads/'
             filepath = os.path.join(UPLOADS_DIR, filename)
             
+            print(f"🖼️ Запрос изображения: {self.path} -> {filepath}")
+            
             if os.path.exists(filepath):
+                # Определяем MIME тип по расширению
+                if filename.lower().endswith('.png'):
+                    content_type = 'image/png'
+                elif filename.lower().endswith('.gif'):
+                    content_type = 'image/gif'
+                elif filename.lower().endswith('.webp'):
+                    content_type = 'image/webp'
+                else:
+                    content_type = 'image/jpeg'
+                
                 self.send_response(200)
-                self.send_header('Content-type', 'image/jpeg')
+                self.send_header('Content-type', content_type)
+                self.send_header('Cache-Control', 'public, max-age=3600')
                 self.end_headers()
                 
                 with open(filepath, 'rb') as f:
                     self.wfile.write(f.read())
+                print(f"✅ Изображение отправлено: {filename}")
             else:
+                print(f"❌ Изображение не найдено: {filepath}")
                 self.send_response(404)
                 self.end_headers()
                 self.wfile.write(b'Image not found')
@@ -1145,13 +1172,19 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 return;
             }
             
+            console.log('🛍️ Отображение товаров:', products.length);
+            products.forEach(product => {
+                console.log(`📦 Товар: ${product.title}, изображение: ${product.image_url || 'нет'}`);
+            });
+            
             container.innerHTML = products.map(product => `
                 <div class="product-card">
                     <div class="product-image">
                         ${product.image_url ? 
-                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div style="display:none;">📷</div>` : 
-                            '📷'
+                            `<img src="${product.image_url}" alt="${product.title}" 
+                                 onerror="console.error('Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
+                            '<div style="color: #666; font-size: 24px;">📷</div>'
                         }
                     </div>
                     <div class="product-title">${product.title}</div>
@@ -1211,9 +1244,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 <div class="product-card">
                     <div class="product-image">
                         ${product.image_url ? 
-                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div style="display:none;">📷</div>` : 
-                            '📷'
+                            `<img src="${product.image_url}" alt="${product.title}" 
+                                 onerror="console.error('Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
+                            '<div style="color: #666; font-size: 24px;">📷</div>'
                         }
                     </div>
                     <div class="product-title">${product.title}</div>
@@ -1229,13 +1263,18 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         function handleImageUpload(input) {
             const file = input.files[0];
             if (file) {
+                console.log('📸 Выбран файл:', file.name, 'размер:', file.size, 'тип:', file.type);
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     selectedImageData = e.target.result;
+                    console.log('📸 Base64 данные готовы, длина:', selectedImageData.length);
                     const preview = document.getElementById('imagePreview');
-                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 120px; object-fit: cover;">`;
                 };
                 reader.readAsDataURL(file);
+            } else {
+                selectedImageData = '';
+                console.log('📸 Файл не выбран');
             }
         }
         
