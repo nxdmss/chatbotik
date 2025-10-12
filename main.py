@@ -1,100 +1,67 @@
 #!/usr/bin/env python3
 """
-Главный файл для запуска в Replit
-Автоматически запускает веб-сервер и телеграм бота
+Главный файл для запуска магазина и бота в Replit
 """
 
-import os
-import sys
+import subprocess
 import threading
 import time
-import subprocess
-from pathlib import Path
+import os
+import signal
+import sys
 
-def print_banner():
-    """Красивый баннер при запуске"""
-    print("=" * 60)
-    print("🚀 ЗАПУСК CHATBOTIK В REPLIT")
-    print("=" * 60)
-    print("📱 Веб-приложение: http://localhost:8000")
-    print("🤖 Телеграм бот: Запускается...")
-    print("🛍️ Система товаров: Готова к работе")
-    print("=" * 60)
-
-def start_web_server():
-    """Запуск веб-сервера"""
+def run_server():
+    """Запуск веб-сервера магазина"""
+    print("🌐 Запускаем веб-сервер магазина...")
     try:
-        print("🌐 Запуск веб-сервера...")
-        # Импортируем и запускаем идеальный сервер
-        from perfect_server import start_server
-        start_server()
+        subprocess.run([sys.executable, "simple_shop.py"], check=True)
+    except KeyboardInterrupt:
+        print("🛑 Веб-сервер остановлен")
     except Exception as e:
-        print(f"❌ Ошибка запуска веб-сервера: {e}")
-        print("🔄 Попытка запуска альтернативного сервера...")
-        # Запускаем простой HTTP сервер как fallback
-        try:
-            os.chdir("webapp")
-            subprocess.run([sys.executable, "-m", "http.server", "8000"])
-        except Exception as e2:
-            print(f"❌ Ошибка альтернативного сервера: {e2}")
+        print(f"❌ Ошибка веб-сервера: {e}")
 
-def start_telegram_bot():
-    """Запуск телеграм бота"""
+def run_bot():
+    """Запуск Telegram бота"""
+    print("🤖 Запускаем Telegram бота...")
     try:
-        print("🤖 Запуск телеграм бота...")
-        # Проверяем наличие токена
-        if not os.path.exists('.env'):
-            print("⚠️ Файл .env не найден, создаем пример...")
-            with open('.env.example', 'w') as f:
-                f.write("BOT_TOKEN=your_bot_token_here\n")
-            print("📝 Создан файл .env.example с примером токена")
-            return
-        
-        # Запускаем бота
-        from bot import main as bot_main
-        bot_main()
-    except ImportError as e:
-        print(f"⚠️ Не удалось импортировать бота: {e}")
-        print("📱 Веб-приложение работает независимо")
+        subprocess.run([sys.executable, "bot.py"], check=True)
+    except KeyboardInterrupt:
+        print("🛑 Бот остановлен")
     except Exception as e:
-        print(f"❌ Ошибка запуска бота: {e}")
-        print("📱 Веб-приложение работает независимо")
+        print(f"❌ Ошибка бота: {e}")
+
+def signal_handler(signum, frame):
+    """Обработчик сигналов для корректного завершения"""
+    print("\n🛑 Получен сигнал завершения...")
+    sys.exit(0)
 
 def main():
     """Главная функция"""
-    print_banner()
+    print("🚀 ЗАПУСК МАГАЗИНА И БОТА")
+    print("=" * 50)
     
-    # Проверяем наличие файлов
-    if not os.path.exists('perfect_server.py'):
-        print("❌ Файл perfect_server.py не найден!")
-        return
+    # Регистрируем обработчик сигналов
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
-    if not os.path.exists('webapp'):
-        print("❌ Папка webapp не найдена!")
-        return
+    # Создаем необходимые папки
+    os.makedirs("uploads", exist_ok=True)
+    os.makedirs("db_backups", exist_ok=True)
     
     # Запускаем веб-сервер в отдельном потоке
-    web_thread = threading.Thread(target=start_web_server, daemon=True)
-    web_thread.start()
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
     
-    # Ждем немного, чтобы сервер запустился
-    time.sleep(2)
+    # Небольшая пауза для запуска сервера
+    time.sleep(3)
     
-    # Запускаем телеграм бота в отдельном потоке
-    bot_thread = threading.Thread(target=start_telegram_bot, daemon=True)
-    bot_thread.start()
-    
-    print("✅ Все сервисы запущены!")
-    print("🌐 Веб-приложение: http://localhost:8000")
-    print("🛑 Для остановки нажмите Ctrl+C")
-    
+    # Запускаем бота в основном потоке
     try:
-        # Держим основную программу запущенной
-        while True:
-            time.sleep(1)
+        run_bot()
     except KeyboardInterrupt:
-        print("\n🛑 Остановка сервисов...")
-        print("👋 До свидания!")
+        print("\n🎉 Работа завершена")
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
 
 if __name__ == "__main__":
     main()
