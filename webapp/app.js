@@ -697,10 +697,19 @@ class MobileShopApp {
         this.isAdmin = true;
         
         console.log('✏️ Редактируем товар:', productId);
+        console.log('🔍 Доступно товаров:', this.products.length);
+        console.log('🔍 Доступно админ-товаров:', this.adminProducts?.length || 0);
         
-        const product = this.products.find(p => p.id === productId);
+        // Ищем товар сначала в adminProducts, потом в products
+        let product = this.adminProducts?.find(p => p.id === productId);
+        if (!product) {
+            product = this.products.find(p => p.id === productId);
+        }
+        
         if (!product) {
             console.error('❌ Товар не найден:', productId);
+            console.log('🔍 Список ID товаров:', this.products.map(p => p.id));
+            console.log('🔍 Список ID админ-товаров:', this.adminProducts?.map(p => p.id) || []);
             this.showNotification('Товар не найден!', 'error');
             return;
         }
@@ -720,7 +729,7 @@ class MobileShopApp {
         const photoPreview = document.getElementById('photo-preview');
         const previewImg = document.getElementById('preview-img');
         if (product.photo && product.photo !== '/webapp/static/uploads/default.jpg') {
-            previewImg.src = product.photo;
+            previewImg.src = `${this.API_BASE}${product.photo}`;
             photoPreview.style.display = 'block';
         } else {
             photoPreview.style.display = 'none';
@@ -1403,8 +1412,26 @@ function showAddProductModal() {
 }
 
 function editProduct(productId) {
+    console.log('🔗 Вызов editProduct из глобальной функции:', productId);
+    console.log('🔍 window.mobileShopApp:', window.mobileShopApp);
+    
     if (window.mobileShopApp) {
+        console.log('✅ Приложение найдено, вызываем editProduct');
         window.mobileShopApp.editProduct(productId);
+    } else {
+        console.error('❌ mobileShopApp не инициализирован');
+        console.log('🔍 Попытка инициализации...');
+        
+        try {
+            window.mobileShopApp = new MobileShopApp();
+            console.log('✅ Приложение инициализировано, повторяем вызов');
+            setTimeout(() => {
+                window.mobileShopApp.editProduct(productId);
+            }, 500); // Даем время на загрузку данных
+        } catch (error) {
+            console.error('❌ Ошибка инициализации:', error);
+            alert('Ошибка инициализации приложения. Попробуйте обновить страницу.');
+        }
     }
 }
 
