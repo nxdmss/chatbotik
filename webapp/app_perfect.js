@@ -49,7 +49,7 @@ class ShopApp {
         try {
             console.log('➕ Добавляем товар:', productData);
             
-            const response = await fetch(`${API_BASE}/webapp/admin/products`, {
+            const response = await fetch(`${API_BASE}/webapp/admin/products?user_id=admin`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

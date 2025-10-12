@@ -235,7 +235,7 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         """Обработка POST запросов - добавление товара"""
         print(f"📥 POST {self.path}")
         
-        if self.path == '/webapp/admin/products' or self.path == '/api/admin/products':
+        if self.path.startswith('/webapp/admin/products') or self.path.startswith('/api/admin/products'):
             try:
                 # Читаем данные
                 content_length = int(self.headers.get('Content-Length', 0))
