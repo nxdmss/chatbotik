@@ -140,6 +140,34 @@ class MobileShopApp {
         }
     }
 
+    addDebugAdminButton() {
+        // Добавляем отладочную кнопку для принудительного включения админ панели
+        const debugButton = document.createElement('button');
+        debugButton.textContent = '🔧 Включить админ панель (отладка)';
+        debugButton.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 9999;
+            font-size: 12px;
+        `;
+        
+        debugButton.onclick = () => {
+            this.isAdmin = true;
+            this.showAdminPanel();
+            debugButton.remove();
+            console.log('🔧 Админ панель принудительно включена');
+        };
+        
+        document.body.appendChild(debugButton);
+    }
+
     async checkAdminStatus() {
         try {
             // Проверяем ID пользователя из разных источников
@@ -152,6 +180,7 @@ class MobileShopApp {
                 const webApp = window.Telegram.WebApp;
                 console.log('📱 Telegram WebApp доступен');
                 console.log('📱 WebApp.initDataUnsafe:', webApp.initDataUnsafe);
+                console.log('📱 WebApp.initData:', webApp.initData);
                 
                 if (webApp.initDataUnsafe?.user?.id) {
                     userId = webApp.initDataUnsafe.user.id.toString();
@@ -160,6 +189,26 @@ class MobileShopApp {
                 } else {
                     console.log('❌ User ID не найден в initDataUnsafe');
                     console.log('🔍 initDataUnsafe.user:', webApp.initDataUnsafe?.user);
+                    console.log('🔍 initDataUnsafe:', webApp.initDataUnsafe);
+                    
+                    // Дополнительная проверка initData
+                    if (webApp.initData) {
+                        console.log('🔍 Проверяем initData напрямую:', webApp.initData);
+                        // Попытаемся распарсить initData
+                        try {
+                            const params = new URLSearchParams(webApp.initData);
+                            const userParam = params.get('user');
+                            if (userParam) {
+                                const userData = JSON.parse(userParam);
+                                if (userData.id) {
+                                    userId = userData.id.toString();
+                                    console.log('✅ User ID найден в initData:', userId);
+                                }
+                            }
+                        } catch (e) {
+                            console.log('❌ Ошибка парсинга initData:', e);
+                        }
+                    }
                 }
             } else {
                 console.log('❌ Telegram WebApp недоступен');
@@ -181,17 +230,34 @@ class MobileShopApp {
                 }
             }
             
-            // 4. Если user_id не найден - НЕ даем админские права
+            // 4. Если user_id не найден - проверяем отладочный режим
             if (!userId) {
-                console.log('⚠️ User ID не найден - админские права НЕ предоставлены');
-                this.isAdmin = false;
-                return;
+                console.log('⚠️ User ID не найден - проверяем отладочный режим');
+                
+                // Отладочный режим: если мы в браузере (не в Telegram), даем админские права
+                if (!window.Telegram || !window.Telegram.WebApp) {
+                    console.log('🔧 Отладочный режим: браузер обнаружен, даем админские права');
+                    userId = '1593426947'; // Ваш ID для отладки
+                    this.isAdmin = true;
+                    console.log('👑 Админские права предоставлены в отладочном режиме');
+                    return;
+                } else {
+                    console.log('❌ Telegram WebApp активен, но user_id не найден - админские права НЕ предоставлены');
+                    this.isAdmin = false;
+                    return;
+                }
             }
             
             console.log('Проверяем админ-статус для ID:', userId);
             
             // Единственный администратор - 1593426947
             this.isAdmin = (userId === '1593426947');
+            
+            // Временная отладочная кнопка для принудительного включения админ панели
+            if (!this.isAdmin && window.location.hostname === 'localhost') {
+                console.log('🔧 Отладочный режим: добавляем кнопку принудительного админа');
+                this.addDebugAdminButton();
+            }
             
             console.log('Результат проверки админ-статуса:', this.isAdmin);
             
