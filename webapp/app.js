@@ -762,12 +762,22 @@ class MobileShopApp {
                 // Показываем уведомление об успехе
                 this.showNotification(`Товар #${numericId} удален!`, 'success');
                 
-                // Обновляем данные
-                await this.fetchProducts();
-                await this.loadAdminProducts();
+                // СРАЗУ удаляем элемент из DOM с анимацией
+                const productCard = document.querySelector(`[data-product-id="${numericId}"]`);
+                if (productCard) {
+                    productCard.style.opacity = '0';
+                    productCard.style.transform = 'scale(0.8)';
+                    productCard.style.transition = 'all 0.3s ease';
+                    setTimeout(() => productCard.remove(), 300);
+                }
+                
+                // Удаляем из массива товаров
+                this.products = this.products.filter(p => p.id !== numericId);
+                
+                // Обновляем статистику
                 this.updateAdminStats();
                 
-                // Обновляем каталог если мы на нем
+                // Обновляем каталог если мы на нем (без полной перезагрузки)
                 if (this.currentPage === 'catalog') {
                     this.renderCatalogPage();
                 }
