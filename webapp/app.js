@@ -525,12 +525,21 @@ class MobileShopApp {
                     </div>
                 </div>
                 <div class="admin-product-actions">
-                    <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})" title="Редактировать товар">
-                        ✏️ Редактировать
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})" title="Удалить товар">
-                        🗑️ Удалить
-                    </button>
+                    ${isActive ? `
+                        <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})" title="Редактировать товар">
+                            ✏️ Редактировать
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})" title="Удалить товар">
+                            🗑️ Удалить
+                        </button>
+                    ` : `
+                        <button class="btn btn-secondary btn-sm" disabled title="Товар удален">
+                            ❌ Удален
+                        </button>
+                        <button class="btn btn-warning btn-sm" onclick="restoreProduct(${product.id})" title="Восстановить товар">
+                            🔄 Восстановить
+                        </button>
+                    `}
                 </div>
             </div>
         `;
@@ -737,6 +746,52 @@ class MobileShopApp {
         
         this.showModal('product-modal');
         console.log('✅ Форма редактирования открыта');
+    }
+
+    async restoreProduct(productId) {
+        console.log('🔄 Восстанавливаем товар:', productId);
+        
+        if (!confirm(`Вы уверены, что хотите восстановить товар #${productId}?`)) {
+            console.log('❌ Восстановление отменено пользователем');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${this.API_BASE}/webapp/admin/products/${productId}?user_id=admin`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    is_active: true
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Товар восстановлен успешно:', result);
+                
+                this.showNotification(`Товар #${productId} восстановлен!`, 'success');
+                
+                // Обновляем данные
+                await this.fetchProducts();
+                await this.loadAdminProducts();
+                this.updateAdminStats();
+                
+                // Обновляем каталог если мы на нем
+                if (this.currentPage === 'catalog') {
+                    this.renderCatalogPage();
+                }
+                
+            } else {
+                const errorData = await response.json();
+                console.error('❌ Ошибка восстановления товара:', errorData);
+                this.showNotification(`Ошибка восстановления: ${errorData.error}`, 'error');
+            }
+        } catch (error) {
+            console.error('❌ Ошибка восстановления товара:', error);
+            this.showNotification('Ошибка восстановления товара', 'error');
+        }
     }
 
     async deleteProduct(productId) {
@@ -1428,6 +1483,30 @@ function editProduct(productId) {
             setTimeout(() => {
                 window.mobileShopApp.editProduct(productId);
             }, 500); // Даем время на загрузку данных
+        } catch (error) {
+            console.error('❌ Ошибка инициализации:', error);
+            alert('Ошибка инициализации приложения. Попробуйте обновить страницу.');
+        }
+    }
+}
+
+function restoreProduct(productId) {
+    console.log('🔗 Вызов restoreProduct из глобальной функции:', productId);
+    console.log('🔍 window.mobileShopApp:', window.mobileShopApp);
+    
+    if (window.mobileShopApp) {
+        console.log('✅ Приложение найдено, вызываем restoreProduct');
+        window.mobileShopApp.restoreProduct(productId);
+    } else {
+        console.error('❌ mobileShopApp не инициализирован');
+        console.log('🔍 Попытка инициализации...');
+        
+        try {
+            window.mobileShopApp = new MobileShopApp();
+            console.log('✅ Приложение инициализировано, повторяем вызов');
+            setTimeout(() => {
+                window.mobileShopApp.restoreProduct(productId);
+            }, 500);
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
             alert('Ошибка инициализации приложения. Попробуйте обновить страницу.');

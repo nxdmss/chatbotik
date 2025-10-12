@@ -171,7 +171,7 @@ class ProductManager:
             traceback.print_exc()
             raise
     
-    def update_product(self, product_id, title=None, description=None, price=None, sizes=None, photo=None):
+    def update_product(self, product_id, title=None, description=None, price=None, sizes=None, photo=None, is_active=None):
         """Обновить товар"""
         product = self.get_product_by_id(product_id)
         if not product:
@@ -199,6 +199,9 @@ class ProductManager:
             if photo is not None:
                 updates.append("photo = ?")
                 params.append(photo)
+            if is_active is not None:
+                updates.append("is_active = ?")
+                params.append(1 if is_active else 0)
             
             if not updates:
                 return True
@@ -584,12 +587,18 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                     elif isinstance(sizes_raw, list):
                         sizes = sizes_raw
                 
+                # Обработка is_active
+                is_active = None
+                if 'is_active' in data:
+                    is_active = bool(data['is_active'])
+                
                 print(f"📝 Обновляем товар:")
                 print(f"   - Название: {data.get('title', 'не изменяется')}")
                 print(f"   - Описание: {data.get('description', 'не изменяется')}")
                 print(f"   - Цена: {price if price else 'не изменяется'}")
                 print(f"   - Размеры: {sizes if sizes else 'не изменяются'}")
                 print(f"   - Фото: {data.get('photo', 'не изменяется')}")
+                print(f"   - Активен: {is_active if is_active is not None else 'не изменяется'}")
                 
                 # Обновляем товар
                 success = product_manager.update_product(
@@ -598,7 +607,8 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                     description=data.get('description'),
                     price=price,
                     sizes=sizes,
-                    photo=data.get('photo')
+                    photo=data.get('photo'),
+                    is_active=is_active
                 )
                 
                 if success:
