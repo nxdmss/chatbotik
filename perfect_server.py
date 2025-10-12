@@ -540,9 +540,13 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 path_parts = self.path.split('/')
                 product_id = int(path_parts[-1].split('?')[0])
                 
+                print(f"✏️ Редактируем товар ID={product_id}")
+                
                 # Читаем данные
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
+                
+                print(f"📦 Получены данные для обновления: {post_data[:200]}")
                 
                 # Проверяем Content-Type
                 content_type = self.headers.get('Content-Type', '')
@@ -555,23 +559,53 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 else:
                     data = json.loads(post_data.decode('utf-8'))
                 
+                print(f"✅ Распарсены данные для обновления: {data}")
+                
+                # Обработка цены
+                price = None
+                if 'price' in data:
+                    try:
+                        price = float(data['price'])
+                    except (ValueError, TypeError):
+                        print(f"⚠️ Неверная цена: {data['price']}")
+                        price = None
+                
+                # Обработка размеров
+                sizes = None
+                if 'sizes' in data:
+                    sizes_raw = data['sizes']
+                    if isinstance(sizes_raw, str):
+                        sizes = [s.strip() for s in sizes_raw.split(',') if s.strip()]
+                    elif isinstance(sizes_raw, list):
+                        sizes = sizes_raw
+                
+                print(f"📝 Обновляем товар:")
+                print(f"   - Название: {data.get('title', 'не изменяется')}")
+                print(f"   - Описание: {data.get('description', 'не изменяется')}")
+                print(f"   - Цена: {price if price else 'не изменяется'}")
+                print(f"   - Размеры: {sizes if sizes else 'не изменяются'}")
+                print(f"   - Фото: {data.get('photo', 'не изменяется')}")
+                
                 # Обновляем товар
                 success = product_manager.update_product(
                     product_id,
                     title=data.get('title'),
                     description=data.get('description'),
-                    price=data.get('price'),
-                    sizes=data.get('sizes'),
+                    price=price,
+                    sizes=sizes,
                     photo=data.get('photo')
                 )
                 
                 if success:
+                    print(f"✅ Товар ID={product_id} успешно обновлен")
                     self.send_json(200, {"success": True, "message": "Товар обновлен успешно"})
                 else:
+                    print(f"❌ Товар ID={product_id} не найден")
                     self.send_json(404, {"success": False, "error": "Товар не найден"})
                 
             except Exception as e:
                 print(f"❌ Ошибка обновления товара: {e}")
+                traceback.print_exc()
                 self.send_json(500, {"success": False, "error": str(e)})
         else:
             self.send_json(404, {"success": False, "error": "Not found"})
