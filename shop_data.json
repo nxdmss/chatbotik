@@ -19,53 +19,5 @@
     "price": 5000,
     "description": "Удобные кроссовки",
     "image": "👟"
-  },
-  {
-    "id": 4,
-    "title": "Финальный тест",
-    "price": 777,
-    "description": "",
-    "image": "✅",
-    "photo": ""
-  },
-  {
-    "id": 5,
-    "title": "Тест в Replit",
-    "price": 555,
-    "description": "",
-    "image": "🚀",
-    "photo": ""
-  },
-  {
-    "id": 6,
-    "title": "Рабочий тест",
-    "price": 333,
-    "description": "",
-    "image": "✅",
-    "photo": ""
-  },
-  {
-    "id": 7,
-    "title": "Тест с фото",
-    "price": 999,
-    "description": "",
-    "image": "📷",
-    "photo": ""
-  },
-  {
-    "id": 8,
-    "title": "Тест JPG фото",
-    "price": 888,
-    "description": "",
-    "image": "📷",
-    "photo": ""
-  },
-  {
-    "id": 9,
-    "title": "Тест без фото",
-    "price": 777,
-    "description": "Простой тест",
-    "image": "📦",
-    "photo": ""
   }
 ]
