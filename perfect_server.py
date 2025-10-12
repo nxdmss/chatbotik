@@ -195,32 +195,44 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
             if boundary.startswith('"') and boundary.endswith('"'):
                 boundary = boundary[1:-1]
             
+            print(f"🔍 Boundary: {boundary}")
+            
             # Разбиваем на части
             parts = post_data.split(f'------{boundary}'.encode())
             
             result = {}
-            for part in parts:
+            for i, part in enumerate(parts):
                 if b'Content-Disposition' in part:
-                    # Ищем name
                     try:
+                        # Ищем name
                         name_start = part.find(b'name="') + 6
                         name_end = part.find(b'"', name_start)
                         name = part[name_start:name_end].decode('utf-8')
+                        
+                        # Проверяем, это файл или текст
+                        if b'filename=' in part:
+                            # Это файл, пропускаем пока
+                            print(f"   📎 Часть {i}: {name} - файл, пропускаем")
+                            continue
                         
                         # Ищем значение (после двойного переноса строки)
                         value_start = part.find(b'\r\n\r\n') + 4
                         value_end = part.rfind(b'\r\n')
                         
                         if value_start > 3 and value_end > value_start:
-                            value = part[value_start:value_end].decode('utf-8')
-                            result[name] = value
-                    except:
+                            value = part[value_start:value_end].decode('utf-8', errors='ignore').strip()
+                            if value:  # Только непустые значения
+                                result[name] = value
+                                print(f"   ✅ Часть {i}: {name} = {value[:50]}...")
+                    except Exception as e:
+                        print(f"   ❌ Ошибка обработки части {i}: {e}")
                         continue
             
             print(f"🔧 Распарсен multipart: {result}")
             return result
         except Exception as e:
             print(f"❌ Ошибка парсинга multipart: {e}")
+            traceback.print_exc()
             return {}
     
     def end_headers(self):
@@ -304,7 +316,13 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 # Извлекаем данные
                 title = data.get('title', 'Новый товар')
                 description = data.get('description', '')
-                price = float(data.get('price', 1000))
+                
+                # Обработка цены
+                try:
+                    price = float(data.get('price', 1000))
+                except (ValueError, TypeError):
+                    price = 1000
+                    print(f"⚠️ Неверная цена, используем 1000")
                 
                 # Обработка sizes - может быть массив или строка
                 sizes_raw = data.get('sizes', ['M', 'L'])
@@ -317,7 +335,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
                 
                 photo = data.get('photo', '/webapp/static/uploads/default.jpg')
                 
-                print(f"📝 Создаем товар: {title}, цена: {price}")
+                print(f"📝 Создаем товар:")
+                print(f"   - Название: {title}")
+                print(f"   - Описание: {description}")
+                print(f"   - Цена: {price}")
+                print(f"   - Размеры: {sizes}")
+                print(f"   - Фото: {photo}")
                 
                 # Добавляем товар
                 product_id = product_manager.add_product(title, description, price, sizes, photo)
