@@ -467,13 +467,13 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
         """Обработка GET запросов"""
         print(f"📥 GET {self.path}")
         
-        # Главная страница - стильная темная версия
-        if self.path == '/' or self.path == '/webapp/index.html':
+        # Главная страница - ИДЕАЛЬНАЯ версия
+        if self.path == '/' or self.path == '/webapp/index_perfect.html':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             try:
-                with open('webapp/index.html', 'r', encoding='utf-8') as f:
+                with open('webapp/index_perfect.html', 'r', encoding='utf-8') as f:
                     self.wfile.write(f.read().encode('utf-8'))
             except:
                 self.wfile.write('<h1>Сервер работает!</h1>'.encode('utf-8'))
@@ -485,12 +485,12 @@ class PerfectHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json(200, products)
             return
             
-        # Статические файлы
-        elif self.path == '/webapp/app.js':
-            self.serve_static_file('webapp/app.js', 'application/javascript')
+        # Статические файлы - ИДЕАЛЬНАЯ версия
+        elif self.path == '/webapp/app_perfect.js':
+            self.serve_static_file('webapp/app_perfect.js', 'application/javascript')
             return
-        elif self.path == '/webapp/styles.css':
-            self.serve_static_file('webapp/styles.css', 'text/css')
+        elif self.path == '/webapp/styles_perfect.css':
+            self.serve_static_file('webapp/styles_perfect.css', 'text/css')
             return
         
         # API: Получить все товары (для админа)
