@@ -95,15 +95,23 @@ class ProductManager:
     def restore_from_backup(self):
         """Восстановить данные из бэкапа при запуске"""
         try:
-            # Проверяем, есть ли данные в БД
+            # Проверяем, есть ли активные товары в БД
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM products WHERE is_active = 1")
+                active_count = cursor.fetchone()[0]
                 cursor.execute("SELECT COUNT(*) FROM products")
-                count = cursor.fetchone()[0]
+                total_count = cursor.fetchone()[0]
             
-            if count > 0:
-                print(f"📦 База данных содержит {count} товаров")
+            print(f"📊 Статус БД: {total_count} товаров всего, {active_count} активных")
+            
+            if active_count > 0:
+                print(f"✅ База данных содержит {active_count} активных товаров")
                 return
+            elif total_count > 0:
+                print(f"⚠️ В БД есть {total_count} товаров, но все неактивные")
+            else:
+                print("❌ База данных пустая")
             
             # Если БД пустая, пытаемся восстановить из JSON
             if os.path.exists(self.json_backup):

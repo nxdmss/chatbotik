@@ -145,29 +145,47 @@ class MobileShopApp {
             // Проверяем ID пользователя из разных источников
             let userId = null;
             
-            // 1. Из userInfo
-            if (this.userInfo && this.userInfo.id) {
-                userId = this.userInfo.id.toString();
+            console.log('🔍 Проверяем источники user_id:');
+            
+            // 1. Из Telegram WebApp initDataUnsafe
+            if (window.Telegram && window.Telegram.WebApp) {
+                const webApp = window.Telegram.WebApp;
+                console.log('📱 Telegram WebApp доступен');
+                console.log('📱 WebApp.initDataUnsafe:', webApp.initDataUnsafe);
+                
+                if (webApp.initDataUnsafe?.user?.id) {
+                    userId = webApp.initDataUnsafe.user.id.toString();
+                    console.log('✅ User ID из initDataUnsafe:', userId);
+                    console.log('👤 Полная информация о пользователе:', webApp.initDataUnsafe.user);
+                } else {
+                    console.log('❌ User ID не найден в initDataUnsafe');
+                    console.log('🔍 initDataUnsafe.user:', webApp.initDataUnsafe?.user);
+                }
+            } else {
+                console.log('❌ Telegram WebApp недоступен');
+                console.log('🔍 window.Telegram:', window.Telegram);
             }
             
-            // 2. Из URL параметров
+            // 2. Из userInfo (если есть)
+            if (!userId && this.userInfo && this.userInfo.id) {
+                userId = this.userInfo.id.toString();
+                console.log('✅ User ID из userInfo:', userId);
+            }
+            
+            // 3. Из URL параметров (для тестирования)
             if (!userId) {
                 const urlParams = new URLSearchParams(window.location.search);
                 userId = urlParams.get('user_id');
-            }
-            
-            // 3. Из Telegram WebApp
-            if (!userId && window.Telegram && window.Telegram.WebApp) {
-                const user = window.Telegram.WebApp.initDataUnsafe?.user;
-                if (user && user.id) {
-                    userId = user.id.toString();
+                if (userId) {
+                    console.log('✅ User ID из URL:', userId);
                 }
             }
             
-            // 4. Принудительно для тестирования
+            // 4. Если user_id не найден - НЕ даем админские права
             if (!userId) {
-                userId = '1593426947'; // Временно для тестирования
-                console.log('⚠️ Используем тестовый ID для админа');
+                console.log('⚠️ User ID не найден - админские права НЕ предоставлены');
+                this.isAdmin = false;
+                return;
             }
             
             console.log('Проверяем админ-статус для ID:', userId);
