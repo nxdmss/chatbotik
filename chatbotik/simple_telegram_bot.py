@@ -633,15 +633,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .products-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
             margin-bottom: 24px;
+            padding: 0 4px;
         }
         
         .product-card {
-            background: #2d2d2d;
-            border: 1px solid #333;
-            border-radius: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 12px;
             transition: all 0.3s ease;
             position: relative;
             aspect-ratio: 1;
@@ -651,16 +652,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
-            border-color: #1e40af;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
         
         .product-image-full {
             width: 100%;
             height: 100%;
             position: relative;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         
         .product-image-full img {
@@ -1116,9 +1117,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .admin-products-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
             margin-bottom: 24px;
+            padding: 0 4px;
         }
         
         .admin-search-box {
@@ -1142,28 +1144,28 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .admin-products-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
             margin-bottom: 24px;
+            padding: 0 4px;
         }
         
         .admin-product-item {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            padding: 0;
             transition: all 0.3s ease;
             position: relative;
             aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
+            overflow: hidden;
         }
         
         .admin-product-image {
             width: 100%;
             height: 100%;
             background: #2d2d2d;
-            border-radius: 6px;
+            border-radius: 12px;
             overflow: hidden;
             display: flex;
             align-items: center;
@@ -1171,15 +1173,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             color: #666;
             font-size: 24px;
             position: relative;
-            flex: 1;
-            min-height: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         
         .admin-product-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 6px;
+            border-radius: 12px;
             display: block;
             position: absolute;
             top: 0;
