@@ -642,13 +642,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             background: #2d2d2d;
             border: 1px solid #333;
             border-radius: 8px;
-            padding: 4px;
             transition: all 0.3s ease;
             position: relative;
             aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
             min-height: 200px;
+            overflow: hidden;
         }
         
         .product-card:hover {
@@ -657,47 +655,58 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             border-color: #1e40af;
         }
         
-        .product-image {
+        .product-image-full {
             width: 100%;
             height: 100%;
-            background: #1a1a1a;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #666;
-            font-size: 24px;
             position: relative;
-            flex: 1;
-            min-height: 0;
+            border-radius: 8px;
+            overflow: hidden;
         }
         
-        .product-image img {
+        .product-image-full img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             object-position: center;
-            transition: transform 0.3s ease;
-            border-radius: 6px;
             display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
+            transition: transform 0.3s ease;
         }
         
-        .product-image img:hover {
+        .product-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            padding: 16px 12px 12px;
+            color: white;
+        }
+        
+        .product-info {
+            margin-bottom: 8px;
+        }
+        
+        .product-overlay .product-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+            color: #ffffff;
+            line-height: 1.2;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .product-overlay .product-price {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .product-image-full img:hover {
             transform: scale(1.05);
         }
         
-        .product-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: #ffffff;
-            line-height: 1.3;
-        }
         
         .product-description {
             color: #aaaaaa;
@@ -710,12 +719,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             overflow: hidden;
         }
         
-        .product-price {
-            font-size: 16px;
-            font-weight: 700;
-            color: #3b82f6;
-            margin-bottom: 8px;
-        }
         
         .add-to-cart-btn {
             background: #1e40af;
@@ -735,47 +738,49 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             transform: scale(1.02);
         }
         
-        .product-buttons {
+        .product-overlay .product-buttons {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            margin-top: 8px;
         }
         
         .size-btn-thin, .add-to-cart-btn-thin {
-            background: #1a1a1a;
+            background: rgba(0, 0, 0, 0.7);
             color: #ffffff;
-            border: 1px solid #333;
-            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 10px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 500;
             transition: all 0.3s ease;
             width: 100%;
-            height: 32px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(4px);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         }
         
         .size-btn-thin {
-            background: #2d2d2d;
-            border-color: #444;
+            background: rgba(45, 45, 45, 0.8);
+            border-color: rgba(255, 255, 255, 0.4);
         }
         
         .size-btn-thin:hover {
-            background: #3d3d3d;
+            background: rgba(61, 61, 61, 0.9);
             border-color: #007bff;
+            transform: translateY(-1px);
         }
         
         .add-to-cart-btn-thin {
-            background: #007bff;
+            background: rgba(0, 123, 255, 0.9);
             border-color: #007bff;
         }
         
         .add-to-cart-btn-thin:hover {
-            background: #0056b3;
+            background: rgba(0, 86, 179, 0.95);
             transform: translateY(-1px);
         }
         
@@ -1695,7 +1700,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             container.innerHTML = products.map(product => `
                 <div class="product-card">
-                    <div class="product-image">
+                    <div class="product-image-full">
                         ${product.image_url ? 
                             `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
                                  style="width: 100%; height: 100%; object-fit: cover;"
@@ -1704,16 +1709,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                              <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
                             '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
                         }
-                    </div>
-                    <div class="product-title">${product.title}</div>
-                    <div class="product-price">${product.price.toLocaleString()} ₽</div>
-                    <div class="product-buttons">
-                        <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
-                            Выбрать размер
-                        </button>
-                        <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
-                            В корзину
-                        </button>
+                        <div class="product-overlay">
+                            <div class="product-info">
+                                <div class="product-title">${product.title}</div>
+                                <div class="product-price">${product.price.toLocaleString()} ₽</div>
+                            </div>
+                            <div class="product-buttons">
+                                <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
+                                    Выбрать размер
+                                </button>
+                                <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
+                                    В корзину
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -1768,7 +1777,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             container.innerHTML = filteredProducts.map(product => `
                 <div class="product-card">
-                    <div class="product-image">
+                    <div class="product-image-full">
                         ${product.image_url ? 
                             `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
                                  style="width: 100%; height: 100%; object-fit: cover;"
@@ -1777,16 +1786,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                              <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
                             '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
                         }
-                    </div>
-                    <div class="product-title">${product.title}</div>
-                    <div class="product-price">${product.price.toLocaleString()} ₽</div>
-                    <div class="product-buttons">
-                        <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
-                            Выбрать размер
-                        </button>
-                        <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
-                            В корзину
-                        </button>
+                        <div class="product-overlay">
+                            <div class="product-info">
+                                <div class="product-title">${product.title}</div>
+                                <div class="product-price">${product.price.toLocaleString()} ₽</div>
+                            </div>
+                            <div class="product-buttons">
+                                <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
+                                    Выбрать размер
+                                </button>
+                                <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
+                                    В корзину
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `).join('');
