@@ -642,9 +642,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             background: #2d2d2d;
             border: 1px solid #333;
             border-radius: 8px;
-            padding: 12px;
+            padding: 8px;
             transition: all 0.3s ease;
             position: relative;
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
         }
         
         .product-card:hover {
@@ -655,7 +658,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-image {
             width: 100%;
-            height: 120px;
+            flex: 1;
             background: #1a1a1a;
             border-radius: 6px;
             margin-bottom: 8px;
@@ -674,6 +677,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             object-fit: cover;
             object-position: center;
             transition: transform 0.3s ease;
+            border-radius: 6px;
         }
         
         .product-image img:hover {
