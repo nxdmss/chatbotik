@@ -124,8 +124,74 @@ def is_admin(user_id):
     """Проверить, является ли пользователь администратором"""
     return user_id in ADMIN_IDS
 
+# Функции для создания клавиатур
+def create_reply_keyboard(keyboard_layout, resize_keyboard=True, one_time_keyboard=False):
+    """Создать reply клавиатуру"""
+    return {
+        'keyboard': keyboard_layout,
+        'resize_keyboard': resize_keyboard,
+        'one_time_keyboard': one_time_keyboard
+    }
+
+def create_inline_keyboard(inline_layout):
+    """Создать inline клавиатуру"""
+    return {
+        'inline_keyboard': inline_layout
+    }
+
+def get_admin_keyboard():
+    """Получить главную клавиатуру для администратора"""
+    keyboard = [
+        ['📋 Клиенты', '💬 Сообщения'],
+        ['⭐ Отзывы', '📦 Заказы'],
+        ['📊 Статистика']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_client_keyboard():
+    """Получить главную клавиатуру для клиента"""
+    keyboard = [
+        ['📞 Поддержка'],
+        ['⭐ Отзывы', '📦 Мои заказы'],
+        ['🏠 Главное меню']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_back_keyboard():
+    """Получить клавиатуру с кнопкой Назад"""
+    keyboard = [
+        ['🔙 Назад']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_support_keyboard():
+    """Получить клавиатуру поддержки"""
+    keyboard = [
+        ['📝 Написать сообщение'],
+        ['🔙 Назад']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_reviews_keyboard():
+    """Получить клавиатуру отзывов"""
+    keyboard = [
+        ['⭐ Оставить отзыв'],
+        ['👀 Посмотреть отзывы'],
+        ['🔙 Назад']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_rating_keyboard():
+    """Получить клавиатуру для выбора рейтинга"""
+    keyboard = [
+        ['⭐ 1', '⭐⭐ 2', '⭐⭐⭐ 3'],
+        ['⭐⭐⭐⭐ 4', '⭐⭐⭐⭐⭐ 5'],
+        ['🔙 Назад']
+    ]
+    return create_reply_keyboard(keyboard)
+
 # Telegram API функции
-def send_message(chat_id, text):
+def send_message(chat_id, text, reply_markup=None):
     """Отправить сообщение через Telegram API"""
     try:
         url = f'{TELEGRAM_API_URL}/sendMessage'
@@ -134,6 +200,10 @@ def send_message(chat_id, text):
             'text': text,
             'parse_mode': 'HTML'
         }
+        
+        if reply_markup:
+            data['reply_markup'] = reply_markup
+        
         response = requests.post(url, json=data, timeout=10)
         return response.status_code == 200
     except Exception as e:
@@ -166,29 +236,29 @@ def handle_start_command(user_id, username, first_name, last_name):
         if is_admin(user_id):
             # Меню для администратора
             message = (
-                "👑 Добро пожаловать в панель администратора!\n\n"
-                "Доступные команды:\n"
-                "📋 /customers - Список клиентов\n"
-                "💬 /messages - Сообщения поддержки\n"
-                "⭐ /reviews - Отзывы клиентов\n"
-                "📦 /orders - Заказы\n"
-                "📊 /stats - Статистика\n\n"
-                "Для ответа клиенту: /reply <user_id> <сообщение>\n"
-                "Для создания заказа: /order <user_id> <описание>"
+                "👑 <b>Панель администратора</b>\n\n"
+                "Выберите действие с помощью кнопок ниже:\n\n"
+                "📋 <b>Клиенты</b> - список всех клиентов\n"
+                "💬 <b>Сообщения</b> - история сообщений поддержки\n"
+                "⭐ <b>Отзывы</b> - все отзывы клиентов\n"
+                "📦 <b>Заказы</b> - управление заказами\n"
+                "📊 <b>Статистика</b> - общая статистика\n\n"
+                "<i>Или используйте команды: /reply, /order</i>"
             )
+            keyboard = get_admin_keyboard()
         else:
             # Меню для клиента
             message = (
-                "👋 Добро пожаловать!\n\n"
-                "Я помогу вам связаться с администратором или оставить отзыв.\n\n"
-                "Доступные команды:\n"
-                "📞 /support - Связь с администратором\n"
-                "⭐ /reviews - Отзывы\n"
-                "📦 /myorders - Мои заказы\n\n"
-                "Просто напишите сообщение, и оно будет передано администратору."
+                "👋 <b>Добро пожаловать!</b>\n\n"
+                "Выберите нужное действие с помощью кнопок:\n\n"
+                "📞 <b>Поддержка</b> - связь с администратором\n"
+                "⭐ <b>Отзывы</b> - оставить или посмотреть отзывы\n"
+                "📦 <b>Мои заказы</b> - история ваших заказов\n\n"
+                "💬 <i>Или просто напишите сообщение для связи с администратором</i>"
             )
+            keyboard = get_client_keyboard()
         
-        send_message(user_id, message)
+        send_message(user_id, message, keyboard)
         
     except Exception as e:
         logger.error(f"Ошибка в handle_start_command: {e}")
@@ -202,9 +272,72 @@ def handle_support_command(user_id):
             "Напишите ваш вопрос или сообщение, и администратор ответит вам в ближайшее время.\n\n"
             "Просто отправьте сообщение, и оно будет передано администратору."
         )
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
     except Exception as e:
         logger.error(f"Ошибка в handle_support_command: {e}")
+
+def handle_support_button(user_id):
+    """Обработка кнопки поддержки"""
+    try:
+        message = (
+            "📞 <b>Поддержка</b>\n\n"
+            "Выберите действие:"
+        )
+        send_message(user_id, message, get_support_keyboard())
+    except Exception as e:
+        logger.error(f"Ошибка в handle_support_button: {e}")
+
+def handle_write_message_button(user_id):
+    """Обработка кнопки написать сообщение"""
+    try:
+        message = (
+            "📝 <b>Написать сообщение</b>\n\n"
+            "Просто напишите ваш вопрос или сообщение, и оно будет передано администратору.\n\n"
+            "Администратор ответит вам в ближайшее время!"
+        )
+        send_message(user_id, message, get_back_keyboard())
+    except Exception as e:
+        logger.error(f"Ошибка в handle_write_message_button: {e}")
+
+def handle_reviews_button(user_id):
+    """Обработка кнопки отзывов"""
+    try:
+        message = (
+            "⭐ <b>Отзывы</b>\n\n"
+            "Выберите действие:"
+        )
+        send_message(user_id, message, get_reviews_keyboard())
+    except Exception as e:
+        logger.error(f"Ошибка в handle_reviews_button: {e}")
+
+def handle_leave_review_button(user_id):
+    """Обработка кнопки оставить отзыв"""
+    try:
+        message = (
+            "⭐ <b>Оставить отзыв</b>\n\n"
+            "Выберите оценку от 1 до 5 звезд:"
+        )
+        send_message(user_id, message, get_rating_keyboard())
+    except Exception as e:
+        logger.error(f"Ошибка в handle_leave_review_button: {e}")
+
+def handle_rating_selection(user_id, rating_text):
+    """Обработка выбора рейтинга"""
+    try:
+        # Извлекаем количество звезд из текста
+        rating = rating_text.count('⭐')
+        
+        message = (
+            f"⭐ <b>Вы выбрали {rating} звезд</b>\n\n"
+            f"Теперь напишите ваш отзыв (или отправьте любое сообщение для подтверждения только оценки):"
+        )
+        send_message(user_id, message, get_back_keyboard())
+        
+        # Сохраняем выбранный рейтинг для пользователя (можно в памяти или базе)
+        # Здесь мы будем ждать следующее сообщение от пользователя
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_rating_selection: {e}")
 
 def handle_reviews_command(user_id):
     """Команда отзывов"""
@@ -258,7 +391,7 @@ def show_customer_reviews(user_id):
             
             message += "Для оставления отзыва используйте /rate <оценка> <отзыв>"
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в show_customer_reviews: {e}")
@@ -372,7 +505,7 @@ def handle_myorders_command(user_id):
                     f"📅 Дата: {created_at[:16]}\n\n"
                 )
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в handle_myorders_command: {e}")
@@ -417,7 +550,7 @@ def handle_customers_command(user_id):
                 f"⏰ Активность: {last_activity[:16]}\n\n"
             )
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в handle_customers_command: {e}")
@@ -462,7 +595,7 @@ def handle_messages_command(user_id):
                 f"⏰ {created_at[:16]}\n\n"
             )
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в handle_messages_command: {e}")
@@ -502,7 +635,7 @@ def show_admin_reviews(user_id):
                 f"⏰ {created_at[:16]}\n\n"
             )
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в show_admin_reviews: {e}")
@@ -552,7 +685,7 @@ def handle_orders_command(user_id):
                 f"📅 {created_at[:16]}\n\n"
             )
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в handle_orders_command: {e}")
@@ -595,7 +728,7 @@ def handle_stats_command(user_id):
             f"⭐ Средний рейтинг: {avg_rating:.1f}/5"
         )
         
-        send_message(user_id, message)
+        send_message(user_id, message, get_back_keyboard())
         
     except Exception as e:
         logger.error(f"Ошибка в handle_stats_command: {e}")
@@ -758,8 +891,33 @@ def process_update(update):
         if 'text' in message:
             text = message['text']
             
+            # Обработка кнопок
+            if text == '🏠 Главное меню' or text == '🔙 Назад':
+                handle_start_command(user_id, username, first_name, last_name)
+            elif text == '📞 Поддержка':
+                handle_support_button(user_id)
+            elif text == '📝 Написать сообщение':
+                handle_write_message_button(user_id)
+            elif text == '⭐ Отзывы':
+                handle_reviews_button(user_id)
+            elif text == '👀 Посмотреть отзывы':
+                show_customer_reviews(user_id)
+            elif text == '⭐ Оставить отзыв':
+                handle_leave_review_button(user_id)
+            elif text in ['⭐ 1', '⭐⭐ 2', '⭐⭐⭐ 3', '⭐⭐⭐⭐ 4', '⭐⭐⭐⭐⭐ 5']:
+                handle_rating_selection(user_id, text)
+            elif text == '📦 Мои заказы':
+                handle_myorders_command(user_id)
+            elif text == '📋 Клиенты':
+                handle_customers_command(user_id)
+            elif text == '💬 Сообщения':
+                handle_messages_command(user_id)
+            elif text == '📦 Заказы':
+                handle_orders_command(user_id)
+            elif text == '📊 Статистика':
+                handle_stats_command(user_id)
             # Обработка команд
-            if text.startswith('/start'):
+            elif text.startswith('/start'):
                 handle_start_command(user_id, username, first_name, last_name)
             elif text.startswith('/support'):
                 handle_support_command(user_id)
