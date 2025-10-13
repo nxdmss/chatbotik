@@ -997,12 +997,14 @@ def process_update(update):
             print(f"🔍 DEBUG: Получен callback_query: user_id={user_id}, data='{callback_data}', query_id={callback_query_id}")
             
             # Обрабатываем callback query
-            if callback_data.startswith('customer_'):
+            print(f"🔍 DEBUG: Обрабатываем callback_data: '{callback_data}'")
+            
+            if callback_data.startswith('cust_'):
                 customer_user_id = int(callback_data.split('_')[1])
                 print(f"🔍 DEBUG: Обрабатываем клиента {customer_user_id} для админа {user_id}")
                 answer_callback_query(callback_query_id, "Загрузка информации о клиенте...")
                 show_customer_detail(user_id, customer_user_id)
-            elif callback_data == 'back_to_admin':
+            elif callback_data == 'back':
                 answer_callback_query(callback_query_id, "Возврат в главное меню")
                 handle_start_command(user_id, callback_query['from'].get('username'), 
                                    callback_query['from'].get('first_name'), 
@@ -1023,6 +1025,7 @@ def process_update(update):
                 answer_callback_query(callback_query_id, "Загрузка отзывов...")
                 handle_customer_reviews_callback(user_id, customer_user_id)
             else:
+                print(f"🔍 DEBUG: Неизвестный callback_data: '{callback_data}'")
                 answer_callback_query(callback_query_id, "Неизвестная команда")
             
             return
@@ -1063,24 +1066,23 @@ def handle_customers_list_button(user_id):
             send_message(user_id, "📋 <b>Список клиентов</b>\n\nКлиентов пока нет.", get_back_keyboard())
             return
         
-        # Создаем inline клавиатуру с клиентами
+        # Создаем простую inline клавиатуру
         inline_keyboard = []
-        message = "📋 <b>Выберите клиента:</b>"
         
-        for i, customer in enumerate(customers):
+        for customer in customers:
             customer_id, user_id_val, username, first_name, last_name, last_activity, messages_count, orders_count = customer
             
             name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
-            
-            # Добавляем inline кнопку для каждого клиента с краткой информацией
             button_text = f"👤 {name}"
             if orders_count > 0:
                 button_text += f" (#{orders_count})"
             if messages_count > 0:
                 button_text += f" 💬{messages_count}"
             
-            callback_data = f"customer_{user_id_val}"
+            # Простой callback_data
+            callback_data = f"cust_{user_id_val}"
             print(f"🔍 DEBUG: Создаем кнопку для клиента {name} с callback_data: {callback_data}")
+            
             inline_keyboard.append([{
                 "text": button_text,
                 "callback_data": callback_data
@@ -1089,15 +1091,27 @@ def handle_customers_list_button(user_id):
         # Добавляем кнопку "Назад"
         inline_keyboard.append([{
             "text": "🔙 Назад",
-            "callback_data": "back_to_admin"
+            "callback_data": "back"
         }])
         
-        reply_markup = create_inline_keyboard(inline_keyboard)
+        # Отправляем сообщение с inline клавиатурой
+        message = "📋 <b>Выберите клиента:</b>"
+        
+        # Создаем правильную структуру для inline клавиатуры
+        reply_markup = {
+            "inline_keyboard": inline_keyboard
+        }
+        
         print(f"🔍 DEBUG: Отправляем сообщение с клавиатурой: {len(inline_keyboard)} кнопок")
+        print(f"🔍 DEBUG: Структура клавиатуры: {reply_markup}")
+        
         send_message(user_id, message, reply_markup)
         
     except Exception as e:
         logger.error(f"Ошибка в handle_customers_list_button: {e}")
+        print(f"🔍 DEBUG: Исключение в handle_customers_list_button: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def show_customer_detail(admin_user_id, customer_user_id):
@@ -1188,7 +1202,7 @@ def show_customer_detail(admin_user_id, customer_user_id):
             [{"text": "🔙 Назад к списку", "callback_data": "customers_list"}]
         ]
         
-        reply_markup = create_inline_keyboard(inline_keyboard)
+        reply_markup = {"inline_keyboard": inline_keyboard}
         send_message(admin_user_id, message, reply_markup)
         
     except Exception as e:
@@ -1352,8 +1366,8 @@ def handle_customer_chat_callback(user_id, customer_user_id):
         message += "\nДля отправки сообщения используйте:\n<code>/reply " + str(customer_user_id) + " ваше сообщение</code>"
         
         # Кнопка назад к клиенту
-        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"customer_{customer_user_id}"}]]
-        reply_markup = create_inline_keyboard(inline_keyboard)
+        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"cust_{customer_user_id}"}]]
+        reply_markup = {"inline_keyboard": inline_keyboard}
         send_message(user_id, message, reply_markup)
         
     except Exception as e:
@@ -1416,8 +1430,8 @@ def handle_customer_orders_callback(user_id, customer_user_id):
         message += "\nДля создания заказа используйте:\n<code>/order " + str(customer_user_id) + " описание заказа</code>"
         
         # Кнопка назад к клиенту
-        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"customer_{customer_user_id}"}]]
-        reply_markup = create_inline_keyboard(inline_keyboard)
+        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"cust_{customer_user_id}"}]]
+        reply_markup = {"inline_keyboard": inline_keyboard}
         send_message(user_id, message, reply_markup)
         
     except Exception as e:
@@ -1471,8 +1485,8 @@ def handle_customer_reviews_callback(user_id, customer_user_id):
                 )
         
         # Кнопка назад к клиенту
-        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"customer_{customer_user_id}"}]]
-        reply_markup = create_inline_keyboard(inline_keyboard)
+        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"cust_{customer_user_id}"}]]
+        reply_markup = {"inline_keyboard": inline_keyboard}
         send_message(user_id, message, reply_markup)
         
     except Exception as e:
