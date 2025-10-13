@@ -1774,21 +1774,27 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             container.innerHTML = productsToRender.map(product => `
-                <div class="admin-product-simple" style="background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 10px; margin: 8px 0; display: flex; align-items: center; gap: 10px; min-height: 70px; max-width: 100%; overflow: hidden;">
-                    <div style="width: 50px; height: 50px; border-radius: 4px; overflow: hidden; flex-shrink: 0; border: 1px solid #444;">
+                <div class="product-card">
+                    <div class="product-image-full">
                         ${product.image_url ? 
-                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" style="width: 100%; height: 100%; object-fit: cover;">` : 
-                            '<div style="background: #444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 16px;">📷</div>'
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;"
+                                 onload="console.log('✅ Админ изображение загружено:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки админ изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 32px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
+                            '<div style="color: #666; font-size: 32px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
                         }
-                    </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; overflow: hidden;">
-                        <div style="font-weight: bold; color: white; margin-bottom: 4px; font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${product.title}</div>
-                        <div style="color: #4CAF50; font-size: 14px; font-weight: bold; margin-bottom: 2px;">${product.price.toLocaleString()} ₽</div>
-                        ${product.sizes ? `<div style="color: #888; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Размеры: ${product.sizes}</div>` : ''}
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-items: center;">
-                        <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; min-width: 50px; transition: background 0.2s;">✏️</button>
-                        <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; min-width: 50px; transition: background 0.2s;">🗑️</button>
+                        <div class="product-overlay">
+                            <div class="product-info">
+                                <div class="product-title">${product.title}</div>
+                                <div class="product-price">${product.price.toLocaleString()} ₽</div>
+                                ${product.sizes ? `<div style="color: #ccc; font-size: 10px; margin-top: 2px;">Размеры: ${product.sizes}</div>` : ''}
+                            </div>
+                            <div class="product-buttons">
+                                <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; width: 100%; margin-bottom: 6px;">✏️ Изменить</button>
+                                <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; width: 100%;">🗑️ Удалить</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `).join('');
