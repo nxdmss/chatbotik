@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
 """
-🌙 DARK SHOP BOT V2 - ИСПРАВЛЕННЫЙ ДИЗАЙН
-==========================================
-Версия с темно-синими кнопками, нижней навигацией и компактными товарами
+🛍️ ОСНОВНОЙ TELEGRAM BOT - ИНТЕРНЕТ-МАГАЗИН
+============================================
+Полнофункциональный интернет-магазин с Telegram интеграцией
+- Каталог товаров с фотографиями
+- Корзина покупок
+- Админ панель для управления товарами
+- Темная тема и современный интерфейс
 """
 
 import os
 import json
 import sqlite3
+import base64
+import uuid
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import time
+try:
+    from PIL import Image
+    from io import BytesIO
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    print("⚠️ PIL не установлен, изображения будут сохраняться без сжатия")
 
 try:
     import requests
@@ -23,6 +36,10 @@ except ImportError:
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 PORT = int(os.getenv('PORT', 8000))
 WEBAPP_URL = f'http://localhost:{PORT}'
+UPLOADS_DIR = 'uploads'
+
+# Создаем папку для загрузок
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # База данных
 DATABASE_PATH = 'shop.db'
@@ -44,8 +61,6 @@ class DarkShopBot:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 price INTEGER NOT NULL,
-                description TEXT DEFAULT '',
-                category TEXT DEFAULT 'general',
                 image_url TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -66,29 +81,93 @@ class DarkShopBot:
         cursor.execute('SELECT COUNT(*) FROM products')
         if cursor.fetchone()[0] == 0:
             test_products = [
-                ('iPhone 15 Pro', 99999, 'Новейший смартфон Apple', 'electronics', ''),
-                ('MacBook Air M3', 129999, 'Мощный ноутбук', 'electronics', ''),
-                ('Nike Air Max', 8999, 'Спортивные кроссовки', 'clothing', ''),
-                ('Кофе Starbucks', 299, 'Премиальный кофе', 'food', ''),
-                ('Книга Python', 1999, 'Программирование', 'books', ''),
-                ('Samsung Galaxy', 89999, 'Флагманский смартфон', 'electronics', ''),
-                ('Adidas Boost', 12999, 'Беговые кроссовки', 'clothing', ''),
-                ('Чай Earl Grey', 599, 'Элитный чай', 'food', ''),
-                ('iPad Pro', 79999, 'Планшет Apple', 'electronics', ''),
-                ('Nike Dunk', 7999, 'Классические кроссовки', 'clothing', ''),
-                ('Кофе Lavazza', 399, 'Итальянский кофе', 'food', ''),
-                ('Книга JavaScript', 2499, 'Веб-разработка', 'books', '')
+                ('iPhone 15 Pro', 99999, ''),
+                ('MacBook Air M3', 129999, ''),
+                ('Nike Air Max', 8999, ''),
+                ('Кофе Starbucks', 299, ''),
+                ('Книга Python', 1999, ''),
+                ('Samsung Galaxy', 89999, ''),
+                ('Adidas Boost', 12999, ''),
+                ('Чай Earl Grey', 599, ''),
+                ('iPad Pro', 79999, ''),
+                ('Nike Dunk', 7999, ''),
+                ('Кофе Lavazza', 399, ''),
+                ('Книга JavaScript', 2499, '')
             ]
             
-            for title, price, description, category, image_url in test_products:
+            for title, price, image_url in test_products:
                 cursor.execute('''
-                    INSERT INTO products (title, price, description, category, image_url)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (title, price, description, category, image_url))
+                    INSERT INTO products (title, price, image_url)
+                    VALUES (?, ?, ?)
+                ''', (title, price, image_url))
+            
+            print("✅ Добавлены тестовые товары без изображений")
         
         conn.commit()
         conn.close()
         print("✅ База данных инициализирована")
+    
+    def save_image(self, base64_data):
+        """Простое сохранение изображения из base64"""
+        try:
+            print(f"🔍 save_image вызвана с данными длиной: {len(base64_data) if base64_data else 0}")
+            
+            if not base64_data or base64_data.strip() == '':
+                print("⚠️ Пустые данные изображения - возвращаем пустую строку")
+                return ''
+            
+            # Проверяем что это действительно base64
+            if len(base64_data) < 100:
+                print(f"⚠️ Слишком короткие данные: {base64_data[:50]}...")
+                return ''
+            
+            print(f"📸 Получены данные изображения, длина: {len(base64_data)}")
+            
+            # Простая обработка - убираем заголовок если есть
+            if base64_data.startswith('data:'):
+                # Находим запятую и берем только base64 данные
+                if ',' in base64_data:
+                    base64_data = base64_data.split(',', 1)[1]
+                    print("📸 Убран заголовок data:")
+            
+            # Декодируем base64
+            try:
+                image_data = base64.b64decode(base64_data)
+                print(f"✅ Base64 декодирован, размер: {len(image_data)} байт")
+            except Exception as decode_error:
+                print(f"❌ Ошибка декодирования base64: {decode_error}")
+                return ''
+            
+            # Генерируем простое имя файла
+            filename = f"img_{uuid.uuid4().hex[:8]}.jpg"
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            
+            # Проверяем что папка существует
+            if not os.path.exists(UPLOADS_DIR):
+                os.makedirs(UPLOADS_DIR)
+                print(f"📁 Создана папка: {UPLOADS_DIR}")
+            
+            # Сохраняем файл
+            with open(filepath, 'wb') as f:
+                f.write(image_data)
+            
+            # Проверяем что файл создался
+            if os.path.exists(filepath):
+                file_size = os.path.getsize(filepath)
+                result_url = f"/uploads/{filename}"
+                print(f"✅ Изображение сохранено: {filename} ({file_size} байт)")
+                print(f"📁 Полный путь: {filepath}")
+                print(f"🌐 URL для базы: {result_url}")
+                return result_url
+    else:
+                print(f"❌ Файл не создался: {filepath}")
+                return ''
+            
+        except Exception as e:
+            print(f"❌ Ошибка сохранения изображения: {e}")
+            import traceback
+            traceback.print_exc()
+            return ''
     
     def send_message(self, chat_id, text, reply_markup=None):
         """Отправка сообщения в Telegram"""
@@ -180,7 +259,7 @@ class DarkShopBot:
                 
                 self.send_message(chat_id, response_text)
                 
-        except Exception as e:
+    except Exception as e:
             print(f"❌ Ошибка обработки данных WebApp: {e}")
             self.send_message(chat_id, '❌ Произошла ошибка при обработке данных')
 
@@ -192,7 +271,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             
-            html_content = self.get_dark_page_v2()
+            html_content = self.get_dark_page_v3()
             self.wfile.write(html_content.encode('utf-8'))
             
         elif self.path == '/api/products':
@@ -214,52 +293,93 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'id': product[0],
                         'title': product[1],
                         'price': product[2],
-                        'description': product[3] or '',
-                        'category': product[4] or 'general',
-                        'image_url': product[5] or '',
-                        'created_at': product[6]
+                        'image_url': product[3] or '',
+                        'created_at': product[4]
                     })
                 
+                print(f"📦 Отправляем {len(products_data)} товаров")
+                for p in products_data:
+                    print(f"  - {p['title']}: изображение = {p['image_url'] or 'НЕТ'}")
+                
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
-            except Exception as e:
+    except Exception as e:
                 print(f"❌ Ошибка получения товаров: {e}")
                 self.wfile.write(json.dumps([]).encode('utf-8'))
         
-        elif self.path == '/api/add-product':
+        elif self.path == '/test-image':
+            # Тестовый эндпоинт для проверки изображений
             self.send_response(200)
-            self.send_header('Content-type', 'application/json; charset=utf-8')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             
-            try:
-                # Получаем данные из URL параметров
-                import urllib.parse
-                params = urllib.parse.parse_qs(self.path.split('?')[1] if '?' in self.path else '')
+            test_html = '''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Тест изображений</title></head>
+            <body>
+                <h1>Тест изображений</h1>
+                <p>Папка uploads:</p>
+                <ul>
+            '''
+            
+            if os.path.exists(UPLOADS_DIR):
+                files = os.listdir(UPLOADS_DIR)
+                for file in files:
+                    test_html += f'<li><a href="/uploads/{file}">{file}</a></li>'
+                    test_html += f'<li><img src="/uploads/{file}" style="width:100px; height:100px; object-fit:cover; border:1px solid #ccc; margin:5px;"></li>'
+            else:
+                test_html += '<li>Папка uploads не существует</li>'
+            
+            test_html += '''
+                </ul>
+                <p><a href="/">Вернуться к магазину</a></p>
+            </body>
+            </html>
+            '''
+            
+            self.wfile.write(test_html.encode('utf-8'))
+        
+        elif self.path.startswith('/uploads/'):
+            # Простая обработка изображений
+            filename = self.path[9:]  # Убираем '/uploads/'
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            
+            print(f"🖼️ Запрос изображения: {self.path}")
+            print(f"📁 Ищем файл: {filepath}")
+            
+            if os.path.exists(filepath):
+                file_size = os.path.getsize(filepath)
+                print(f"✅ Файл найден, размер: {file_size} байт")
                 
-                title = params.get('title', [''])[0]
-                price = int(params.get('price', ['0'])[0])
-                description = params.get('description', [''])[0]
-                category = params.get('category', ['general'])[0]
+                self.send_response(200)
+                self.send_header('Content-type', 'image/jpeg')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'public, max-age=3600')
+                self.end_headers()
                 
-                if title and price > 0:
-                    conn = sqlite3.connect(DATABASE_PATH)
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT INTO products (title, price, description, category)
-                        VALUES (?, ?, ?, ?)
-                    ''', (title, price, description, category))
-                    conn.commit()
-                    conn.close()
-                    
-                    response = {'success': True, 'message': 'Товар добавлен успешно!'}
+                try:
+                    with open(filepath, 'rb') as f:
+                        content = f.read()
+                        self.wfile.write(content)
+                    print(f"✅ Изображение отправлено: {filename} ({len(content)} байт)")
+        except Exception as e:
+                    print(f"❌ Ошибка чтения файла: {e}")
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(b'Server Error')
+            else:
+                print(f"❌ Файл не найден: {filepath}")
+                # Показываем содержимое папки для отладки
+                if os.path.exists(UPLOADS_DIR):
+                    files = os.listdir(UPLOADS_DIR)
+                    print(f"📁 Файлы в папке uploads: {files}")
                 else:
-                    response = {'success': False, 'message': 'Неверные данные товара'}
+                    print(f"📁 Папка uploads не существует!")
                 
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-            except Exception as e:
-                print(f"❌ Ошибка добавления товара: {e}")
-                response = {'success': False, 'message': 'Ошибка добавления товара'}
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b'Image not found')
         
         else:
             self.send_response(404)
@@ -283,8 +403,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 # Простая обработка заказа
                 response = {'success': True, 'order_id': 12345}
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-                
-            except Exception as e:
+        
+    except Exception as e:
                 print(f"❌ Ошибка обработки заказа: {e}")
                 self.send_response(500)
                 self.end_headers()
@@ -299,21 +419,93 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 title = data.get('title', '')
                 price = int(data.get('price', 0))
-                description = data.get('description', '')
-                category = data.get('category', 'general')
+                image_data = data.get('image', '')
+                
+                print(f"📝 Получены данные: title='{title}', price={price}, image_data_len={len(image_data)}")
+                
+                if title and price > 0:
+                    # Сохраняем изображение
+                    bot = DarkShopBot()
+                    image_url = bot.save_image(image_data)
+                    print(f"🖼️ URL изображения: {image_url}")
+                    
+                    conn = sqlite3.connect(DATABASE_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO products (title, price, image_url)
+                        VALUES (?, ?, ?)
+                    ''', (title, price, image_url))
+                    conn.commit()
+                    conn.close()
+                    
+                    print(f"✅ Товар добавлен: {title} - {price} ₽, изображение: {image_url}")
+                    response = {'success': True, 'message': 'Товар добавлен успешно!'}
+                else:
+                    print(f"❌ Неверные данные: title='{title}', price={price}")
+                    response = {'success': False, 'message': 'Неверные данные товара'}
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                
+    except Exception as e:
+                print(f"❌ Ошибка добавления товара: {e}")
+                response = {'success': False, 'message': f'Ошибка добавления товара: {str(e)}'}
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+        
+        elif self.path.startswith('/api/update-product/'):
+            product_id = self.path.split('/')[-1]
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                
+                title = data.get('title', '')
+                price = int(data.get('price', 0))
+                image_data = data.get('image', '')
+                
+                print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, image_len={len(image_data) if image_data else 0}")
                 
                 if title and price > 0:
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT INTO products (title, price, description, category)
-                        VALUES (?, ?, ?, ?)
-                    ''', (title, price, description, category))
+                    
+                    # Если есть новое изображение, сохраняем его
+                    if image_data and image_data.strip():
+                        bot = DarkShopBot()
+                        image_url = bot.save_image(image_data)
+                        print(f"🖼️ Новое изображение сохранено: {image_url}")
+                        cursor.execute('''
+                            UPDATE products 
+                            SET title = ?, price = ?, image_url = ?
+                            WHERE id = ?
+                        ''', (title, price, image_url, product_id))
+                        print(f"✅ Товар обновлен с новым изображением: {title} -> {image_url}")
+                    else:
+                        print("📝 Обновление без изменения изображения")
+                        cursor.execute('''
+                            UPDATE products 
+                            SET title = ?, price = ?
+                            WHERE id = ?
+                        ''', (title, price, product_id))
+                        print(f"✅ Товар обновлен без изображения: {title}")
+                    
+                    rows_affected = cursor.rowcount
                     conn.commit()
                     conn.close()
                     
-                    response = {'success': True, 'message': 'Товар добавлен успешно!'}
+                    print(f"📊 Обновлено строк: {rows_affected}")
+                    
+                    response = {'success': True, 'message': 'Товар обновлен успешно!'}
                 else:
+                    print(f"❌ Неверные данные: title='{title}', price={price}")
                     response = {'success': False, 'message': 'Неверные данные товара'}
                 
                 self.send_response(200)
@@ -323,8 +515,37 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
                 
             except Exception as e:
-                print(f"❌ Ошибка добавления товара: {e}")
-                response = {'success': False, 'message': 'Ошибка добавления товара'}
+                print(f"❌ Ошибка обновления товара: {e}")
+                import traceback
+                traceback.print_exc()
+                response = {'success': False, 'message': 'Ошибка обновления товара'}
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+        
+        elif self.path.startswith('/api/delete-product/'):
+            product_id = self.path.split('/')[-1]
+            
+            try:
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM products WHERE id = ?', (product_id,))
+                conn.commit()
+                conn.close()
+                
+                response = {'success': True, 'message': 'Товар удален успешно!'}
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                
+        except Exception as e:
+                print(f"❌ Ошибка удаления товара: {e}")
+                response = {'success': False, 'message': 'Ошибка удаления товара'}
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -336,8 +557,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'Not Found')
     
-    def get_dark_page_v2(self):
-        """Главная страница WebApp с исправленным дизайном"""
+    def get_dark_page_v3(self):
+        """Главная страница WebApp с фотографиями и редактированием"""
         return '''<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -358,7 +579,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             color: #ffffff;
             padding: 16px;
             min-height: 100vh;
-            padding-bottom: 100px; /* Место для нижней навигации */
+            padding-bottom: 100px;
         }
         
         .header {
@@ -412,7 +633,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .products-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr; /* 2 колонки */
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 24px;
         }
@@ -430,6 +651,33 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
             border-color: #1e40af;
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 80px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 24px;
+            position: relative;
+        }
+        
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-image img:hover {
+            transform: scale(1.05);
         }
         
         .product-title {
@@ -567,6 +815,56 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .form-group textarea:focus {
             outline: none;
             border-color: #1e40af;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-button {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-button:hover {
+            background: #1d4ed8;
+        }
+        
+        .image-preview {
+            width: 100%;
+            height: 120px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         
         .add-product-btn {
@@ -751,6 +1049,93 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             font-weight: 600;
         }
         
+        /* Админ панель - список товаров */
+        .admin-products-list {
+            margin-bottom: 20px;
+        }
+        
+        .admin-product-item {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .admin-product-image {
+            width: 60px;
+            height: 60px;
+            background: #2d2d2d;
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .admin-product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .admin-product-info {
+            flex: 1;
+        }
+        
+        .admin-product-title {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .admin-product-price {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .admin-product-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .edit-btn {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .edit-btn:hover {
+            background: #1d4ed8;
+        }
+        
+        .delete-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #b91c1c;
+        }
+        
         @media (max-width: 768px) {
             .products-grid {
                 grid-template-columns: 1fr 1fr;
@@ -809,6 +1194,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         <div class="admin-section">
             <h2>⚙️ Панель администратора</h2>
             <div id="adminMessage"></div>
+            
+            <!-- Список товаров -->
+            <div class="admin-products-list" id="adminProductsList">
+                <div class="loading">Загрузка товаров...</div>
+            </div>
+            
+            <!-- Форма добавления/редактирования -->
             <form class="admin-form" id="adminForm">
                 <div class="form-group">
                     <label for="productTitle">Название товара</label>
@@ -819,20 +1211,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <input type="number" id="productPrice" min="1" required>
                 </div>
                 <div class="form-group">
-                    <label for="productCategory">Категория</label>
-                    <select id="productCategory" required>
-                        <option value="electronics">Электроника</option>
-                        <option value="clothing">Одежда</option>
-                        <option value="food">Еда</option>
-                        <option value="books">Книги</option>
-                        <option value="general">Общее</option>
-                    </select>
+                    <label for="productImage">Фотография</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="productImage" class="file-input" accept="image/*" onchange="handleImageUpload(this)">
+                        <button type="button" class="file-input-button">📷 Выбрать фото</button>
+                    </div>
+                    <div class="image-preview" id="imagePreview">Выберите изображение</div>
                 </div>
-                <div class="form-group">
-                    <label for="productDescription">Описание</label>
-                    <textarea id="productDescription" rows="3"></textarea>
-                </div>
-                <button type="submit" class="add-product-btn">➕ Добавить товар</button>
+                <button type="submit" class="add-product-btn" id="submitBtn">➕ Добавить товар</button>
             </form>
         </div>
     </div>
@@ -859,8 +1245,23 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         tg.ready();
         tg.expand();
         
+        // Проверяем что мы в Telegram WebApp
+        const isTelegramWebApp = typeof window.Telegram !== 'undefined' && window.Telegram.WebApp;
+        console.log('📱 Telegram WebApp:', isTelegramWebApp ? 'ДА' : 'НЕТ');
+        
+        if (isTelegramWebApp) {
+            console.log('🤖 Telegram WebApp данные:', {
+                platform: tg.platform,
+                version: tg.version,
+                colorScheme: tg.colorScheme,
+                isExpanded: tg.isExpanded
+            });
+        }
+        
         let products = [];
         let cart = [];
+        let currentEditingProduct = null;
+        let selectedImageData = '';
         
         // Загрузка товаров
         async function loadProducts() {
@@ -868,6 +1269,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 const response = await fetch('/api/products');
                 products = await response.json();
                 renderProducts();
+                if (document.getElementById('adminProductsList')) {
+                    renderAdminProducts();
+                }
             } catch (error) {
                 document.getElementById('productsContainer').innerHTML = 
                     '<div class="loading">Ошибка загрузки товаров</div>';
@@ -875,7 +1279,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
         }
         
-        // Отображение товаров
+        // Отображение товаров в каталоге
         function renderProducts() {
             const container = document.getElementById('productsContainer');
             container.className = 'products-grid';
@@ -885,14 +1289,61 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 return;
             }
             
+            console.log('🛍️ Отображение товаров:', products.length);
+            products.forEach(product => {
+                console.log(`📦 Товар: ${product.title}, изображение: ${product.image_url || 'нет'}`);
+                if (product.image_url && product.image_url.startsWith('/uploads/')) {
+                    console.log(`🖼️ Полный URL изображения: ${window.location.origin}${product.image_url}`);
+                }
+            });
+            
             container.innerHTML = products.map(product => `
                 <div class="product-card">
+                    <div class="product-image">
+                        ${product.image_url ? 
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;"
+                                 onload="console.log('✅ Изображение загружено в Telegram WebApp:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки в Telegram WebApp:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
+                            '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
+                        }
+                    </div>
                     <div class="product-title">${product.title}</div>
-                    ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         В корзину
                     </button>
+                </div>
+            `).join('');
+        }
+        
+        // Отображение товаров в админ панели
+        function renderAdminProducts() {
+            const container = document.getElementById('adminProductsList');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="loading">Товары не найдены</div>';
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <div class="admin-product-item">
+                    <div class="admin-product-image">
+                        ${product.image_url ? 
+                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none;">📷</div>` : 
+                            '📷'
+                        }
+                    </div>
+                    <div class="admin-product-info">
+                        <div class="admin-product-title">${product.title}</div>
+                        <div class="admin-product-price">${product.price.toLocaleString()} ₽</div>
+                    </div>
+                    <div class="admin-product-actions">
+                        <button class="edit-btn" onclick="editProduct(${product.id})">✏️</button>
+                        <button class="delete-btn" onclick="deleteProduct(${product.id})">🗑️</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -913,14 +1364,81 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             container.innerHTML = filteredProducts.map(product => `
                 <div class="product-card">
+                    <div class="product-image">
+                        ${product.image_url ? 
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;"
+                                 onload="console.log('✅ Изображение загружено в Telegram WebApp:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки в Telegram WebApp:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
+                            '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
+                        }
+                    </div>
                     <div class="product-title">${product.title}</div>
-                    ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         В корзину
                     </button>
                 </div>
             `).join('');
+        }
+        
+        // Простая обработка загрузки изображения
+        function handleImageUpload(input) {
+            console.log('📸 handleImageUpload вызвана');
+            
+            const file = input.files[0];
+            if (file) {
+                console.log('📸 Выбран файл:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified
+                });
+                
+                // Проверяем размер файла (максимум 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    console.log('❌ Файл слишком большой:', file.size, 'байт');
+                    alert('Файл слишком большой! Максимум 5MB.');
+                    input.value = '';
+                    return;
+                }
+                
+                console.log('📸 Начинаем чтение файла...');
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    selectedImageData = e.target.result;
+                    console.log('📸 Base64 готов:', {
+                        length: selectedImageData.length,
+                        startsWith: selectedImageData.substring(0, 50) + '...',
+                        type: selectedImageData.split(',')[0]
+                    });
+                    
+                    // Показываем превью
+                    const preview = document.getElementById('imagePreview');
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
+                    console.log('📸 Превью обновлено');
+                };
+                
+                reader.onerror = function(error) {
+                    console.error('❌ Ошибка чтения файла:', error);
+                    alert('Ошибка чтения файла!');
+                };
+                
+                reader.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        console.log('📸 Прогресс чтения:', percentComplete.toFixed(2) + '%');
+                    }
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                console.log('📸 Файл не выбран, очищаем данные');
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            }
         }
         
         // Добавление в корзину
@@ -1023,47 +1541,136 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             updateCartUI();
         }
         
-        // Добавление товара
+        // Добавление/обновление товара
         async function addProduct(event) {
             event.preventDefault();
             
+            console.log('🚀 Функция addProduct вызвана');
+            
             const title = document.getElementById('productTitle').value;
             const price = parseInt(document.getElementById('productPrice').value);
-            const description = document.getElementById('productDescription').value;
-            const category = document.getElementById('productCategory').value;
+            
+            console.log('📝 Данные формы:', { 
+                title: title, 
+                price: price, 
+                imageData: selectedImageData ? `есть (${selectedImageData.length} символов)` : 'нет',
+                currentEditingProduct: currentEditingProduct
+            });
             
             if (!title || !price || price <= 0) {
+                console.log('❌ Неверные данные формы');
                 showAdminMessage('Пожалуйста, заполните все обязательные поля!', 'error');
                 return;
             }
             
             try {
-                const response = await fetch('/api/add-product', {
+                const url = currentEditingProduct ? 
+                    `/api/update-product/${currentEditingProduct}` : 
+                    '/api/add-product';
+                
+                console.log('🌐 URL запроса:', url);
+                
+                const requestData = {
+                    title: title,
+                    price: price,
+                    image: selectedImageData
+                };
+                
+                console.log('📤 Отправляем данные:', {
+                    title: title,
+                    price: price,
+                    imageLength: selectedImageData ? selectedImageData.length : 0,
+                    fullRequestData: requestData
+                });
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        title: title,
-                        price: price,
-                        description: description,
-                        category: category
-                    })
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('📡 Ответ сервера получен, статус:', response.status);
+                
+                const result = await response.json();
+                
+                console.log('📥 Ответ сервера:', result);
+                
+                if (result.success) {
+                    console.log('✅ Успешно сохранено');
+                    showAdminMessage(
+                        currentEditingProduct ? 'Товар обновлен успешно!' : 'Товар добавлен успешно!', 
+                        'success'
+                    );
+                    resetForm();
+                    await loadProducts();
+                } else {
+                    console.log('❌ Ошибка сервера:', result.message);
+                    showAdminMessage(result.message || 'Ошибка сохранения товара', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Ошибка fetch:', error);
+                showAdminMessage('Ошибка соединения с сервером: ' + error.message, 'error');
+            }
+        }
+        
+        // Редактирование товара
+        function editProduct(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            currentEditingProduct = productId;
+            
+            document.getElementById('productTitle').value = product.title;
+            document.getElementById('productPrice').value = product.price;
+            
+            if (product.image_url) {
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = `<img src="${product.image_url}" alt="${product.title}">`;
+            } else {
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            }
+            
+            document.getElementById('submitBtn').textContent = '💾 Сохранить изменения';
+            
+            // Прокручиваем к форме
+            document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Удаление товара
+        async function deleteProduct(productId) {
+            if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/delete-product/${productId}`, {
+                    method: 'POST'
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    showAdminMessage('Товар добавлен успешно!', 'success');
-                    document.getElementById('adminForm').reset();
+                    showAdminMessage('Товар удален успешно!', 'success');
                     await loadProducts();
                 } else {
-                    showAdminMessage(result.message || 'Ошибка добавления товара', 'error');
+                    showAdminMessage('Ошибка удаления товара', 'error');
                 }
             } catch (error) {
-                console.error('Error adding product:', error);
-                showAdminMessage('Ошибка добавления товара', 'error');
+                console.error('Error deleting product:', error);
+                showAdminMessage('Ошибка удаления товара', 'error');
             }
+        }
+        
+        // Сброс формы
+        function resetForm() {
+            currentEditingProduct = null;
+            selectedImageData = '';
+            document.getElementById('adminForm').reset();
+            document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            document.getElementById('submitBtn').textContent = '➕ Добавить товар';
         }
         
         // Показать сообщение админу
@@ -1094,6 +1701,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             // Обновить данные для определенных табов
             if (tabName === 'cart') {
                 updateCartUI();
+            } else if (tabName === 'admin') {
+                renderAdminProducts();
             }
         }
         
@@ -1118,7 +1727,7 @@ def start_web_server():
 
 def main():
     """Главная функция"""
-    print("🌙 ЗАПУСК DARK SHOP BOT V2")
+    print("🛍️ ЗАПУСК ОСНОВНОГО TELEGRAM BOT")
     print("=" * 40)
     
     bot = DarkShopBot()
