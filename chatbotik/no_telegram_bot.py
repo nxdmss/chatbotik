@@ -151,7 +151,6 @@ def get_customer_detail_keyboard(customer_id):
     """Получить клавиатуру для детального просмотра клиента"""
     keyboard = [
         ['💬 Чат с клиентом', '📦 Заказы клиента'],
-        ['🗑️ Удалить сообщения клиента'],
         ['🔙 Назад к списку клиентов']
     ]
     return create_reply_keyboard(keyboard)
@@ -168,8 +167,7 @@ def get_client_keyboard():
     """Получить главную клавиатуру для клиента"""
     keyboard = [
         ['📞 Поддержка'],
-        ['⭐ Отзывы', '📦 Мои заказы'],
-        ['🏠 Главное меню']
+        ['⭐ Отзывы', '📦 Мои заказы']
     ]
     return create_reply_keyboard(keyboard)
 
@@ -241,6 +239,23 @@ def get_updates(offset=None):
     except Exception as e:
         logger.error(f"Ошибка получения обновлений: {e}")
         return None
+
+def answer_callback_query(callback_query_id, text=None, show_alert=False):
+    """Ответить на callback query"""
+    try:
+        url = f'{TELEGRAM_API_URL}/answerCallbackQuery'
+        data = {
+            'callback_query_id': callback_query_id,
+            'show_alert': show_alert
+        }
+        if text:
+            data['text'] = text
+        
+        response = requests.post(url, json=data, timeout=10)
+        return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Ошибка ответа на callback query: {e}")
+        return False
 
 # Обработчики команд
 def handle_start_command(user_id, username, first_name, last_name):
@@ -894,14 +909,34 @@ def forward_to_admin(sender_user_id, sender_username, sender_first_name, sender_
 def process_update(update):
     """Обработка одного обновления"""
     try:
-        if 'message' not in update:
+        if 'message' in update:
+            message = update['message']
+            user_id = message['from']['id']
+            username = message['from'].get('username')
+            first_name = message['from'].get('first_name')
+            last_name = message['from'].get('last_name')
+            
+            if 'text' in message:
+        elif 'callback_query' in update:
+            callback_query = update['callback_query']
+            user_id = callback_query['from']['id']
+            callback_data = callback_query['data']
+            callback_query_id = callback_query['id']
+            
+            # Обрабатываем callback query
+            if callback_data.startswith('customer_'):
+                customer_user_id = int(callback_data.split('_')[1])
+                answer_callback_query(callback_query_id, "Загрузка информации о клиенте...")
+                show_customer_detail(user_id, customer_user_id)
+            elif callback_data == 'back_to_admin':
+                answer_callback_query(callback_query_id, "Возврат в главное меню")
+                handle_start_command(user_id, callback_query['from'].get('username'), 
+                                   callback_query['from'].get('first_name'), 
+                                   callback_query['from'].get('last_name'))
+            else:
+                answer_callback_query(callback_query_id, "Неизвестная команда")
+            
             return
-        
-        message = update['message']
-        user_id = message['from']['id']
-        username = message['from'].get('username')
-        first_name = message['from'].get('first_name')
-        last_name = message['from'].get('last_name')
         
         if 'text' in message:
             text = message['text']
@@ -927,16 +962,12 @@ def process_update(update):
                 handle_customers_list_button(user_id)
             elif text == '📊 Статистика':
                 handle_stats_command(user_id)
-            elif text.startswith('👤 '):  # Клиент из списка
-                handle_customer_selection(user_id, text)
             elif text == '💬 Чат с клиентом':
                 handle_customer_chat_button(user_id)
             elif text == '📦 Заказы клиента':
                 handle_customer_orders_button(user_id)
             elif text == '🔙 Назад к списку клиентов':
                 handle_customers_list_button(user_id)
-            elif text == '🗑️ Удалить сообщения клиента':
-                handle_delete_messages_button(user_id)
             elif text == '💬 Отправить сообщение':
                 handle_send_message_to_customer_button(user_id)
             elif text == '🔙 Назад к клиенту':
@@ -964,8 +995,6 @@ def process_update(update):
                 handle_reply_command(user_id, text)
             elif text.startswith('/order'):
                 handle_order_command(user_id, text)
-            elif text.startswith('/delete_messages'):
-                handle_delete_messages_command(user_id, text)
             else:
                 # Обычное сообщение - пересылаем админу
                 forward_to_admin(user_id, username, first_name, last_name, text)
@@ -974,7 +1003,7 @@ def process_update(update):
         logger.error(f"Ошибка в process_update: {e}")
 
 def handle_customers_list_button(user_id):
-    """Показать список клиентов с кнопками"""
+    """Показать список клиентов с inline кнопками"""
     try:
         if not is_admin(user_id):
             send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
@@ -992,7 +1021,7 @@ def handle_customers_list_button(user_id):
             LEFT JOIN orders o ON c.id = o.customer_id
             GROUP BY c.id
             ORDER BY c.last_activity DESC
-            LIMIT 20
+            LIMIT 10
         ''')
         
         customers = cursor.fetchall()
@@ -1002,8 +1031,8 @@ def handle_customers_list_button(user_id):
             send_message(user_id, "📋 <b>Список клиентов</b>\n\nКлиентов пока нет.", get_back_keyboard())
             return
         
-        # Создаем клавиатуру с клиентами
-        keyboard = []
+        # Создаем inline клавиатуру с клиентами
+        inline_keyboard = []
         message = "📋 <b>Список клиентов</b>\n\nВыберите клиента для просмотра:\n\n"
         
         for i, customer in enumerate(customers):
@@ -1019,35 +1048,24 @@ def handle_customers_list_button(user_id):
                 f"⏰ {last_activity[:16]}\n\n"
             )
             
-            # Добавляем кнопку для каждого клиента
-            keyboard.append([f"👤 {name} (ID: {user_id_val})"])
+            # Добавляем inline кнопку для каждого клиента
+            inline_keyboard.append([{
+                "text": f"👤 {name}",
+                "callback_data": f"customer_{user_id_val}"
+            }])
         
         # Добавляем кнопку "Назад"
-        keyboard.append(['🔙 Назад'])
+        inline_keyboard.append([{
+            "text": "🔙 Назад",
+            "callback_data": "back_to_admin"
+        }])
         
-        reply_keyboard = create_reply_keyboard(keyboard)
-        send_message(user_id, message, reply_keyboard)
+        reply_markup = create_inline_keyboard(inline_keyboard)
+        send_message(user_id, message, reply_markup)
         
     except Exception as e:
         logger.error(f"Ошибка в handle_customers_list_button: {e}")
 
-def handle_customer_selection(user_id, button_text):
-    """Обработка выбора клиента из списка"""
-    try:
-        if not is_admin(user_id):
-            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
-            return
-        
-        # Извлекаем ID клиента из текста кнопки
-        # Формат: "👤 Имя (ID: 123456789)"
-        if "(ID:" in button_text:
-            customer_user_id = int(button_text.split("(ID:")[1].split(")")[0].strip())
-            show_customer_detail(user_id, customer_user_id)
-        else:
-            send_message(user_id, "❌ Ошибка выбора клиента.", get_back_keyboard())
-            
-    except Exception as e:
-        logger.error(f"Ошибка в handle_customer_selection: {e}")
 
 def show_customer_detail(admin_user_id, customer_user_id):
     """Показать детальную информацию о клиенте"""
@@ -1201,74 +1219,6 @@ def handle_back_to_customer_button(user_id):
     except Exception as e:
         logger.error(f"Ошибка в handle_back_to_customer_button: {e}")
 
-def handle_delete_messages_button(user_id):
-    """Показать форму для удаления сообщений клиента"""
-    try:
-        if not is_admin(user_id):
-            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
-            return
-        
-        message = (
-            "🗑️ <b>Удаление сообщений клиента</b>\n\n"
-            "Для удаления всех сообщений клиента используйте команду:\n"
-            "<code>/delete_messages &lt;ID_клиента&gt;</code>\n\n"
-            "Например:\n"
-            "<code>/delete_messages 123456789</code>\n\n"
-            "⚠️ <b>Внимание:</b> Это действие необратимо!"
-        )
-        send_message(user_id, message, get_back_keyboard())
-        
-    except Exception as e:
-        logger.error(f"Ошибка в handle_delete_messages_button: {e}")
-
-def handle_delete_messages_command(user_id, text):
-    """Команда для удаления сообщений клиента"""
-    try:
-        if not is_admin(user_id):
-            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
-            return
-        
-        args = text.split()[1:]  # Убираем /delete_messages
-        if len(args) < 1:
-            send_message(user_id, (
-                "❌ Неверный формат команды.\n"
-                "Используйте: /delete_messages <ID_клиента>"
-            ))
-            return
-        
-        customer_user_id = int(args[0])
-        
-        # Находим клиента в базе данных
-        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT id FROM customers WHERE user_id = ?', (customer_user_id,))
-        result = cursor.fetchone()
-        
-        if not result:
-            send_message(user_id, "❌ Клиент не найден в базе данных.")
-            conn.close()
-            return
-        
-        customer_id = result[0]
-        
-        # Удаляем все сообщения клиента
-        cursor.execute('DELETE FROM support_messages WHERE customer_id = ?', (customer_id,))
-        deleted_count = cursor.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        if deleted_count > 0:
-            send_message(user_id, f"✅ Удалено {deleted_count} сообщений клиента {customer_user_id}")
-        else:
-            send_message(user_id, f"ℹ️ У клиента {customer_user_id} не было сообщений для удаления")
-        
-    except ValueError:
-        send_message(user_id, "❌ Неверный ID клиента.")
-    except Exception as e:
-        logger.error(f"Ошибка в handle_delete_messages_command: {e}")
-        send_message(user_id, f"❌ Ошибка удаления сообщений: {e}")
 
 def main():
     """Главная функция"""
