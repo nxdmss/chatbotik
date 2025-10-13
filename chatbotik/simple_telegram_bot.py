@@ -106,8 +106,15 @@ class DarkShopBot:
     def save_image(self, base64_data):
         """Простое сохранение изображения из base64"""
         try:
+            print(f"🔍 save_image вызвана с данными длиной: {len(base64_data) if base64_data else 0}")
+            
             if not base64_data or base64_data.strip() == '':
-                print("⚠️ Пустые данные изображения")
+                print("⚠️ Пустые данные изображения - возвращаем пустую строку")
+                return ''
+            
+            # Проверяем что это действительно base64
+            if len(base64_data) < 100:
+                print(f"⚠️ Слишком короткие данные: {base64_data[:50]}...")
                 return ''
             
             print(f"📸 Получены данные изображения, длина: {len(base64_data)}")
@@ -143,9 +150,11 @@ class DarkShopBot:
             # Проверяем что файл создался
             if os.path.exists(filepath):
                 file_size = os.path.getsize(filepath)
+                result_url = f"/uploads/{filename}"
                 print(f"✅ Изображение сохранено: {filename} ({file_size} байт)")
                 print(f"📁 Полный путь: {filepath}")
-                return f"/uploads/{filename}"
+                print(f"🌐 URL для базы: {result_url}")
+                return result_url
             else:
                 print(f"❌ Файл не создался: {filepath}")
                 return ''
@@ -409,6 +418,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     # Сохраняем изображение
                     bot = DarkShopBot()
                     image_url = bot.save_image(image_data)
+                    print(f"🖼️ URL изображения: {image_url}")
                     
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
@@ -419,7 +429,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     conn.commit()
                     conn.close()
                     
-                    print(f"✅ Товар добавлен: {title} - {price} ₽")
+                    print(f"✅ Товар добавлен: {title} - {price} ₽, изображение: {image_url}")
                     response = {'success': True, 'message': 'Товар добавлен успешно!'}
                 else:
                     print(f"❌ Неверные данные: title='{title}', price={price}")
@@ -1214,6 +1224,19 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         tg.ready();
         tg.expand();
         
+        // Проверяем что мы в Telegram WebApp
+        const isTelegramWebApp = typeof window.Telegram !== 'undefined' && window.Telegram.WebApp;
+        console.log('📱 Telegram WebApp:', isTelegramWebApp ? 'ДА' : 'НЕТ');
+        
+        if (isTelegramWebApp) {
+            console.log('🤖 Telegram WebApp данные:', {
+                platform: tg.platform,
+                version: tg.version,
+                colorScheme: tg.colorScheme,
+                isExpanded: tg.isExpanded
+            });
+        }
+        
         let products = [];
         let cart = [];
         let currentEditingProduct = null;
@@ -1248,17 +1271,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             console.log('🛍️ Отображение товаров:', products.length);
             products.forEach(product => {
                 console.log(`📦 Товар: ${product.title}, изображение: ${product.image_url || 'нет'}`);
+                if (product.image_url && product.image_url.startsWith('/uploads/')) {
+                    console.log(`🖼️ Полный URL изображения: ${window.location.origin}${product.image_url}`);
+                }
             });
             
             container.innerHTML = products.map(product => `
                 <div class="product-card">
                     <div class="product-image">
                         ${product.image_url ? 
-                            `<img src="${product.image_url}" alt="${product.title}" 
-                                 onload="console.log('✅ Загружено:', this.src)"
-                                 onerror="console.error('❌ Ошибка:', this.src); this.parentElement.innerHTML='<div style=&quot;color: #666; font-size: 24px;&quot;>📷</div>';">
-                             <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
-                            '<div style="color: #666; font-size: 24px;">📷</div>'
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;"
+                                 onload="console.log('✅ Изображение загружено в Telegram WebApp:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки в Telegram WebApp:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
+                            '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
                         }
                     </div>
                     <div class="product-title">${product.title}</div>
@@ -1318,11 +1345,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 <div class="product-card">
                     <div class="product-image">
                         ${product.image_url ? 
-                            `<img src="${product.image_url}" alt="${product.title}" 
-                                 onload="console.log('✅ Загружено:', this.src)"
-                                 onerror="console.error('❌ Ошибка:', this.src); this.parentElement.innerHTML='<div style=&quot;color: #666; font-size: 24px;&quot;>📷</div>';">
-                             <div style="display:none; color: #666; font-size: 24px;">📷</div>` : 
-                            '<div style="color: #666; font-size: 24px;">📷</div>'
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;"
+                                 onload="console.log('✅ Изображение загружено в Telegram WebApp:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки в Telegram WebApp:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
+                            '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
                         }
                     </div>
                     <div class="product-title">${product.title}</div>
@@ -1489,16 +1517,24 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     `/api/update-product/${currentEditingProduct}` : 
                     '/api/add-product';
                 
+                const requestData = {
+                    title: title,
+                    price: price,
+                    image: selectedImageData
+                };
+                
+                console.log('📤 Отправляем данные:', {
+                    title: title,
+                    price: price,
+                    imageLength: selectedImageData ? selectedImageData.length : 0
+                });
+                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        title: title,
-                        price: price,
-                        image: selectedImageData
-                    })
+                    body: JSON.stringify(requestData)
                 });
                 
                 const result = await response.json();
