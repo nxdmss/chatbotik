@@ -633,8 +633,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .products-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 16px;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
             margin-bottom: 24px;
         }
         
@@ -655,16 +655,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-image {
             width: 100%;
-            height: 200px;
+            height: 120px;
             background: #1a1a1a;
             border-radius: 6px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #666;
-            font-size: 32px;
+            font-size: 24px;
             position: relative;
         }
         
@@ -1138,8 +1138,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         @media (max-width: 768px) {
             .products-grid {
-                grid-template-columns: 1fr;
-                gap: 12px;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
             }
             
             .product-card {
