@@ -1032,24 +1032,22 @@ def handle_customers_list_button(user_id):
         
         # Создаем inline клавиатуру с клиентами
         inline_keyboard = []
-        message = "📋 <b>Список клиентов</b>\n\nВыберите клиента для просмотра:\n\n"
+        message = "📋 <b>Выберите клиента:</b>"
         
         for i, customer in enumerate(customers):
             customer_id, user_id_val, username, first_name, last_name, last_activity, messages_count, orders_count = customer
             
             name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
-            username_text = f"@{username}" if username else ""
             
-            message += (
-                f"👤 <b>{name}</b> {username_text}\n"
-                f"🆔 ID: {user_id_val}\n"
-                f"💬 Сообщений: {messages_count} | 📦 Заказов: {orders_count}\n"
-                f"⏰ {last_activity[:16]}\n\n"
-            )
+            # Добавляем inline кнопку для каждого клиента с краткой информацией
+            button_text = f"👤 {name}"
+            if orders_count > 0:
+                button_text += f" (#{orders_count})"
+            if messages_count > 0:
+                button_text += f" 💬{messages_count}"
             
-            # Добавляем inline кнопку для каждого клиента
             inline_keyboard.append([{
-                "text": f"👤 {name}",
+                "text": button_text,
                 "callback_data": f"customer_{user_id_val}"
             }])
         
