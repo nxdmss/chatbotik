@@ -1748,7 +1748,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             `).join('');
         }
         
-        // Отображение товаров в админ панели
+        // Отображение товаров в админ панели - ПРОСТАЯ ВЕРСИЯ
         function renderAdminProducts(productsToRender = products) {
             const container = document.getElementById('adminProductsList');
             
@@ -1758,24 +1758,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             container.innerHTML = productsToRender.map(product => `
-                <div class="admin-product-item">
-                    <div class="admin-product-image">
+                <div class="admin-product-simple" style="background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; margin: 10px 0; display: flex; align-items: center; gap: 15px;">
+                    <div style="width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex-shrink: 0;">
                         ${product.image_url ? 
-                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
-                                 style="width: 100%; height: 100%; object-fit: cover;"
-                                 onload="console.log('✅ Админ изображение загружено:', this.src)"
-                                 onerror="console.error('❌ Ошибка загрузки админ изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div style="display:none; color: #666; font-size: 32px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
-                            '<div style="color: #666; font-size: 32px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                            '<div style="background: #444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 20px;">📷</div>'
                         }
                     </div>
-                    <div class="admin-product-info">
-                        <div class="admin-product-title">${product.title}</div>
-                        <div class="admin-product-price">${product.price.toLocaleString()} ₽</div>
-                        <div class="admin-product-actions">
-                            <button class="edit-btn" onclick="editProduct(${product.id}); return false;">✏️ Изменить</button>
-                            <button class="delete-btn" onclick="deleteProduct(${product.id}); return false;">🗑️ Удалить</button>
-                        </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: white; margin-bottom: 5px;">${product.title}</div>
+                        <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${product.price.toLocaleString()} ₽</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-shrink: 0;">
+                        <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">✏️ Изменить</button>
+                        <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">🗑️ Удалить</button>
                     </div>
                 </div>
             `).join('');
@@ -2308,6 +2304,36 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             setTimeout(() => {
                 document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
             }, 100);
+        }
+        
+        // ПРОСТЫЕ ФУНКЦИИ ДЛЯ АДМИН ПАНЕЛИ
+        function simpleEditProduct(productId) {
+            alert('Редактирование товара ID: ' + productId);
+            // Пока просто показываем alert, потом добавим редактирование
+        }
+        
+        async function simpleDeleteProduct(productId) {
+            if (!confirm('Удалить товар ID: ' + productId + '?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/delete-product/' + productId, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Товар удален успешно!');
+                    loadProducts(); // Перезагружаем список
+                } else {
+                    alert('Ошибка удаления: ' + result.message);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+                console.error('Error:', error);
+            }
         }
         
         // Удаление товара
