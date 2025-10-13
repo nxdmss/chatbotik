@@ -636,7 +636,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             grid-template-columns: repeat(2, 1fr);
             gap: 16px;
             margin-bottom: 24px;
-            padding: 0 4px;
+            padding: 0 8px;
+            justify-items: center;
         }
         
         .product-card {
@@ -681,6 +682,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
             padding: 16px 12px 12px;
             color: white;
+            border-radius: 0 0 12px 12px;
         }
         
         .product-info {
@@ -1120,7 +1122,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             grid-template-columns: repeat(2, 1fr);
             gap: 16px;
             margin-bottom: 24px;
-            padding: 0 4px;
+            padding: 0 8px;
+            justify-items: center;
         }
         
         .admin-search-box {
@@ -1147,7 +1150,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             grid-template-columns: repeat(2, 1fr);
             gap: 16px;
             margin-bottom: 24px;
-            padding: 0 4px;
+            padding: 0 8px;
+            justify-items: center;
         }
         
         .admin-product-item {
