@@ -1689,7 +1689,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 products = await response.json();
                 renderProducts();
                 if (document.getElementById('adminProductsList')) {
+                    console.log('🛠️ Рендерим админ товары, количество:', products.length);
                     renderAdminProducts();
+                    console.log('✅ Админ товары отрендерены');
                 }
             } catch (error) {
                 document.getElementById('productsContainer').innerHTML = 
@@ -1771,8 +1773,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         <div class="admin-product-title">${product.title}</div>
                         <div class="admin-product-price">${product.price.toLocaleString()} ₽</div>
                         <div class="admin-product-actions">
-                            <button class="edit-btn" onclick="editProduct(${product.id})">✏️ Изменить</button>
-                            <button class="delete-btn" onclick="deleteProduct(${product.id})">🗑️ Удалить</button>
+                            <button class="edit-btn" onclick="editProduct(${product.id}); return false;">✏️ Изменить</button>
+                            <button class="delete-btn" onclick="deleteProduct(${product.id}); return false;">🗑️ Удалить</button>
                         </div>
                     </div>
                 </div>
@@ -2266,8 +2268,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Редактирование товара (используем существующую форму)
         function editProduct(productId) {
+            alert('Начинаем редактирование товара ID: ' + productId);
+            console.log('🔧 Функция editProduct вызвана для ID:', productId);
+            
             const product = products.find(p => p.id === productId);
             if (!product) {
+                alert('Товар не найден!');
                 console.error('Товар не найден:', productId);
                 return;
             }
@@ -2306,7 +2312,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Удаление товара
         async function deleteProduct(productId) {
+            alert('Попытка удаления товара ID: ' + productId);
+            console.log('🗑️ Функция deleteProduct вызвана для ID:', productId);
+            
             if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
+                console.log('❌ Удаление отменено пользователем');
                 return;
             }
             
