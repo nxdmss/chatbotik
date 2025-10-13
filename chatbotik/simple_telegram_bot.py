@@ -1791,8 +1791,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.sizes ? `<div style="color: #ccc; font-size: 10px; margin-top: 2px;">Размеры: ${product.sizes}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; width: 100%; margin-bottom: 6px;">✏️ Изменить</button>
-                                <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; width: 100%;">🗑️ Удалить</button>
+                                <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; margin-bottom: 4px;">✏ Изменить</button>
+                                <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%;">🗑 Удалить</button>
                             </div>
                         </div>
                     </div>
