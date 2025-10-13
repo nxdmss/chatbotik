@@ -917,6 +917,66 @@ def process_update(update):
             last_name = message['from'].get('last_name')
             
             if 'text' in message:
+                text = message['text']
+                
+                # Обработка кнопок
+                if text == '🏠 Главное меню' or text == '🔙 Назад':
+                    handle_start_command(user_id, username, first_name, last_name)
+                elif text == '📞 Поддержка':
+                    handle_support_button(user_id)
+                elif text == '📝 Написать сообщение':
+                    handle_write_message_button(user_id)
+                elif text == '⭐ Отзывы':
+                    handle_reviews_button(user_id)
+                elif text == '👀 Посмотреть отзывы':
+                    show_customer_reviews(user_id)
+                elif text == '⭐ Оставить отзыв':
+                    handle_leave_review_button(user_id)
+                elif text in ['⭐ 1', '⭐⭐ 2', '⭐⭐⭐ 3', '⭐⭐⭐⭐ 4', '⭐⭐⭐⭐⭐ 5']:
+                    handle_rating_selection(user_id, text)
+                elif text == '📦 Мои заказы':
+                    handle_myorders_command(user_id)
+                elif text == '📋 Клиенты':
+                    handle_customers_list_button(user_id)
+                elif text == '📊 Статистика':
+                    handle_stats_command(user_id)
+                elif text == '💬 Чат с клиентом':
+                    handle_customer_chat_button(user_id)
+                elif text == '📦 Заказы клиента':
+                    handle_customer_orders_button(user_id)
+                elif text == '🔙 Назад к списку клиентов':
+                    handle_customers_list_button(user_id)
+                elif text == '💬 Отправить сообщение':
+                    handle_send_message_to_customer_button(user_id)
+                elif text == '🔙 Назад к клиенту':
+                    handle_back_to_customer_button(user_id)
+                # Обработка команд
+                elif text.startswith('/start'):
+                    handle_start_command(user_id, username, first_name, last_name)
+                elif text.startswith('/support'):
+                    handle_support_command(user_id)
+                elif text.startswith('/reviews'):
+                    handle_reviews_command(user_id)
+                elif text.startswith('/rate'):
+                    handle_rate_command(user_id, username, first_name, last_name, text)
+                elif text.startswith('/myorders'):
+                    handle_myorders_command(user_id)
+                elif text.startswith('/customers'):
+                    handle_customers_command(user_id)
+                elif text.startswith('/messages'):
+                    handle_messages_command(user_id)
+                elif text.startswith('/orders'):
+                    handle_orders_command(user_id)
+                elif text.startswith('/stats'):
+                    handle_stats_command(user_id)
+                elif text.startswith('/reply'):
+                    handle_reply_command(user_id, text)
+                elif text.startswith('/order'):
+                    handle_order_command(user_id, text)
+                else:
+                    # Обычное сообщение - пересылаем админу
+                    forward_to_admin(user_id, username, first_name, last_name, text)
+        
         elif 'callback_query' in update:
             callback_query = update['callback_query']
             user_id = callback_query['from']['id']
@@ -937,67 +997,6 @@ def process_update(update):
                 answer_callback_query(callback_query_id, "Неизвестная команда")
             
             return
-        
-        if 'text' in message:
-            text = message['text']
-            
-            # Обработка кнопок
-            if text == '🏠 Главное меню' or text == '🔙 Назад':
-                handle_start_command(user_id, username, first_name, last_name)
-            elif text == '📞 Поддержка':
-                handle_support_button(user_id)
-            elif text == '📝 Написать сообщение':
-                handle_write_message_button(user_id)
-            elif text == '⭐ Отзывы':
-                handle_reviews_button(user_id)
-            elif text == '👀 Посмотреть отзывы':
-                show_customer_reviews(user_id)
-            elif text == '⭐ Оставить отзыв':
-                handle_leave_review_button(user_id)
-            elif text in ['⭐ 1', '⭐⭐ 2', '⭐⭐⭐ 3', '⭐⭐⭐⭐ 4', '⭐⭐⭐⭐⭐ 5']:
-                handle_rating_selection(user_id, text)
-            elif text == '📦 Мои заказы':
-                handle_myorders_command(user_id)
-            elif text == '📋 Клиенты':
-                handle_customers_list_button(user_id)
-            elif text == '📊 Статистика':
-                handle_stats_command(user_id)
-            elif text == '💬 Чат с клиентом':
-                handle_customer_chat_button(user_id)
-            elif text == '📦 Заказы клиента':
-                handle_customer_orders_button(user_id)
-            elif text == '🔙 Назад к списку клиентов':
-                handle_customers_list_button(user_id)
-            elif text == '💬 Отправить сообщение':
-                handle_send_message_to_customer_button(user_id)
-            elif text == '🔙 Назад к клиенту':
-                handle_back_to_customer_button(user_id)
-            # Обработка команд
-            elif text.startswith('/start'):
-                handle_start_command(user_id, username, first_name, last_name)
-            elif text.startswith('/support'):
-                handle_support_command(user_id)
-            elif text.startswith('/reviews'):
-                handle_reviews_command(user_id)
-            elif text.startswith('/rate'):
-                handle_rate_command(user_id, username, first_name, last_name, text)
-            elif text.startswith('/myorders'):
-                handle_myorders_command(user_id)
-            elif text.startswith('/customers'):
-                handle_customers_command(user_id)
-            elif text.startswith('/messages'):
-                handle_messages_command(user_id)
-            elif text.startswith('/orders'):
-                handle_orders_command(user_id)
-            elif text.startswith('/stats'):
-                handle_stats_command(user_id)
-            elif text.startswith('/reply'):
-                handle_reply_command(user_id, text)
-            elif text.startswith('/order'):
-                handle_order_command(user_id, text)
-            else:
-                # Обычное сообщение - пересылаем админу
-                forward_to_admin(user_id, username, first_name, last_name, text)
         
     except Exception as e:
         logger.error(f"Ошибка в process_update: {e}")
