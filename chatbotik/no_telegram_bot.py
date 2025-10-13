@@ -151,6 +151,7 @@ def get_customer_detail_keyboard(customer_id):
     """Получить клавиатуру для детального просмотра клиента"""
     keyboard = [
         ['💬 Чат с клиентом', '📦 Заказы клиента'],
+        ['⭐ Отзывы клиента'],
         ['🔙 Назад к списку клиентов']
     ]
     return create_reply_keyboard(keyboard)
@@ -948,6 +949,8 @@ def process_update(update):
                     handle_customers_list_button(user_id)
                 elif text == '💬 Отправить сообщение':
                     handle_send_message_to_customer_button(user_id)
+                elif text == '⭐ Отзывы клиента':
+                    handle_customer_reviews_button(user_id)
                 elif text == '🔙 Назад к клиенту':
                     handle_back_to_customer_button(user_id)
                 # Обработка команд
@@ -973,6 +976,8 @@ def process_update(update):
                     handle_reply_command(user_id, text)
                 elif text.startswith('/order'):
                     handle_order_command(user_id, text)
+                elif text.startswith('/customer_reviews'):
+                    handle_customer_reviews_command(user_id, text)
                 else:
                     # Обычное сообщение - пересылаем админу
                     forward_to_admin(user_id, username, first_name, last_name, text)
@@ -993,6 +998,21 @@ def process_update(update):
                 handle_start_command(user_id, callback_query['from'].get('username'), 
                                    callback_query['from'].get('first_name'), 
                                    callback_query['from'].get('last_name'))
+            elif callback_data == 'customers_list':
+                answer_callback_query(callback_query_id, "Загрузка списка клиентов...")
+                handle_customers_list_button(user_id)
+            elif callback_data.startswith('chat_'):
+                customer_user_id = int(callback_data.split('_')[1])
+                answer_callback_query(callback_query_id, "Открытие чата...")
+                handle_customer_chat_callback(user_id, customer_user_id)
+            elif callback_data.startswith('orders_'):
+                customer_user_id = int(callback_data.split('_')[1])
+                answer_callback_query(callback_query_id, "Загрузка заказов...")
+                handle_customer_orders_callback(user_id, customer_user_id)
+            elif callback_data.startswith('reviews_'):
+                customer_user_id = int(callback_data.split('_')[1])
+                answer_callback_query(callback_query_id, "Загрузка отзывов...")
+                handle_customer_reviews_callback(user_id, customer_user_id)
             else:
                 answer_callback_query(callback_query_id, "Неизвестная команда")
             
@@ -1143,7 +1163,16 @@ def show_customer_detail(admin_user_id, customer_user_id):
             f"{last_order_text}"
         )
         
-        send_message(admin_user_id, message, get_customer_detail_keyboard(customer_id))
+        # Создаем inline клавиатуру для детального просмотра клиента
+        inline_keyboard = [
+            [{"text": "💬 Чат с клиентом", "callback_data": f"chat_{customer_user_id}"}],
+            [{"text": "📦 Заказы клиента", "callback_data": f"orders_{customer_user_id}"}],
+            [{"text": "⭐ Отзывы клиента", "callback_data": f"reviews_{customer_user_id}"}],
+            [{"text": "🔙 Назад к списку", "callback_data": "customers_list"}]
+        ]
+        
+        reply_markup = create_inline_keyboard(inline_keyboard)
+        send_message(admin_user_id, message, reply_markup)
         
     except Exception as e:
         logger.error(f"Ошибка в show_customer_detail: {e}")
@@ -1215,6 +1244,222 @@ def handle_back_to_customer_button(user_id):
         
     except Exception as e:
         logger.error(f"Ошибка в handle_back_to_customer_button: {e}")
+
+def handle_customer_reviews_button(user_id):
+    """Показать отзывы конкретного клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        message = (
+            "⭐ <b>Отзывы клиента</b>\n\n"
+            "Для просмотра отзывов конкретного клиента используйте команду:\n"
+            "<code>/customer_reviews &lt;ID_клиента&gt;</code>\n\n"
+            "Например:\n"
+            "<code>/customer_reviews 123456789</code>\n\n"
+            "Для просмотра всех отзывов используйте кнопку '⭐ Отзывы' в главном меню."
+        )
+        send_message(user_id, message, get_back_keyboard())
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_reviews_button: {e}")
+
+def handle_customer_reviews_command(user_id, text):
+    """Команда для просмотра отзывов конкретного клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        args = text.split()[1:]  # Убираем /customer_reviews
+        if len(args) < 1:
+            send_message(user_id, (
+                "❌ Неверный формат команды.\n"
+                "Используйте: /customer_reviews <ID_клиента>"
+            ))
+            return
+        
+        customer_user_id = int(args[0])
+        handle_customer_reviews_callback(user_id, customer_user_id)
+        
+    except ValueError:
+        send_message(user_id, "❌ Неверный ID клиента.")
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_reviews_command: {e}")
+        send_message(user_id, f"❌ Ошибка получения отзывов: {e}")
+
+def handle_customer_chat_callback(user_id, customer_user_id):
+    """Callback для чата с клиентом"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        # Находим клиента в базе данных
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id, first_name, last_name, username FROM customers WHERE user_id = ?', (customer_user_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            send_message(user_id, "❌ Клиент не найден в базе данных.")
+            conn.close()
+            return
+        
+        customer_id, first_name, last_name, username = result
+        customer_name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
+        
+        # Получаем последние сообщения
+        cursor.execute('''
+            SELECT message, created_at, is_from_admin
+            FROM support_messages
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT 10
+        ''', (customer_id,))
+        
+        messages = cursor.fetchall()
+        conn.close()
+        
+        if not messages:
+            message = f"💬 <b>Чат с клиентом {customer_name}</b>\n\nСообщений пока нет."
+        else:
+            message = f"💬 <b>Чат с клиентом {customer_name}</b>\n\n"
+            for msg in reversed(messages):
+                message_text, created_at, is_from_admin = msg
+                sender = "👑 Админ" if is_from_admin else "👤 Клиент"
+                message += f"{sender}: {message_text}\n📅 {created_at[:16]}\n\n"
+        
+        message += "\nДля отправки сообщения используйте:\n<code>/reply " + str(customer_user_id) + " ваше сообщение</code>"
+        
+        # Кнопка назад к клиенту
+        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"customer_{customer_user_id}"}]]
+        reply_markup = create_inline_keyboard(inline_keyboard)
+        send_message(user_id, message, reply_markup)
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_chat_callback: {e}")
+
+def handle_customer_orders_callback(user_id, customer_user_id):
+    """Callback для заказов клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        # Находим клиента в базе данных
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id, first_name, last_name, username FROM customers WHERE user_id = ?', (customer_user_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            send_message(user_id, "❌ Клиент не найден в базе данных.")
+            conn.close()
+            return
+        
+        customer_id, first_name, last_name, username = result
+        customer_name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
+        
+        # Получаем заказы клиента
+        cursor.execute('''
+            SELECT order_number, order_data, status, created_at
+            FROM orders
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+        ''', (customer_id,))
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        if not orders:
+            message = f"📦 <b>Заказы клиента {customer_name}</b>\n\nЗаказов пока нет."
+        else:
+            message = f"📦 <b>Заказы клиента {customer_name}</b>\n\n"
+            for order in orders:
+                order_number, order_data, status, created_at = order
+                status_emoji = {
+                    'pending': '⏳',
+                    'confirmed': '✅',
+                    'shipped': '🚚',
+                    'delivered': '🎉',
+                    'cancelled': '❌'
+                }.get(status, '❓')
+                
+                message += (
+                    f"{status_emoji} <b>#{order_number}</b>\n"
+                    f"📝 {order_data or 'Без описания'}\n"
+                    f"📊 Статус: {status}\n"
+                    f"📅 {created_at[:16]}\n\n"
+                )
+        
+        message += "\nДля создания заказа используйте:\n<code>/order " + str(customer_user_id) + " описание заказа</code>"
+        
+        # Кнопка назад к клиенту
+        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"customer_{customer_user_id}"}]]
+        reply_markup = create_inline_keyboard(inline_keyboard)
+        send_message(user_id, message, reply_markup)
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_orders_callback: {e}")
+
+def handle_customer_reviews_callback(user_id, customer_user_id):
+    """Callback для отзывов клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        # Находим клиента в базе данных
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id, first_name, last_name, username FROM customers WHERE user_id = ?', (customer_user_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            send_message(user_id, "❌ Клиент не найден в базе данных.")
+            conn.close()
+            return
+        
+        customer_id, first_name, last_name, username = result
+        customer_name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
+        
+        # Получаем отзывы клиента
+        cursor.execute('''
+            SELECT rating, review_text, created_at
+            FROM reviews
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+        ''', (customer_id,))
+        
+        reviews = cursor.fetchall()
+        conn.close()
+        
+        if not reviews:
+            message = f"⭐ <b>Отзывы клиента {customer_name}</b>\n\nУ клиента пока нет отзывов."
+        else:
+            message = f"⭐ <b>Отзывы клиента {customer_name}</b>\n\n"
+            for review in reviews:
+                rating, review_text, created_at = review
+                stars = "⭐" * rating
+                
+                message += (
+                    f"{stars} <b>{rating}/5</b>\n"
+                    f"💬 {review_text or 'Без текста'}\n"
+                    f"📅 {created_at[:16]}\n\n"
+                )
+        
+        # Кнопка назад к клиенту
+        inline_keyboard = [[{"text": "🔙 Назад к клиенту", "callback_data": f"customer_{customer_user_id}"}]]
+        reply_markup = create_inline_keyboard(inline_keyboard)
+        send_message(user_id, message, reply_markup)
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_reviews_callback: {e}")
 
 
 def main():
