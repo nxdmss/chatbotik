@@ -1145,9 +1145,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .admin-products-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
-            padding: 0 8px;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 0 12px;
             justify-items: center;
         }
         
@@ -1155,6 +1155,45 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .admin-products-grid .product-card {
             margin: 0;
             width: 100%;
+            padding: 8px;
+        }
+        
+        /* Мобильная оптимизация для админ панели */
+        @media (max-width: 480px) {
+            .admin-products-grid {
+                gap: 8px;
+                padding: 0 8px;
+                margin-bottom: 16px;
+            }
+            
+            .admin-products-grid .product-card {
+                padding: 4px;
+            }
+            
+            .product-overlay {
+                padding: 12px 8px 8px;
+            }
+            
+            .product-overlay .product-title {
+                font-size: 11px;
+                margin-bottom: 3px;
+            }
+            
+            .product-overlay .product-price {
+                font-size: 12px;
+                margin-bottom: 4px;
+            }
+            
+            .product-buttons {
+                gap: 4px;
+                margin-bottom: 4px;
+            }
+            
+            .product-buttons button {
+                padding: 6px 8px !important;
+                font-size: 10px !important;
+                margin-bottom: 3px !important;
+            }
         }
         
         .admin-search-box {
@@ -1797,8 +1836,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.sizes ? `<div style="color: #ccc; font-size: 10px; margin-top: 2px;">Размеры: ${product.sizes}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; margin-bottom: 4px;">✏ Изменить</button>
-                                <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%;">🗑 Удалить</button>
+                                <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; margin-bottom: 6px; min-height: 36px;">✏ Изменить</button>
+                                <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; min-height: 36px;">🗑 Удалить</button>
                             </div>
                         </div>
                     </div>
