@@ -676,13 +676,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-overlay {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 6px;
+            left: 6px;
+            right: 6px;
             background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
             padding: 16px 12px 12px;
             color: white;
-            border-radius: 0 0 12px 12px;
+            border-radius: 0 0 8px 8px;
         }
         
         .product-info {
