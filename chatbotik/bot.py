@@ -564,7 +564,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🛍️ Dark Shop - Telegram Mini App</title>
+    <title>LOOK & GO - Telegram Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { 
@@ -1166,10 +1166,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🛍️ Dark Shop</h1>
-        <p>Добро пожаловать в наш магазин!</p>
-    </div>
+        <div class="header">
+            <h1>LOOK & GO</h1>
+            <p>Добро пожаловать в наш магазин!</p>
+        </div>
     
     <div id="catalog" class="tab-content active">
         <div class="search-box">
