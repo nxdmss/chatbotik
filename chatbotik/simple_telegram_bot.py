@@ -1065,6 +1065,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             margin-bottom: 20px;
         }
         
+        .admin-products-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
         .admin-search-box {
             margin-bottom: 20px;
         }
@@ -1256,7 +1263,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             </div>
             
             <!-- Список товаров -->
-            <div class="admin-products-list" id="adminProductsList">
+            <div class="admin-products-grid" id="adminProductsList">
                 <div class="loading">Загрузка товаров...</div>
             </div>
             
@@ -1379,15 +1386,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         // Отображение товаров в админ панели
-        function renderAdminProducts() {
+        function renderAdminProducts(productsToRender = products) {
             const container = document.getElementById('adminProductsList');
             
-            if (products.length === 0) {
+            if (productsToRender.length === 0) {
                 container.innerHTML = '<div class="loading">Товары не найдены</div>';
                 return;
             }
             
-            container.innerHTML = products.map(product => `
+            container.innerHTML = productsToRender.map(product => `
                 <div class="admin-product-item">
                     <div class="admin-product-image">
                         ${product.image_url ? 
