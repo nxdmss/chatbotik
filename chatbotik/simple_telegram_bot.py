@@ -2202,7 +2202,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 title: title, 
                 price: price, 
                 imageData: selectedImageData ? `есть (${selectedImageData.length} символов)` : 'нет',
-                currentEditingProduct: currentEditingProduct
+                currentEditingProduct: currentEditingProduct,
+                isEditMode: !!currentEditingProduct
             });
             
             if (!title || !price || price <= 0) {
@@ -2266,7 +2267,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         // Редактирование товара (используем существующую форму)
         function editProduct(productId) {
             const product = products.find(p => p.id === productId);
-            if (!product) return;
+            if (!product) {
+                console.error('Товар не найден:', productId);
+                return;
+            }
+            
+            console.log('Редактирование товара:', product);
             
             // Устанавливаем режим редактирования
             currentEditingProduct = productId;
@@ -2275,12 +2281,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             document.getElementById('productTitle').value = product.title;
             document.getElementById('productPrice').value = product.price;
             
+            // Очищаем выбранное изображение
+            selectedImageData = '';
+            
             // Показываем текущее изображение
             if (product.image_url) {
-                selectedImageData = '';
-                document.getElementById('imagePreview').innerHTML = `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
+                const imageUrl = product.image_url.startsWith('http') ? product.image_url : `${window.location.origin}${product.image_url}`;
+                document.getElementById('imagePreview').innerHTML = `<img src="${imageUrl}" alt="${product.title}" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
             } else {
-                selectedImageData = '';
                 document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
             }
             
@@ -2291,7 +2299,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             showTab('admin');
             
             // Прокручиваем к форме
-            document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => {
+                document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
+            }, 100);
         }
         
         // Удаление товара
