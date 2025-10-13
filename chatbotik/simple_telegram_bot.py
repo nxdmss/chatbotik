@@ -1156,23 +1156,41 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             margin: 0;
             width: 100%;
             padding: 8px;
+            box-sizing: border-box;
+        }
+        
+        .admin-products-grid .product-image-full {
+            box-sizing: border-box;
         }
         
         /* Мобильная оптимизация для админ панели */
         @media (max-width: 480px) {
             .admin-products-grid {
-                gap: 12px;
-                padding: 0 12px;
-                margin-bottom: 16px;
+                gap: 16px;
+                padding: 0 16px;
+                margin-bottom: 20px;
             }
             
             .admin-products-grid .product-card {
-                padding: 6px;
-                margin: 4px;
+                padding: 8px;
+                margin: 6px;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+            
+            .admin-products-grid .product-image-full {
+                border-radius: 8px;
+                overflow: hidden;
+                margin-bottom: 4px;
+            }
+            
+            .admin-products-grid .product-image-full img {
+                border-radius: 8px;
             }
             
             .product-overlay {
-                padding: 10px 6px 6px;
+                padding: 12px 8px 8px;
+                border-radius: 8px;
             }
             
             .product-overlay .product-title {
@@ -1187,15 +1205,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             .product-buttons {
-                gap: 3px;
+                gap: 4px;
                 margin-bottom: 2px;
             }
             
             .product-buttons button {
-                padding: 5px 6px !important;
+                padding: 6px 8px !important;
                 font-size: 9px !important;
-                margin-bottom: 2px !important;
-                min-height: 28px !important;
+                margin-bottom: 3px !important;
+                min-height: 30px !important;
+                border-radius: 6px;
             }
         }
         
