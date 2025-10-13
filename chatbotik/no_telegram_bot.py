@@ -791,8 +791,8 @@ def handle_reply_command(user_id, text):
         target_user_id = int(args[0])
         message_text = " ".join(args[1:])
         
-        # Отправляем сообщение клиенту
-        if send_message(target_user_id, f"💬 Ответ от администратора\n\n{message_text}"):
+        # Отправляем сообщение клиенту как обычное сообщение
+        if send_message(target_user_id, message_text):
             # Сохраняем в базу данных
             conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
             cursor = conn.cursor()
@@ -810,7 +810,7 @@ def handle_reply_command(user_id, text):
             conn.commit()
             conn.close()
             
-            send_message(user_id, f"✅ Ответ отправлен пользователю {target_user_id}")
+            # Убираем уведомление админу - сообщение просто отправляется
         else:
             send_message(user_id, f"❌ Ошибка отправки сообщения пользователю {target_user_id}")
         
@@ -908,10 +908,7 @@ def forward_to_admin(sender_user_id, sender_username, sender_first_name, sender_
         for admin_id in ADMIN_IDS:
             send_message(admin_id, admin_message)
         
-        send_message(sender_user_id, (
-            "✅ Ваше сообщение отправлено администратору\n\n"
-            "Мы получили ваше сообщение и ответим в ближайшее время!"
-        ))
+        # Убираем уведомление клиенту - пусть просто отправляет сообщение
         
     except Exception as e:
         logger.error(f"Ошибка в forward_to_admin: {e}")
