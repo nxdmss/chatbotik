@@ -34,8 +34,8 @@ def run_telegram_bot():
             print("💡 Установите переменную окружения BOT_TOKEN")
             return
         
-        # Импортируем и запускаем простой бот поддержки
-        from simple_support_bot import main as support_main
+        # Импортируем и запускаем legacy бот поддержки
+        from legacy_support_bot import main as support_main
         support_main()
         
     except Exception as e:
