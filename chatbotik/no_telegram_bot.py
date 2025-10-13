@@ -182,13 +182,6 @@ def get_back_keyboard():
     ]
     return create_reply_keyboard(keyboard)
 
-def get_support_keyboard():
-    """Получить клавиатуру поддержки"""
-    keyboard = [
-        ['📝 Написать сообщение'],
-        ['🔙 Назад']
-    ]
-    return create_reply_keyboard(keyboard)
 
 def get_reviews_keyboard():
     """Получить клавиатуру отзывов"""
@@ -321,23 +314,13 @@ def handle_support_button(user_id):
     try:
         message = (
             "📞 <b>Поддержка</b>\n\n"
-            "Выберите действие:"
-        )
-        send_message(user_id, message, get_support_keyboard())
-    except Exception as e:
-        logger.error(f"Ошибка в handle_support_button: {e}")
-
-def handle_write_message_button(user_id):
-    """Обработка кнопки написать сообщение"""
-    try:
-        message = (
-            "📝 <b>Написать сообщение</b>\n\n"
             "Просто напишите ваш вопрос или сообщение, и оно будет передано администратору.\n\n"
             "Администратор ответит вам в ближайшее время!"
         )
         send_message(user_id, message, get_back_keyboard())
     except Exception as e:
-        logger.error(f"Ошибка в handle_write_message_button: {e}")
+        logger.error(f"Ошибка в handle_support_button: {e}")
+
 
 def handle_reviews_button(user_id):
     """Обработка кнопки отзывов"""
@@ -931,8 +914,6 @@ def process_update(update):
                     handle_start_command(user_id, username, first_name, last_name)
                 elif text == '📞 Поддержка':
                     handle_support_button(user_id)
-                elif text == '📝 Написать сообщение':
-                    handle_write_message_button(user_id)
                 elif text == '⭐ Отзывы':
                     handle_reviews_button(user_id)
                 elif text == '👀 Посмотреть отзывы':
