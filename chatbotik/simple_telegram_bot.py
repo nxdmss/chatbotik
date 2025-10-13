@@ -1065,20 +1065,47 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             margin-bottom: 20px;
         }
         
+        .admin-search-box {
+            margin-bottom: 20px;
+        }
+        
+        .admin-search-box input {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .admin-search-box input:focus {
+            outline: none;
+            border-color: #1e40af;
+        }
+        
+        .admin-products-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
         .admin-product-item {
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
+            padding: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            aspect-ratio: 1;
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
         }
         
         .admin-product-image {
-            width: 60px;
-            height: 60px;
+            width: 100%;
+            height: 100%;
             background: #2d2d2d;
             border-radius: 6px;
             overflow: hidden;
@@ -1086,17 +1113,26 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             align-items: center;
             justify-content: center;
             color: #666;
-            font-size: 18px;
+            font-size: 24px;
+            position: relative;
+            flex: 1;
+            min-height: 0;
         }
         
         .admin-product-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            border-radius: 6px;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         
         .admin-product-info {
-            flex: 1;
+            padding: 8px 0;
+            text-align: center;
         }
         
         .admin-product-title {
@@ -1104,12 +1140,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             font-weight: 600;
             margin-bottom: 4px;
             font-size: 14px;
+            line-height: 1.3;
         }
         
         .admin-product-price {
-            color: #3b82f6;
-            font-weight: 600;
-            font-size: 14px;
+            color: #10b981;
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .admin-product-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
         }
         
         .admin-product-actions {
@@ -1205,6 +1249,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         <div class="admin-section">
             <h2>⚙️ Панель администратора</h2>
             <div id="adminMessage"></div>
+            
+            <!-- Поиск товаров -->
+            <div class="admin-search-box">
+                <input type="text" id="adminSearchInput" placeholder="Поиск товаров..." onkeyup="filterAdminProducts()">
+            </div>
             
             <!-- Список товаров -->
             <div class="admin-products-list" id="adminProductsList">
@@ -1342,18 +1391,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 <div class="admin-product-item">
                     <div class="admin-product-image">
                         ${product.image_url ? 
-                            `<img src="${product.image_url}" alt="${product.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div style="display:none;">📷</div>` : 
-                            '📷'
+                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;"
+                                 onload="console.log('✅ Админ изображение загружено:', this.src)"
+                                 onerror="console.error('❌ Ошибка загрузки админ изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display:none; color: #666; font-size: 32px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
+                            '<div style="color: #666; font-size: 32px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
                         }
                     </div>
                     <div class="admin-product-info">
                         <div class="admin-product-title">${product.title}</div>
                         <div class="admin-product-price">${product.price.toLocaleString()} ₽</div>
-                    </div>
-                    <div class="admin-product-actions">
-                        <button class="edit-btn" onclick="editProduct(${product.id})">✏️</button>
-                        <button class="delete-btn" onclick="deleteProduct(${product.id})">🗑️</button>
+                        <div class="admin-product-actions">
+                            <button class="edit-btn" onclick="editProduct(${product.id})">✏️ Изменить</button>
+                            <button class="delete-btn" onclick="deleteProduct(${product.id})">🗑️ Удалить</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -1392,6 +1444,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </button>
                 </div>
             `).join('');
+        }
+        
+        // Фильтрация товаров в админ панели
+        function filterAdminProducts() {
+            const searchTerm = document.getElementById('adminSearchInput').value.toLowerCase();
+            const filteredProducts = products.filter(product => 
+                product.title.toLowerCase().includes(searchTerm)
+            );
+            renderAdminProducts(filteredProducts);
         }
         
         // Простая обработка загрузки изображения
