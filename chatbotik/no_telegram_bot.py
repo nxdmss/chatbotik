@@ -218,8 +218,10 @@ def send_message(chat_id, text, reply_markup=None):
         
         if reply_markup:
             data['reply_markup'] = reply_markup
+            print(f"🔍 DEBUG: Отправляем сообщение с reply_markup: {reply_markup}")
         
         response = requests.post(url, json=data, timeout=10)
+        print(f"🔍 DEBUG: Ответ Telegram API: {response.status_code}")
         return response.status_code == 200
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения: {e}")
@@ -253,6 +255,7 @@ def answer_callback_query(callback_query_id, text=None, show_alert=False):
             data['text'] = text
         
         response = requests.post(url, json=data, timeout=10)
+        print(f"🔍 DEBUG: Ответ на callback query: {response.status_code}")
         return response.status_code == 200
     except Exception as e:
         logger.error(f"Ошибка ответа на callback query: {e}")
@@ -988,9 +991,12 @@ def process_update(update):
             callback_data = callback_query['data']
             callback_query_id = callback_query['id']
             
+            print(f"🔍 DEBUG: Получен callback_query: user_id={user_id}, data='{callback_data}', query_id={callback_query_id}")
+            
             # Обрабатываем callback query
             if callback_data.startswith('customer_'):
                 customer_user_id = int(callback_data.split('_')[1])
+                print(f"🔍 DEBUG: Обрабатываем клиента {customer_user_id} для админа {user_id}")
                 answer_callback_query(callback_query_id, "Загрузка информации о клиенте...")
                 show_customer_detail(user_id, customer_user_id)
             elif callback_data == 'back_to_admin':
@@ -1024,6 +1030,7 @@ def process_update(update):
 def handle_customers_list_button(user_id):
     """Показать список клиентов с inline кнопками"""
     try:
+        print(f"🔍 DEBUG: handle_customers_list_button вызвана для пользователя {user_id}")
         if not is_admin(user_id):
             send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
             return
@@ -1066,9 +1073,11 @@ def handle_customers_list_button(user_id):
             if messages_count > 0:
                 button_text += f" 💬{messages_count}"
             
+            callback_data = f"customer_{user_id_val}"
+            print(f"🔍 DEBUG: Создаем кнопку для клиента {name} с callback_data: {callback_data}")
             inline_keyboard.append([{
                 "text": button_text,
-                "callback_data": f"customer_{user_id_val}"
+                "callback_data": callback_data
             }])
         
         # Добавляем кнопку "Назад"
@@ -1078,6 +1087,7 @@ def handle_customers_list_button(user_id):
         }])
         
         reply_markup = create_inline_keyboard(inline_keyboard)
+        print(f"🔍 DEBUG: Отправляем сообщение с клавиатурой: {len(inline_keyboard)} кнопок")
         send_message(user_id, message, reply_markup)
         
     except Exception as e:
@@ -1087,6 +1097,7 @@ def handle_customers_list_button(user_id):
 def show_customer_detail(admin_user_id, customer_user_id):
     """Показать детальную информацию о клиенте"""
     try:
+        print(f"🔍 DEBUG: show_customer_detail вызвана для админа {admin_user_id}, клиента {customer_user_id}")
         conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
         cursor = conn.cursor()
         
