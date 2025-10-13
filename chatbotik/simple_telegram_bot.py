@@ -745,6 +745,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             display: flex;
             flex-direction: column;
             gap: 6px;
+            margin-bottom: 8px;
         }
         
         .size-btn-thin, .add-to-cart-btn-thin {
@@ -778,9 +779,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         .size-btn-thin.required {
-            background: rgba(255, 193, 7, 0.8);
-            border-color: #ffc107;
-            color: #000;
+            background: rgba(0, 86, 179, 0.9);
+            border-color: #0056b3;
+            color: #ffffff;
             animation: pulse 2s infinite;
         }
         
@@ -1733,7 +1734,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                             </div>
                             <div class="product-buttons">
                                 <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="showSizeDrawer(${product.id})">
-                                    Выбрать размер
+                                    Добавить в корзину
                                 </button>
                                 <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="addToCart(${product.id})" style="display: none;">
                                     В корзину
@@ -1810,7 +1811,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                             </div>
                             <div class="product-buttons">
                                 <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="showSizeDrawer(${product.id})">
-                                    Выбрать размер
+                                    Добавить в корзину
                                 </button>
                                 <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="addToCart(${product.id})" style="display: none;">
                                     В корзину
@@ -2093,7 +2094,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             if (sizeBtn && cartBtn) {
                 sizeBtn.style.display = 'flex';
                 cartBtn.style.display = 'none';
-                sizeBtn.textContent = 'Выбрать размер';
+                sizeBtn.textContent = 'Добавить в корзину';
                 cartBtn.textContent = 'В корзину';
                 sizeBtn.classList.add('required');
             }
