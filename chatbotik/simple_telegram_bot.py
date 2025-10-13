@@ -1564,7 +1564,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
 <body>
         <div class="header">
             <h1>LOOK & GO</h1>
-            <p>Добро пожаловать в наш магазин!</p>
         </div>
     
     <div id="catalog" class="tab-content active">
