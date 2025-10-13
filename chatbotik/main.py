@@ -34,8 +34,8 @@ def run_telegram_bot():
             print("💡 Установите переменную окружения BOT_TOKEN")
             return
         
-        # Импортируем и запускаем минимальный бот поддержки
-        from minimal_support_bot import main as support_main
+        # Импортируем и запускаем бот без telegram библиотеки
+        from no_telegram_bot import main as support_main
         support_main()
         
     except Exception as e:
