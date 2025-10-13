@@ -142,9 +142,8 @@ def create_inline_keyboard(inline_layout):
 def get_admin_keyboard():
     """Получить главную клавиатуру для администратора"""
     keyboard = [
-        ['📋 Клиенты', '💬 Все сообщения'],
-        ['⭐ Отзывы', '📦 Все заказы'],
-        ['📊 Статистика']
+        ['📋 Клиенты'],
+        ['⭐ Отзывы', '📊 Статистика']
     ]
     return create_reply_keyboard(keyboard)
 
@@ -152,6 +151,7 @@ def get_customer_detail_keyboard(customer_id):
     """Получить клавиатуру для детального просмотра клиента"""
     keyboard = [
         ['💬 Чат с клиентом', '📦 Заказы клиента'],
+        ['🗑️ Удалить сообщения клиента'],
         ['🔙 Назад к списку клиентов']
     ]
     return create_reply_keyboard(keyboard)
@@ -254,11 +254,10 @@ def handle_start_command(user_id, username, first_name, last_name):
             message = (
                 "👑 <b>Панель администратора</b>\n\n"
                 "Выберите действие с помощью кнопок ниже:\n\n"
-                "📋 <b>Клиенты</b> - список всех клиентов\n"
-                "💬 <b>Сообщения</b> - история сообщений поддержки\n"
+                "📋 <b>Клиенты</b> - список всех клиентов с полной информацией\n"
                 "⭐ <b>Отзывы</b> - все отзывы клиентов\n"
-                "📦 <b>Заказы</b> - управление заказами\n"
                 "📊 <b>Статистика</b> - общая статистика\n\n"
+                "<i>Все сообщения и заказы доступны через раздел 'Клиенты'</i>\n\n"
                 "<i>Или используйте команды: /reply, /order</i>"
             )
             keyboard = get_admin_keyboard()
@@ -926,10 +925,6 @@ def process_update(update):
                 handle_myorders_command(user_id)
             elif text == '📋 Клиенты':
                 handle_customers_list_button(user_id)
-            elif text == '💬 Все сообщения':
-                handle_messages_command(user_id)
-            elif text == '📦 Все заказы':
-                handle_orders_command(user_id)
             elif text == '📊 Статистика':
                 handle_stats_command(user_id)
             elif text.startswith('👤 '):  # Клиент из списка
@@ -940,6 +935,8 @@ def process_update(update):
                 handle_customer_orders_button(user_id)
             elif text == '🔙 Назад к списку клиентов':
                 handle_customers_list_button(user_id)
+            elif text == '🗑️ Удалить сообщения клиента':
+                handle_delete_messages_button(user_id)
             elif text == '💬 Отправить сообщение':
                 handle_send_message_to_customer_button(user_id)
             elif text == '🔙 Назад к клиенту':
@@ -967,6 +964,8 @@ def process_update(update):
                 handle_reply_command(user_id, text)
             elif text.startswith('/order'):
                 handle_order_command(user_id, text)
+            elif text.startswith('/delete_messages'):
+                handle_delete_messages_command(user_id, text)
             else:
                 # Обычное сообщение - пересылаем админу
                 forward_to_admin(user_id, username, first_name, last_name, text)
@@ -1201,6 +1200,75 @@ def handle_back_to_customer_button(user_id):
         
     except Exception as e:
         logger.error(f"Ошибка в handle_back_to_customer_button: {e}")
+
+def handle_delete_messages_button(user_id):
+    """Показать форму для удаления сообщений клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        message = (
+            "🗑️ <b>Удаление сообщений клиента</b>\n\n"
+            "Для удаления всех сообщений клиента используйте команду:\n"
+            "<code>/delete_messages &lt;ID_клиента&gt;</code>\n\n"
+            "Например:\n"
+            "<code>/delete_messages 123456789</code>\n\n"
+            "⚠️ <b>Внимание:</b> Это действие необратимо!"
+        )
+        send_message(user_id, message, get_back_keyboard())
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_delete_messages_button: {e}")
+
+def handle_delete_messages_command(user_id, text):
+    """Команда для удаления сообщений клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        args = text.split()[1:]  # Убираем /delete_messages
+        if len(args) < 1:
+            send_message(user_id, (
+                "❌ Неверный формат команды.\n"
+                "Используйте: /delete_messages <ID_клиента>"
+            ))
+            return
+        
+        customer_user_id = int(args[0])
+        
+        # Находим клиента в базе данных
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id FROM customers WHERE user_id = ?', (customer_user_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            send_message(user_id, "❌ Клиент не найден в базе данных.")
+            conn.close()
+            return
+        
+        customer_id = result[0]
+        
+        # Удаляем все сообщения клиента
+        cursor.execute('DELETE FROM support_messages WHERE customer_id = ?', (customer_id,))
+        deleted_count = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        if deleted_count > 0:
+            send_message(user_id, f"✅ Удалено {deleted_count} сообщений клиента {customer_user_id}")
+        else:
+            send_message(user_id, f"ℹ️ У клиента {customer_user_id} не было сообщений для удаления")
+        
+    except ValueError:
+        send_message(user_id, "❌ Неверный ID клиента.")
+    except Exception as e:
+        logger.error(f"Ошибка в handle_delete_messages_command: {e}")
+        send_message(user_id, f"❌ Ошибка удаления сообщений: {e}")
 
 def main():
     """Главная функция"""
