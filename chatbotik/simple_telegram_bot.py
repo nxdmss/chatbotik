@@ -462,31 +462,41 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 price = int(data.get('price', 0))
                 image_data = data.get('image', '')
                 
+                print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, image_len={len(image_data) if image_data else 0}")
+                
                 if title and price > 0:
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
                     
                     # Если есть новое изображение, сохраняем его
-                    if image_data:
+                    if image_data and image_data.strip():
                         bot = DarkShopBot()
                         image_url = bot.save_image(image_data)
+                        print(f"🖼️ Новое изображение сохранено: {image_url}")
                         cursor.execute('''
                             UPDATE products 
                             SET title = ?, price = ?, image_url = ?
                             WHERE id = ?
                         ''', (title, price, image_url, product_id))
+                        print(f"✅ Товар обновлен с новым изображением: {title} -> {image_url}")
                     else:
+                        print("📝 Обновление без изменения изображения")
                         cursor.execute('''
                             UPDATE products 
                             SET title = ?, price = ?
                             WHERE id = ?
                         ''', (title, price, product_id))
+                        print(f"✅ Товар обновлен без изображения: {title}")
                     
+                    rows_affected = cursor.rowcount
                     conn.commit()
                     conn.close()
                     
+                    print(f"📊 Обновлено строк: {rows_affected}")
+                    
                     response = {'success': True, 'message': 'Товар обновлен успешно!'}
                 else:
+                    print(f"❌ Неверные данные: title='{title}', price={price}")
                     response = {'success': False, 'message': 'Неверные данные товара'}
                 
                 self.send_response(200)
@@ -497,6 +507,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
             except Exception as e:
                 print(f"❌ Ошибка обновления товара: {e}")
+                import traceback
+                traceback.print_exc()
                 response = {'success': False, 'message': 'Ошибка обновления товара'}
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
