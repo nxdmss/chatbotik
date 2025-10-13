@@ -237,7 +237,10 @@ def get_updates(offset=None):
         
         response = requests.get(url, params=params, timeout=35)
         if response.status_code == 200:
-            return response.json()
+            result = response.json()
+            if result.get('ok') and result.get('result'):
+                print(f"🔍 DEBUG: get_updates получил {len(result['result'])} обновлений")
+            return result
         return None
     except Exception as e:
         logger.error(f"Ошибка получения обновлений: {e}")
@@ -1026,6 +1029,9 @@ def process_update(update):
         
     except Exception as e:
         logger.error(f"Ошибка в process_update: {e}")
+        print(f"🔍 DEBUG: Исключение в process_update: {e}")
+        import traceback
+        traceback.print_exc()
 
 def handle_customers_list_button(user_id):
     """Показать список клиентов с inline кнопками"""
@@ -1501,7 +1507,13 @@ def main():
             updates = get_updates(last_update_id)
             
             if updates and updates.get('ok'):
+                print(f"🔍 DEBUG: Получено {len(updates['result'])} обновлений")
                 for update in updates['result']:
+                    print(f"🔍 DEBUG: Обрабатываем обновление ID {update['update_id']}")
+                    if 'message' in update:
+                        print(f"🔍 DEBUG: Это сообщение от {update['message']['from']['id']}")
+                    elif 'callback_query' in update:
+                        print(f"🔍 DEBUG: Это callback_query от {update['callback_query']['from']['id']}")
                     process_update(update)
                     last_update_id = update['update_id'] + 1
             else:
