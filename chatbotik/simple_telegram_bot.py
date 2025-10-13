@@ -340,7 +340,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             filename = self.path[9:]  # Убираем '/uploads/'
             filepath = os.path.join(UPLOADS_DIR, filename)
             
-            print(f"🖼️ Запрос: {self.path}")
+            print(f"🖼️ Запрос изображения: {self.path}")
             print(f"📁 Ищем файл: {filepath}")
             
             if os.path.exists(filepath):
@@ -350,6 +350,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-type', 'image/jpeg')
                 self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'public, max-age=3600')
                 self.end_headers()
                 
                 try:
@@ -359,6 +360,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     print(f"✅ Изображение отправлено: {filename} ({len(content)} байт)")
                 except Exception as e:
                     print(f"❌ Ошибка чтения файла: {e}")
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(b'Server Error')
             else:
                 print(f"❌ Файл не найден: {filepath}")
                 # Показываем содержимое папки для отладки
@@ -369,6 +373,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     print(f"📁 Папка uploads не существует!")
                 
                 self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(b'Image not found')
         
@@ -1376,37 +1381,59 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Простая обработка загрузки изображения
         function handleImageUpload(input) {
+            console.log('📸 handleImageUpload вызвана');
+            
             const file = input.files[0];
             if (file) {
-                console.log('📸 Выбран файл:', file.name, 'размер:', file.size);
+                console.log('📸 Выбран файл:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified
+                });
                 
                 // Проверяем размер файла (максимум 5MB)
                 if (file.size > 5 * 1024 * 1024) {
+                    console.log('❌ Файл слишком большой:', file.size, 'байт');
                     alert('Файл слишком большой! Максимум 5MB.');
                     input.value = '';
                     return;
                 }
                 
+                console.log('📸 Начинаем чтение файла...');
                 const reader = new FileReader();
+                
                 reader.onload = function(e) {
                     selectedImageData = e.target.result;
-                    console.log('📸 Base64 готов, длина:', selectedImageData.length);
+                    console.log('📸 Base64 готов:', {
+                        length: selectedImageData.length,
+                        startsWith: selectedImageData.substring(0, 50) + '...',
+                        type: selectedImageData.split(',')[0]
+                    });
                     
                     // Показываем превью
                     const preview = document.getElementById('imagePreview');
                     preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
+                    console.log('📸 Превью обновлено');
                 };
                 
-                reader.onerror = function() {
-                    console.error('❌ Ошибка чтения файла');
+                reader.onerror = function(error) {
+                    console.error('❌ Ошибка чтения файла:', error);
                     alert('Ошибка чтения файла!');
+                };
+                
+                reader.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        console.log('📸 Прогресс чтения:', percentComplete.toFixed(2) + '%');
+                    }
                 };
                 
                 reader.readAsDataURL(file);
             } else {
+                console.log('📸 Файл не выбран, очищаем данные');
                 selectedImageData = '';
                 document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
-                console.log('📸 Файл не выбран');
             }
         }
         
@@ -1514,12 +1541,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         async function addProduct(event) {
             event.preventDefault();
             
+            console.log('🚀 Функция addProduct вызвана');
+            
             const title = document.getElementById('productTitle').value;
             const price = parseInt(document.getElementById('productPrice').value);
             
-            console.log('📝 Данные формы:', { title, price, imageData: selectedImageData ? 'есть' : 'нет' });
+            console.log('📝 Данные формы:', { 
+                title: title, 
+                price: price, 
+                imageData: selectedImageData ? `есть (${selectedImageData.length} символов)` : 'нет',
+                currentEditingProduct: currentEditingProduct
+            });
             
             if (!title || !price || price <= 0) {
+                console.log('❌ Неверные данные формы');
                 showAdminMessage('Пожалуйста, заполните все обязательные поля!', 'error');
                 return;
             }
@@ -1528,6 +1563,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 const url = currentEditingProduct ? 
                     `/api/update-product/${currentEditingProduct}` : 
                     '/api/add-product';
+                
+                console.log('🌐 URL запроса:', url);
                 
                 const requestData = {
                     title: title,
@@ -1538,7 +1575,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 console.log('📤 Отправляем данные:', {
                     title: title,
                     price: price,
-                    imageLength: selectedImageData ? selectedImageData.length : 0
+                    imageLength: selectedImageData ? selectedImageData.length : 0,
+                    fullRequestData: requestData
                 });
                 
                 const response = await fetch(url, {
@@ -1549,11 +1587,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     body: JSON.stringify(requestData)
                 });
                 
+                console.log('📡 Ответ сервера получен, статус:', response.status);
+                
                 const result = await response.json();
                 
                 console.log('📥 Ответ сервера:', result);
                 
                 if (result.success) {
+                    console.log('✅ Успешно сохранено');
                     showAdminMessage(
                         currentEditingProduct ? 'Товар обновлен успешно!' : 'Товар добавлен успешно!', 
                         'success'
@@ -1561,11 +1602,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     resetForm();
                     await loadProducts();
                 } else {
+                    console.log('❌ Ошибка сервера:', result.message);
                     showAdminMessage(result.message || 'Ошибка сохранения товара', 'error');
                 }
             } catch (error) {
-                console.error('Error saving product:', error);
-                showAdminMessage('Ошибка сохранения товара', 'error');
+                console.error('❌ Ошибка fetch:', error);
+                showAdminMessage('Ошибка соединения с сервером: ' + error.message, 'error');
             }
         }
         
