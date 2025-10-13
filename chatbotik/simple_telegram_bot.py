@@ -645,9 +645,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .products-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+            gap: 20px;
             margin-bottom: 24px;
-            padding: 0 8px;
+            padding: 0 16px;
             justify-items: center;
         }
         
@@ -658,8 +658,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             transition: all 0.3s ease;
             position: relative;
             aspect-ratio: 1;
-            min-height: 200px;
+            min-height: 180px;
             overflow: hidden;
+            margin: 8px;
+            padding: 4px;
+            box-sizing: border-box;
         }
         
         .product-card:hover {
@@ -1347,11 +1350,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         @media (max-width: 768px) {
             .products-grid {
                 grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                gap: 12px;
+                padding: 0 12px;
             }
             
             .product-card {
-                padding: 8px;
+                padding: 6px;
+                margin: 4px;
+                min-height: 160px;
             }
             
             .product-title {
