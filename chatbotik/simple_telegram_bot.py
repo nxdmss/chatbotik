@@ -552,61 +552,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
         
-        elif self.path.startswith('/api/update-product/'):
-            product_id = self.path.split('/')[-1]
-            
-            try:
-                # Получаем JSON данные
-                content_length = int(self.headers['Content-Length'])
-                post_data = self.rfile.read(content_length)
-                data = json.loads(post_data.decode('utf-8'))
-                
-                title = data.get('title', '').strip()
-                price = data.get('price')
-                
-                if not title or not price or price < 1:
-                    response = {'success': False, 'error': 'Название и цена обязательны'}
-                    self.send_response(400)
-                    self.send_header('Content-type', 'application/json; charset=utf-8')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-                    return
-                
-                # Обновляем товар
-                conn = sqlite3.connect(DATABASE_PATH)
-                cursor = conn.cursor()
-                cursor.execute('UPDATE products SET title = ?, price = ? WHERE id = ?', (title, price, product_id))
-                
-                if cursor.rowcount == 0:
-                    response = {'success': False, 'error': 'Товар не найден'}
-                    self.send_response(404)
-                    self.send_header('Content-type', 'application/json; charset=utf-8')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-                    conn.close()
-                    return
-                
-                conn.commit()
-                conn.close()
-                
-                response = {'success': True, 'message': 'Товар обновлен!'}
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-                
-            except Exception as e:
-                print(f"❌ Ошибка обновления товара: {e}")
-                response = {'success': False, 'error': 'Ошибка обновления товара'}
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-        
         else:
             self.send_response(404)
             self.end_headers()
@@ -1633,32 +1578,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 font-size: 12px;
             }
         }
-        
-        /* Минимальные стили для редактирования */
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            justify-content: flex-end;
-        }
-        
-        .cancel-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        .save-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -1720,32 +1639,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 </div>
                 <button type="submit" class="add-product-btn" id="submitBtn">➕ Добавить товар</button>
             </form>
-        </div>
-    </div>
-
-    <!-- Простое модальное окно для редактирования -->
-    <div id="editModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>✏️ Редактировать товар</h3>
-                <span class="close" onclick="closeEditModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="editForm">
-                    <div class="form-group">
-                        <label for="editTitle">Название</label>
-                        <input type="text" id="editTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editPrice">Цена (₽)</label>
-                        <input type="number" id="editPrice" min="1" required>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" onclick="closeEditModal()" class="cancel-btn">Отмена</button>
-                        <button type="submit" class="save-btn">Сохранить</button>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>
 
@@ -2370,66 +2263,36 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
         }
         
-        // Редактирование товара (модальное окно)
-        let editingProductId = null;
-        
+        // Редактирование товара (используем существующую форму)
         function editProduct(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
             
-            editingProductId = productId;
+            // Устанавливаем режим редактирования
+            currentEditingProduct = productId;
             
-            // Заполняем форму редактирования
-            document.getElementById('editTitle').value = product.title;
-            document.getElementById('editPrice').value = product.price;
+            // Заполняем форму добавления товара
+            document.getElementById('productTitle').value = product.title;
+            document.getElementById('productPrice').value = product.price;
             
-            // Показываем модальное окно
-            document.getElementById('editModal').style.display = 'block';
-        }
-        
-        function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
-            editingProductId = null;
-            document.getElementById('editForm').reset();
-        }
-        
-        // Обработчик формы редактирования
-        document.getElementById('editForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (!editingProductId) return;
-            
-            const title = document.getElementById('editTitle').value.trim();
-            const price = parseInt(document.getElementById('editPrice').value);
-            
-            if (!title || !price || price < 1) {
-                showAdminMessage('Название и цена обязательны!', 'error');
-                return;
+            // Показываем текущее изображение
+            if (product.image_url) {
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
+            } else {
+                selectedImageData = '';
+                document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
             }
             
-            try {
-                const response = await fetch(`/api/update-product/${editingProductId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ title, price })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAdminMessage('Товар обновлен успешно!', 'success');
-                    closeEditModal();
-                    loadProducts(); // Перезагружаем список
-                } else {
-                    showAdminMessage(result.error || 'Ошибка обновления', 'error');
-                }
-            } catch (error) {
-                console.error('Error updating product:', error);
-                showAdminMessage('Ошибка обновления товара', 'error');
-            }
-        });
+            // Меняем текст кнопки на "Сохранить изменения"
+            document.getElementById('submitBtn').textContent = '💾 Сохранить изменения';
+            
+            // Переключаемся на вкладку админа
+            showTab('admin');
+            
+            // Прокручиваем к форме
+            document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
+        }
         
         // Удаление товара
         async function deleteProduct(productId) {
