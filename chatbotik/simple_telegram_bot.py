@@ -1161,38 +1161,41 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         /* Мобильная оптимизация для админ панели */
         @media (max-width: 480px) {
             .admin-products-grid {
-                gap: 8px;
-                padding: 0 8px;
+                gap: 12px;
+                padding: 0 12px;
                 margin-bottom: 16px;
             }
             
             .admin-products-grid .product-card {
-                padding: 4px;
+                padding: 6px;
+                margin: 4px;
             }
             
             .product-overlay {
-                padding: 12px 8px 8px;
+                padding: 10px 6px 6px;
             }
             
             .product-overlay .product-title {
+                font-size: 10px;
+                margin-bottom: 2px;
+                line-height: 1.1;
+            }
+            
+            .product-overlay .product-price {
                 font-size: 11px;
                 margin-bottom: 3px;
             }
             
-            .product-overlay .product-price {
-                font-size: 12px;
-                margin-bottom: 4px;
-            }
-            
             .product-buttons {
-                gap: 4px;
-                margin-bottom: 4px;
+                gap: 3px;
+                margin-bottom: 2px;
             }
             
             .product-buttons button {
-                padding: 6px 8px !important;
-                font-size: 10px !important;
-                margin-bottom: 3px !important;
+                padding: 5px 6px !important;
+                font-size: 9px !important;
+                margin-bottom: 2px !important;
+                min-height: 28px !important;
             }
         }
         
