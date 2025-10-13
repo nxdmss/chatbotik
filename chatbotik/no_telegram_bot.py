@@ -142,9 +142,25 @@ def create_inline_keyboard(inline_layout):
 def get_admin_keyboard():
     """Получить главную клавиатуру для администратора"""
     keyboard = [
-        ['📋 Клиенты', '💬 Сообщения'],
-        ['⭐ Отзывы', '📦 Заказы'],
+        ['📋 Клиенты', '💬 Все сообщения'],
+        ['⭐ Отзывы', '📦 Все заказы'],
         ['📊 Статистика']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_customer_detail_keyboard(customer_id):
+    """Получить клавиатуру для детального просмотра клиента"""
+    keyboard = [
+        ['💬 Чат с клиентом', '📦 Заказы клиента'],
+        ['🔙 Назад к списку клиентов']
+    ]
+    return create_reply_keyboard(keyboard)
+
+def get_chat_history_keyboard(customer_id):
+    """Получить клавиатуру для истории чата с клиентом"""
+    keyboard = [
+        ['💬 Отправить сообщение'],
+        ['🔙 Назад к клиенту']
     ]
     return create_reply_keyboard(keyboard)
 
@@ -909,13 +925,25 @@ def process_update(update):
             elif text == '📦 Мои заказы':
                 handle_myorders_command(user_id)
             elif text == '📋 Клиенты':
-                handle_customers_command(user_id)
-            elif text == '💬 Сообщения':
+                handle_customers_list_button(user_id)
+            elif text == '💬 Все сообщения':
                 handle_messages_command(user_id)
-            elif text == '📦 Заказы':
+            elif text == '📦 Все заказы':
                 handle_orders_command(user_id)
             elif text == '📊 Статистика':
                 handle_stats_command(user_id)
+            elif text.startswith('👤 '):  # Клиент из списка
+                handle_customer_selection(user_id, text)
+            elif text == '💬 Чат с клиентом':
+                handle_customer_chat_button(user_id)
+            elif text == '📦 Заказы клиента':
+                handle_customer_orders_button(user_id)
+            elif text == '🔙 Назад к списку клиентов':
+                handle_customers_list_button(user_id)
+            elif text == '💬 Отправить сообщение':
+                handle_send_message_to_customer_button(user_id)
+            elif text == '🔙 Назад к клиенту':
+                handle_back_to_customer_button(user_id)
             # Обработка команд
             elif text.startswith('/start'):
                 handle_start_command(user_id, username, first_name, last_name)
@@ -945,6 +973,234 @@ def process_update(update):
         
     except Exception as e:
         logger.error(f"Ошибка в process_update: {e}")
+
+def handle_customers_list_button(user_id):
+    """Показать список клиентов с кнопками"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT c.id, c.user_id, c.username, c.first_name, c.last_name, c.last_activity,
+                   COUNT(DISTINCT sm.id) as messages_count,
+                   COUNT(DISTINCT o.id) as orders_count
+            FROM customers c
+            LEFT JOIN support_messages sm ON c.id = sm.customer_id
+            LEFT JOIN orders o ON c.id = o.customer_id
+            GROUP BY c.id
+            ORDER BY c.last_activity DESC
+            LIMIT 20
+        ''')
+        
+        customers = cursor.fetchall()
+        conn.close()
+        
+        if not customers:
+            send_message(user_id, "📋 <b>Список клиентов</b>\n\nКлиентов пока нет.", get_back_keyboard())
+            return
+        
+        # Создаем клавиатуру с клиентами
+        keyboard = []
+        message = "📋 <b>Список клиентов</b>\n\nВыберите клиента для просмотра:\n\n"
+        
+        for i, customer in enumerate(customers):
+            customer_id, user_id_val, username, first_name, last_name, last_activity, messages_count, orders_count = customer
+            
+            name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
+            username_text = f"@{username}" if username else ""
+            
+            message += (
+                f"👤 <b>{name}</b> {username_text}\n"
+                f"🆔 ID: {user_id_val}\n"
+                f"💬 Сообщений: {messages_count} | 📦 Заказов: {orders_count}\n"
+                f"⏰ {last_activity[:16]}\n\n"
+            )
+            
+            # Добавляем кнопку для каждого клиента
+            keyboard.append([f"👤 {name} (ID: {user_id_val})"])
+        
+        # Добавляем кнопку "Назад"
+        keyboard.append(['🔙 Назад'])
+        
+        reply_keyboard = create_reply_keyboard(keyboard)
+        send_message(user_id, message, reply_keyboard)
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customers_list_button: {e}")
+
+def handle_customer_selection(user_id, button_text):
+    """Обработка выбора клиента из списка"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        # Извлекаем ID клиента из текста кнопки
+        # Формат: "👤 Имя (ID: 123456789)"
+        if "(ID:" in button_text:
+            customer_user_id = int(button_text.split("(ID:")[1].split(")")[0].strip())
+            show_customer_detail(user_id, customer_user_id)
+        else:
+            send_message(user_id, "❌ Ошибка выбора клиента.", get_back_keyboard())
+            
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_selection: {e}")
+
+def show_customer_detail(admin_user_id, customer_user_id):
+    """Показать детальную информацию о клиенте"""
+    try:
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        # Получаем информацию о клиенте
+        cursor.execute('''
+            SELECT c.id, c.username, c.first_name, c.last_name, c.created_at, c.last_activity,
+                   COUNT(DISTINCT sm.id) as messages_count,
+                   COUNT(DISTINCT o.id) as orders_count,
+                   COUNT(DISTINCT r.id) as reviews_count
+            FROM customers c
+            LEFT JOIN support_messages sm ON c.id = sm.customer_id
+            LEFT JOIN orders o ON c.id = o.customer_id
+            LEFT JOIN reviews r ON c.id = r.customer_id
+            WHERE c.user_id = ?
+            GROUP BY c.id
+        ''', (customer_user_id,))
+        
+        customer = cursor.fetchone()
+        
+        if not customer:
+            send_message(admin_user_id, "❌ Клиент не найден.", get_back_keyboard())
+            return
+        
+        customer_id, username, first_name, last_name, created_at, last_activity, messages_count, orders_count, reviews_count = customer
+        
+        name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
+        username_text = f"@{username}" if username else "Не указан"
+        
+        # Получаем последнее сообщение
+        cursor.execute('''
+            SELECT message, created_at, is_from_admin
+            FROM support_messages sm
+            WHERE sm.customer_id = ?
+            ORDER BY sm.created_at DESC
+            LIMIT 1
+        ''', (customer_id,))
+        
+        last_message = cursor.fetchone()
+        last_message_text = ""
+        if last_message:
+            message_text, msg_date, is_from_admin = last_message
+            sender = "Админ" if is_from_admin else "Клиент"
+            last_message_text = f"\n💬 <b>Последнее сообщение:</b>\n{sender}: {message_text[:100]}{'...' if len(message_text) > 100 else ''}\n📅 {msg_date[:16]}"
+        
+        # Получаем последний заказ
+        cursor.execute('''
+            SELECT order_number, status, created_at
+            FROM orders
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        ''', (customer_id,))
+        
+        last_order = cursor.fetchone()
+        last_order_text = ""
+        if last_order:
+            order_number, status, order_date = last_order
+            last_order_text = f"\n📦 <b>Последний заказ:</b>\n#{order_number} - {status}\n📅 {order_date[:16]}"
+        
+        conn.close()
+        
+        message = (
+            f"👤 <b>Информация о клиенте</b>\n\n"
+            f"<b>Имя:</b> {name}\n"
+            f"<b>Username:</b> {username_text}\n"
+            f"<b>ID:</b> {customer_user_id}\n"
+            f"<b>Регистрация:</b> {created_at[:16]}\n"
+            f"<b>Активность:</b> {last_activity[:16]}\n\n"
+            f"📊 <b>Статистика:</b>\n"
+            f"💬 Сообщений: {messages_count}\n"
+            f"📦 Заказов: {orders_count}\n"
+            f"⭐ Отзывов: {reviews_count}"
+            f"{last_message_text}"
+            f"{last_order_text}"
+        )
+        
+        send_message(admin_user_id, message, get_customer_detail_keyboard(customer_id))
+        
+    except Exception as e:
+        logger.error(f"Ошибка в show_customer_detail: {e}")
+
+def handle_customer_chat_button(user_id):
+    """Показать историю чата с клиентом"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        message = (
+            "💬 <b>История чата с клиентом</b>\n\n"
+            "Используйте команду:\n"
+            "<code>/reply &lt;ID_клиента&gt; &lt;ваше сообщение&gt;</code>\n\n"
+            "Для просмотра всех сообщений используйте кнопку '💬 Все сообщения'"
+        )
+        send_message(user_id, message, get_back_keyboard())
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_chat_button: {e}")
+
+def handle_customer_orders_button(user_id):
+    """Показать заказы клиента"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        message = (
+            "📦 <b>Заказы клиента</b>\n\n"
+            "Для просмотра всех заказов используйте кнопку '📦 Все заказы'\n\n"
+            "Для создания заказа используйте команду:\n"
+            "<code>/order &lt;ID_клиента&gt; &lt;описание_заказа&gt;</code>"
+        )
+        send_message(user_id, message, get_back_keyboard())
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_orders_button: {e}")
+
+def handle_send_message_to_customer_button(user_id):
+    """Показать форму для отправки сообщения клиенту"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        message = (
+            "💬 <b>Отправить сообщение клиенту</b>\n\n"
+            "Используйте команду:\n"
+            "<code>/reply &lt;ID_клиента&gt; &lt;ваше сообщение&gt;</code>\n\n"
+            "Например:\n"
+            "<code>/reply 123456789 Привет! Как дела?</code>"
+        )
+        send_message(user_id, message, get_back_keyboard())
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_send_message_to_customer_button: {e}")
+
+def handle_back_to_customer_button(user_id):
+    """Вернуться к детальной информации о клиенте"""
+    try:
+        if not is_admin(user_id):
+            send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
+            return
+        
+        # Возвращаемся к списку клиентов
+        handle_customers_list_button(user_id)
+        
+    except Exception as e:
+        logger.error(f"Ошибка в handle_back_to_customer_button: {e}")
 
 def main():
     """Главная функция"""
