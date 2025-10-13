@@ -1774,21 +1774,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             container.innerHTML = productsToRender.map(product => `
-                <div class="admin-product-simple" style="background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 20px; margin: 15px 0; display: flex; align-items: center; gap: 20px; min-height: 100px;">
-                    <div style="width: 80px; height: 80px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 2px solid #444;">
+                <div class="admin-product-simple" style="background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; margin: 10px 0; display: flex; align-items: center; gap: 15px; min-height: 90px;">
+                    <div style="width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex-shrink: 0; border: 1px solid #444;">
                         ${product.image_url ? 
                             `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" style="width: 100%; height: 100%; object-fit: cover;">` : 
-                            '<div style="background: #444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 24px;">📷</div>'
+                            '<div style="background: #444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 18px;">📷</div>'
                         }
                     </div>
                     <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-weight: bold; color: white; margin-bottom: 8px; font-size: 16px; line-height: 1.4;">${product.title}</div>
-                        <div style="color: #4CAF50; font-size: 20px; font-weight: bold; margin-bottom: 5px;">${product.price.toLocaleString()} ₽</div>
-                        ${product.sizes ? `<div style="color: #888; font-size: 14px;">Размеры: ${product.sizes}</div>` : ''}
+                        <div style="font-weight: bold; color: white; margin-bottom: 6px; font-size: 14px; line-height: 1.3;">${product.title}</div>
+                        <div style="color: #4CAF50; font-size: 16px; font-weight: bold; margin-bottom: 3px;">${product.price.toLocaleString()} ₽</div>
+                        ${product.sizes ? `<div style="color: #888; font-size: 12px;">Размеры: ${product.sizes}</div>` : ''}
                     </div>
-                    <div style="display: flex; gap: 12px; flex-shrink: 0; align-items: center;">
-                        <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.2s;">✏️ Изменить</button>
-                        <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.2s;">🗑️ Удалить</button>
+                    <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; align-items: center;">
+                        <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; min-width: 70px; transition: background 0.2s;">✏️</button>
+                        <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; min-width: 70px; transition: background 0.2s;">🗑️</button>
                     </div>
                 </div>
             `).join('');
