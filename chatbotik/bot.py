@@ -159,7 +159,7 @@ class DarkShopBot:
                 print(f"📁 Полный путь: {filepath}")
                 print(f"🌐 URL для базы: {result_url}")
                 return result_url
-    else:
+            else:
                 print(f"❌ Файл не создался: {filepath}")
                 return ''
             
@@ -259,7 +259,7 @@ class DarkShopBot:
                 
                 self.send_message(chat_id, response_text)
                 
-    except Exception as e:
+        except Exception as e:
             print(f"❌ Ошибка обработки данных WebApp: {e}")
             self.send_message(chat_id, '❌ Произошла ошибка при обработке данных')
 
@@ -302,7 +302,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     print(f"  - {p['title']}: изображение = {p['image_url'] or 'НЕТ'}")
                 
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
-    except Exception as e:
+            except Exception as e:
                 print(f"❌ Ошибка получения товаров: {e}")
                 self.wfile.write(json.dumps([]).encode('utf-8'))
         
@@ -362,7 +362,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         content = f.read()
                         self.wfile.write(content)
                     print(f"✅ Изображение отправлено: {filename} ({len(content)} байт)")
-        except Exception as e:
+                except Exception as e:
                     print(f"❌ Ошибка чтения файла: {e}")
                     self.send_response(500)
                     self.end_headers()
@@ -403,8 +403,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 # Простая обработка заказа
                 response = {'success': True, 'order_id': 12345}
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
-        
-    except Exception as e:
+            
+            except Exception as e:
                 print(f"❌ Ошибка обработки заказа: {e}")
                 self.send_response(500)
                 self.end_headers()
@@ -450,7 +450,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
                 
-    except Exception as e:
+            except Exception as e:
                 print(f"❌ Ошибка добавления товара: {e}")
                 response = {'success': False, 'message': f'Ошибка добавления товара: {str(e)}'}
                 self.send_response(500)
@@ -543,7 +543,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
                 
-        except Exception as e:
+            except Exception as e:
                 print(f"❌ Ошибка удаления товара: {e}")
                 response = {'success': False, 'message': 'Ошибка удаления товара'}
                 self.send_response(500)
