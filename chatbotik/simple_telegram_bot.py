@@ -62,9 +62,18 @@ class DarkShopBot:
                 title TEXT NOT NULL,
                 price INTEGER NOT NULL,
                 image_url TEXT DEFAULT '',
+                sizes TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Добавляем поле sizes если его нет
+        try:
+            cursor.execute('ALTER TABLE products ADD COLUMN sizes TEXT DEFAULT ""')
+            print("✅ Добавлено поле sizes в таблицу products")
+        except sqlite3.OperationalError:
+            # Поле уже существует
+            pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
@@ -419,9 +428,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 title = data.get('title', '')
                 price = int(data.get('price', 0))
+                sizes = data.get('sizes', '')
                 image_data = data.get('image', '')
                 
-                print(f"📝 Получены данные: title='{title}', price={price}, image_data_len={len(image_data)}")
+                print(f"📝 Получены данные: title='{title}', price={price}, sizes='{sizes}', image_data_len={len(image_data)}")
                 
                 if title and price > 0:
                     # Сохраняем изображение
@@ -432,9 +442,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
                     cursor.execute('''
-                        INSERT INTO products (title, price, image_url)
-                        VALUES (?, ?, ?)
-                    ''', (title, price, image_url))
+                        INSERT INTO products (title, price, image_url, sizes)
+                        VALUES (?, ?, ?, ?)
+                    ''', (title, price, image_url, sizes))
                     conn.commit()
                     conn.close()
                     
@@ -469,9 +479,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 title = data.get('title', '')
                 price = int(data.get('price', 0))
+                sizes = data.get('sizes', '')
                 image_data = data.get('image', '')
                 
-                print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, image_len={len(image_data) if image_data else 0}")
+                print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, sizes='{sizes}', image_len={len(image_data) if image_data else 0}")
                 
                 if title and price > 0:
                     conn = sqlite3.connect(DATABASE_PATH)
@@ -484,17 +495,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         print(f"🖼️ Новое изображение сохранено: {image_url}")
                         cursor.execute('''
                             UPDATE products 
-                            SET title = ?, price = ?, image_url = ?
+                            SET title = ?, price = ?, image_url = ?, sizes = ?
                             WHERE id = ?
-                        ''', (title, price, image_url, product_id))
+                        ''', (title, price, image_url, sizes, product_id))
                         print(f"✅ Товар обновлен с новым изображением: {title} -> {image_url}")
                     else:
                         print("📝 Обновление без изменения изображения")
                         cursor.execute('''
                             UPDATE products 
-                            SET title = ?, price = ?
+                            SET title = ?, price = ?, sizes = ?
                             WHERE id = ?
-                        ''', (title, price, product_id))
+                        ''', (title, price, sizes, product_id))
                         print(f"✅ Товар обновлен без изображения: {title}")
                     
                     rows_affected = cursor.rowcount
@@ -1630,6 +1641,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <input type="number" id="productPrice" min="1" required>
                 </div>
                 <div class="form-group">
+                    <label for="productSizes">Размерная сетка (через запятую)</label>
+                    <input type="text" id="productSizes" placeholder="36,37,38,39,40,41,42,43,44,45,46">
+                    <small style="color: #666; font-size: 12px;">Оставьте пустым для товаров без размера</small>
+                </div>
+                <div class="form-group">
                     <label for="productImage">Фотография</label>
                     <div class="file-input-wrapper">
                         <input type="file" id="productImage" class="file-input" accept="image/*" onchange="handleImageUpload(this)">
@@ -1758,20 +1774,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             container.innerHTML = productsToRender.map(product => `
-                <div class="admin-product-simple" style="background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; margin: 10px 0; display: flex; align-items: center; gap: 15px;">
-                    <div style="width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex-shrink: 0;">
+                <div class="admin-product-simple" style="background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 20px; margin: 15px 0; display: flex; align-items: center; gap: 20px; min-height: 100px;">
+                    <div style="width: 80px; height: 80px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 2px solid #444;">
                         ${product.image_url ? 
                             `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" style="width: 100%; height: 100%; object-fit: cover;">` : 
-                            '<div style="background: #444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 20px;">📷</div>'
+                            '<div style="background: #444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 24px;">📷</div>'
                         }
                     </div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold; color: white; margin-bottom: 5px;">${product.title}</div>
-                        <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${product.price.toLocaleString()} ₽</div>
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-weight: bold; color: white; margin-bottom: 8px; font-size: 16px; line-height: 1.4;">${product.title}</div>
+                        <div style="color: #4CAF50; font-size: 20px; font-weight: bold; margin-bottom: 5px;">${product.price.toLocaleString()} ₽</div>
+                        ${product.sizes ? `<div style="color: #888; font-size: 14px;">Размеры: ${product.sizes}</div>` : ''}
                     </div>
-                    <div style="display: flex; gap: 10px; flex-shrink: 0;">
-                        <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">✏️ Изменить</button>
-                        <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">🗑️ Удалить</button>
+                    <div style="display: flex; gap: 12px; flex-shrink: 0; align-items: center;">
+                        <button onclick="simpleEditProduct(${product.id})" style="background: #2196F3; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.2s;">✏️ Изменить</button>
+                        <button onclick="simpleDeleteProduct(${product.id})" style="background: #f44336; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.2s;">🗑️ Удалить</button>
                     </div>
                 </div>
             `).join('');
@@ -2195,10 +2212,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             const title = document.getElementById('productTitle').value;
             const price = parseInt(document.getElementById('productPrice').value);
+            const sizes = document.getElementById('productSizes').value.trim();
             
             console.log('📝 Данные формы:', { 
                 title: title, 
                 price: price, 
+                sizes: sizes,
                 imageData: selectedImageData ? `есть (${selectedImageData.length} символов)` : 'нет',
                 currentEditingProduct: currentEditingProduct,
                 isEditMode: !!currentEditingProduct
@@ -2220,6 +2239,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 const requestData = {
                     title: title,
                     price: price,
+                    sizes: sizes,
                     image: selectedImageData
                 };
                 
@@ -2282,6 +2302,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             // Заполняем форму добавления товара
             document.getElementById('productTitle').value = product.title;
             document.getElementById('productPrice').value = product.price;
+            document.getElementById('productSizes').value = product.sizes || '';
             
             // Очищаем выбранное изображение
             selectedImageData = '';
@@ -2308,8 +2329,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // ПРОСТЫЕ ФУНКЦИИ ДЛЯ АДМИН ПАНЕЛИ
         function simpleEditProduct(productId) {
-            alert('Редактирование товара ID: ' + productId);
-            // Пока просто показываем alert, потом добавим редактирование
+            // Используем существующую функцию редактирования
+            editProduct(productId);
         }
         
         async function simpleDeleteProduct(productId) {
