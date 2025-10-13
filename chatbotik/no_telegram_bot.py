@@ -863,6 +863,89 @@ def handle_order_command(user_id, text):
         logger.error(f"Ошибка в handle_order_command: {e}")
         send_message(user_id, f"❌ Ошибка создания заказа: {e}")
 
+def handle_webapp_order(user_id, web_app_data):
+    """Обработка заказа из WebApp"""
+    try:
+        import json
+        
+        # Парсим данные из WebApp
+        order_data = json.loads(web_app_data)
+        
+        if order_data.get('type') == 'order':
+            order = order_data.get('order', {})
+            
+            # Создаем номер заказа
+            order_number = f"WEB{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            
+            # Получаем customer_id
+            customer_id = get_or_create_customer(user_id, None, None, None)
+            
+            # Формируем описание заказа
+            items = order.get('items', [])
+            order_description = "Заказ из WebApp:\n"
+            total_price = 0
+            
+            for item in items:
+                product_name = item.get('product', {}).get('title', 'Неизвестный товар')
+                quantity = item.get('quantity', 1)
+                price = item.get('product', {}).get('price', 0)
+                size = item.get('size', '')
+                
+                item_total = price * quantity
+                total_price += item_total
+                
+                size_text = f" (размер: {size})" if size else ""
+                order_description += f"• {product_name}{size_text} x{quantity} = {item_total}₽\n"
+            
+            order_description += f"\n💰 Итого: {total_price}₽"
+            
+            # Сохраняем заказ в базу данных
+            conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO orders (customer_id, order_number, order_data, status)
+                VALUES (?, ?, ?, 'Новый')
+            ''', (customer_id, order_number, order_description))
+            
+            conn.commit()
+            conn.close()
+            
+            # Уведомляем клиента
+            send_message(user_id, 
+                f"🛍️ <b>Заказ подтвержден!</b>\n\n"
+                f"🆔 Номер заказа: #{order_number}\n"
+                f"💰 Сумма: {total_price}₽\n"
+                f"✅ Статус: Новый\n\n"
+                f"📱 Следите за статусом командой /myorders\n"
+                f"📞 По вопросам обращайтесь в поддержку")
+            
+            # Уведомляем всех админов о новом заказе
+            conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
+            admins = cursor.fetchall()
+            conn.close()
+            
+            for admin_row in admins:
+                admin_id = admin_row[0]
+                send_message(admin_id, 
+                    f"🛍️ <b>Новый заказ из WebApp!</b>\n\n"
+                    f"🆔 Номер: #{order_number}\n"
+                    f"👤 Клиент: {user_id}\n"
+                    f"💰 Сумма: {total_price}₽\n"
+                    f"📝 Детали:\n{order_description}\n\n"
+                    f"💬 Для связи: /reply {user_id}")
+            
+            logger.info(f"Заказ {order_number} создан для пользователя {user_id}")
+            
+    except json.JSONDecodeError:
+        send_message(user_id, "❌ Ошибка обработки заказа. Попробуйте еще раз.")
+        logger.error(f"Ошибка парсинга WebApp данных: {web_app_data}")
+    except Exception as e:
+        send_message(user_id, "❌ Ошибка создания заказа. Попробуйте еще раз.")
+        logger.error(f"Ошибка в handle_webapp_order: {e}")
+
 def forward_to_admin(sender_user_id, sender_username, sender_first_name, sender_last_name, message_text):
     """Пересылка сообщения клиента администратору"""
     try:
@@ -976,6 +1059,11 @@ def process_update(update):
                 else:
                     # Обычное сообщение - пересылаем админу
                     forward_to_admin(user_id, username, first_name, last_name, text)
+            
+            elif 'web_app_data' in message:
+                # Обработка данных из WebApp
+                web_app_data = message['web_app_data']['data']
+                handle_webapp_order(user_id, web_app_data)
         
         elif 'callback_query' in update:
             callback_query = update['callback_query']
