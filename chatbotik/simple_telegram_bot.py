@@ -1151,6 +1151,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             justify-items: center;
         }
         
+        /* Специальные стили для карточек в админ панели */
+        .admin-products-grid .product-card {
+            margin: 0;
+            width: 100%;
+        }
+        
         .admin-search-box {
             margin-bottom: 20px;
         }
