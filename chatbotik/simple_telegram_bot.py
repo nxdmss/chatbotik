@@ -735,6 +735,50 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             transform: scale(1.02);
         }
         
+        .product-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .size-btn-thin, .add-to-cart-btn-thin {
+            background: #1a1a1a;
+            color: #ffffff;
+            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .size-btn-thin {
+            background: #2d2d2d;
+            border-color: #444;
+        }
+        
+        .size-btn-thin:hover {
+            background: #3d3d3d;
+            border-color: #007bff;
+        }
+        
+        .add-to-cart-btn-thin {
+            background: #007bff;
+            border-color: #007bff;
+        }
+        
+        .add-to-cart-btn-thin:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
         .cart-section {
             background: #2d2d2d;
             padding: 20px;
@@ -1343,6 +1387,173 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 min-height: 40px;
             }
         }
+        
+        /* Шторка для выбора размера */
+        .size-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2d2d2d;
+            border-top: 1px solid #333;
+            border-radius: 16px 16px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .size-drawer.open {
+            transform: translateY(0);
+        }
+        
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #333;
+            background: #1a1a1a;
+            border-radius: 16px 16px 0 0;
+        }
+        
+        .drawer-header h3 {
+            margin: 0;
+            color: #ffffff;
+            font-size: 18px;
+        }
+        
+        .drawer-close {
+            color: #aaaaaa;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+        
+        .drawer-close:hover {
+            color: #ffffff;
+        }
+        
+        .drawer-content {
+            padding: 20px;
+        }
+        
+        .drawer-product-info {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .drawer-product-info h4 {
+            color: #ffffff;
+            margin: 0 0 8px 0;
+            font-size: 16px;
+        }
+        
+        .drawer-product-info p {
+            color: #cccccc;
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        .drawer-size-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .drawer-size-btn {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            color: #ffffff;
+            padding: 12px 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .drawer-size-btn:hover {
+            background: #3d3d3d;
+            border-color: #007bff;
+        }
+        
+        .drawer-size-btn.selected {
+            background: #007bff;
+            border-color: #007bff;
+        }
+        
+        .drawer-size-btn.out-of-stock {
+            background: #333;
+            border-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        
+        .drawer-actions {
+            display: flex;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid #333;
+        }
+        
+        .drawer-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .drawer-btn-cancel {
+            background: #333;
+            color: #ffffff;
+            border: 1px solid #555;
+        }
+        
+        .drawer-btn-cancel:hover {
+            background: #444;
+        }
+        
+        .drawer-btn-add {
+            background: #007bff;
+            color: #ffffff;
+            border: 1px solid #007bff;
+        }
+        
+        .drawer-btn-add:hover {
+            background: #0056b3;
+        }
+        
+        .drawer-btn-add:disabled {
+            background: #333;
+            border-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        
+        @media (max-width: 480px) {
+            .drawer-size-grid {
+                grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+                gap: 8px;
+            }
+            
+            .drawer-size-btn {
+                min-height: 44px;
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1496,9 +1707,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                     <div class="product-title">${product.title}</div>
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
-                    <button class="add-to-cart-btn" onclick="selectSize(${product.id})">
-                        Выбрать размер
-                    </button>
+                    <div class="product-buttons">
+                        <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
+                            Выбрать размер
+                        </button>
+                        <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
+                            В корзину
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -1564,9 +1780,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                     <div class="product-title">${product.title}</div>
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
-                    <button class="add-to-cart-btn" onclick="selectSize(${product.id})">
-                        Выбрать размер
-                    </button>
+                    <div class="product-buttons">
+                        <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
+                            Выбрать размер
+                        </button>
+                        <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
+                            В корзину
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -1731,6 +1952,97 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             if (modal) {
                 modal.remove();
             }
+        }
+        
+        // Переменные для шторки
+        let currentProductId = null;
+        let selectedSize = null;
+        let currentProductSizes = [];
+        
+        function showSizeDrawer(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            currentProductId = productId;
+            
+            // Определяем размеры в зависимости от типа товара
+            let sizes = [];
+            const title = product.title.toLowerCase();
+            
+            if (title.includes('кроссовки') || title.includes('sneakers') || 
+                title.includes('nike') || title.includes('adidas') || title.includes('puma') || 
+                title.includes('jordan') || title.includes('dunk') || title.includes('boost') || 
+                title.includes('balance') || title.includes('обувь') || title.includes('туфли')) {
+                sizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+            } else if (title.includes('футболка') || title.includes('майка') || title.includes('рубашка') || 
+                      title.includes('топ') || title.includes('блузка')) {
+                sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            } else if (title.includes('джинсы') || title.includes('брюки') || title.includes('штаны') || 
+                      title.includes('шорты') || title.includes('юбка')) {
+                sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            } else if (title.includes('куртка') || title.includes('пальто') || title.includes('пиджак') || 
+                      title.includes('костюм') || title.includes('платье')) {
+                sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            }
+            
+            if (sizes.length === 0) {
+                // Для товаров без размера просто добавляем в корзину
+                addToCart(productId);
+                return;
+            }
+            
+            currentProductSizes = sizes;
+            selectedSize = null;
+            
+            // Заполняем информацию о товаре
+            document.getElementById('drawerProductTitle').textContent = product.title;
+            document.getElementById('drawerProductPrice').textContent = `${product.price.toLocaleString()} ₽`;
+            
+            // Создаем кнопки размеров
+            const sizeGrid = document.getElementById('drawerSizeGrid');
+            sizeGrid.innerHTML = sizes.map(size => `
+                <button class="drawer-size-btn" onclick="selectSizeInDrawer('${size}')" data-size="${size}">
+                    ${size}
+                </button>
+            `).join('');
+            
+            // Сбрасываем состояние кнопки
+            document.getElementById('addToCartDrawerBtn').disabled = true;
+            document.getElementById('addToCartDrawerBtn').textContent = 'Выберите размер';
+            
+            // Показываем шторку
+            document.getElementById('sizeDrawer').classList.add('open');
+        }
+        
+        function selectSizeInDrawer(size) {
+            selectedSize = size;
+            
+            // Обновляем визуальное состояние кнопок
+            document.querySelectorAll('.drawer-size-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.dataset.size === size) {
+                    btn.classList.add('selected');
+                }
+            });
+            
+            // Активируем кнопку добавления
+            const addBtn = document.getElementById('addToCartDrawerBtn');
+            addBtn.disabled = false;
+            addBtn.textContent = `Добавить размер ${size}`;
+        }
+        
+        function addToCartFromDrawer() {
+            if (!currentProductId || !selectedSize) return;
+            
+            addToCart(currentProductId, selectedSize);
+            closeSizeDrawer();
+        }
+        
+        function closeSizeDrawer() {
+            document.getElementById('sizeDrawer').classList.remove('open');
+            currentProductId = null;
+            selectedSize = null;
+            currentProductSizes = [];
         }
         
         // Удаление из корзины
@@ -1985,6 +2297,27 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         // Запуск
         loadProducts();
     </script>
+    
+    <!-- Шторка для выбора размера -->
+    <div id="sizeDrawer" class="size-drawer">
+        <div class="drawer-header">
+            <h3>Выберите размер</h3>
+            <span class="drawer-close" onclick="closeSizeDrawer()">&times;</span>
+        </div>
+        <div class="drawer-content">
+            <div class="drawer-product-info">
+                <h4 id="drawerProductTitle"></h4>
+                <p id="drawerProductPrice"></p>
+            </div>
+            <div id="drawerSizeGrid" class="drawer-size-grid">
+                <!-- Размеры будут добавлены динамически -->
+            </div>
+            <div class="drawer-actions">
+                <button class="drawer-btn drawer-btn-cancel" onclick="closeSizeDrawer()">Отмена</button>
+                <button class="drawer-btn drawer-btn-add" id="addToCartDrawerBtn" onclick="addToCartFromDrawer()" disabled>Добавить в корзину</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>'''
 
