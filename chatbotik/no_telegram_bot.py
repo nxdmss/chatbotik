@@ -26,6 +26,9 @@ ADMIN_IDS = [1593426947]  # Ваш ID как админа
 SUPPORT_DATABASE_PATH = 'customer_support.db'
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{BOT_TOKEN}'
 
+# Глобальная переменная для хранения текущего выбранного клиента
+current_customer_user_id = None
+
 # База данных поддержки
 def init_support_database():
     """Инициализация базы данных поддержки"""
@@ -953,12 +956,20 @@ def process_update(update):
                     handle_customer_orders_button(user_id)
                 elif text == '🔙 Назад к списку клиентов':
                     handle_customers_list_button(user_id)
+                elif text.startswith('👤 '):
+                    # Обработка кнопок клиентов
+                    handle_customer_button_click(user_id, text)
                 elif text == '💬 Отправить сообщение':
                     handle_send_message_to_customer_button(user_id)
                 elif text == '⭐ Отзывы клиента':
                     handle_customer_reviews_button(user_id)
                 elif text == '🔙 Назад к клиенту':
-                    handle_back_to_customer_button(user_id)
+                    # Возвращаемся к детальному просмотру клиента
+                    global current_customer_user_id
+                    if current_customer_user_id:
+                        show_customer_detail(user_id, current_customer_user_id)
+                    else:
+                        handle_customers_list_button(user_id)
                 # Обработка команд
                 elif text.startswith('/start'):
                     handle_start_command(user_id, username, first_name, last_name)
@@ -1037,7 +1048,7 @@ def process_update(update):
         traceback.print_exc()
 
 def handle_customers_list_button(user_id):
-    """Показать список клиентов с inline кнопками"""
+    """Показать список клиентов с reply кнопками"""
     try:
         print(f"🔍 DEBUG: handle_customers_list_button вызвана для пользователя {user_id}")
         if not is_admin(user_id):
@@ -1066,8 +1077,8 @@ def handle_customers_list_button(user_id):
             send_message(user_id, "📋 <b>Список клиентов</b>\n\nКлиентов пока нет.", get_back_keyboard())
             return
         
-        # Создаем простую inline клавиатуру
-        inline_keyboard = []
+        # Создаем reply клавиатуру с клиентами
+        keyboard = []
         
         for customer in customers:
             customer_id, user_id_val, username, first_name, last_name, last_activity, messages_count, orders_count = customer
@@ -1079,30 +1090,23 @@ def handle_customers_list_button(user_id):
             if messages_count > 0:
                 button_text += f" 💬{messages_count}"
             
-            # Простой callback_data
-            callback_data = f"cust_{user_id_val}"
-            print(f"🔍 DEBUG: Создаем кнопку для клиента {name} с callback_data: {callback_data}")
-            
-            inline_keyboard.append([{
-                "text": button_text,
-                "callback_data": callback_data
-            }])
+            # Добавляем кнопку для каждого клиента
+            keyboard.append([button_text])
         
         # Добавляем кнопку "Назад"
-        inline_keyboard.append([{
-            "text": "🔙 Назад",
-            "callback_data": "back"
-        }])
+        keyboard.append(["🔙 Назад"])
         
-        # Отправляем сообщение с inline клавиатурой
+        # Отправляем сообщение с reply клавиатурой
         message = "📋 <b>Выберите клиента:</b>"
         
-        # Создаем правильную структуру для inline клавиатуры
+        # Создаем reply клавиатуру
         reply_markup = {
-            "inline_keyboard": inline_keyboard
+            "keyboard": keyboard,
+            "resize_keyboard": True,
+            "one_time_keyboard": False
         }
         
-        print(f"🔍 DEBUG: Отправляем сообщение с клавиатурой: {len(inline_keyboard)} кнопок")
+        print(f"🔍 DEBUG: Отправляем сообщение с reply клавиатурой: {len(keyboard)} кнопок")
         print(f"🔍 DEBUG: Структура клавиатуры: {reply_markup}")
         
         send_message(user_id, message, reply_markup)
@@ -1113,6 +1117,46 @@ def handle_customers_list_button(user_id):
         import traceback
         traceback.print_exc()
 
+
+def handle_customer_button_click(user_id, button_text):
+    """Обработать нажатие на кнопку клиента"""
+    try:
+        print(f"🔍 DEBUG: handle_customer_button_click вызвана для пользователя {user_id}, кнопка: {button_text}")
+        
+        # Извлекаем user_id клиента из текста кнопки
+        # Формат: "👤 Имя (#заказы) 💬сообщения"
+        # Нам нужно найти user_id клиента по имени
+        
+        # Убираем эмодзи и лишние символы
+        name_part = button_text.replace('👤 ', '').split(' (')[0].split(' 💬')[0]
+        
+        print(f"🔍 DEBUG: Ищем клиента с именем: {name_part}")
+        
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        # Ищем клиента по имени
+        cursor.execute('''
+            SELECT user_id FROM customers 
+            WHERE first_name LIKE ? OR last_name LIKE ? OR username LIKE ?
+            OR (first_name || ' ' || last_name) LIKE ?
+        ''', (f'%{name_part}%', f'%{name_part}%', f'%{name_part}%', f'%{name_part}%'))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            customer_user_id = result[0]
+            print(f"🔍 DEBUG: Найден клиент с user_id: {customer_user_id}")
+            show_customer_detail(user_id, customer_user_id)
+        else:
+            send_message(user_id, f"❌ Клиент '{name_part}' не найден в базе данных.")
+            
+    except Exception as e:
+        logger.error(f"Ошибка в handle_customer_button_click: {e}")
+        print(f"🔍 DEBUG: Исключение в handle_customer_button_click: {e}")
+        import traceback
+        traceback.print_exc()
 
 def show_customer_detail(admin_user_id, customer_user_id):
     """Показать детальную информацию о клиенте"""
@@ -1194,34 +1238,86 @@ def show_customer_detail(admin_user_id, customer_user_id):
             f"{last_order_text}"
         )
         
-        # Создаем inline клавиатуру для детального просмотра клиента
-        inline_keyboard = [
-            [{"text": "💬 Чат с клиентом", "callback_data": f"chat_{customer_user_id}"}],
-            [{"text": "📦 Заказы клиента", "callback_data": f"orders_{customer_user_id}"}],
-            [{"text": "⭐ Отзывы клиента", "callback_data": f"reviews_{customer_user_id}"}],
-            [{"text": "🔙 Назад к списку", "callback_data": "customers_list"}]
+        # Создаем reply клавиатуру для детального просмотра клиента
+        keyboard = [
+            ["💬 Чат с клиентом", "📦 Заказы клиента"],
+            ["⭐ Отзывы клиента"],
+            ["🔙 Назад к списку клиентов"]
         ]
         
-        reply_markup = {"inline_keyboard": inline_keyboard}
+        reply_markup = {
+            "keyboard": keyboard,
+            "resize_keyboard": True,
+            "one_time_keyboard": False
+        }
+        
+        # Сохраняем customer_user_id в глобальной переменной для использования в других функциях
+        global current_customer_user_id
+        current_customer_user_id = customer_user_id
+        
         send_message(admin_user_id, message, reply_markup)
         
     except Exception as e:
         logger.error(f"Ошибка в show_customer_detail: {e}")
 
 def handle_customer_chat_button(user_id):
-    """Показать историю чата с клиентом"""
+    """Показать чат с клиентом"""
     try:
+        global current_customer_user_id
+        
         if not is_admin(user_id):
             send_message(user_id, "❌ У вас нет прав для выполнения этой команды.")
             return
         
-        message = (
-            "💬 <b>История чата с клиентом</b>\n\n"
-            "Используйте команду:\n"
-            "<code>/reply &lt;ID_клиента&gt; &lt;ваше сообщение&gt;</code>\n\n"
-            "Для просмотра всех сообщений используйте кнопку '💬 Все сообщения'"
-        )
-        send_message(user_id, message, get_back_keyboard())
+        if not current_customer_user_id:
+            send_message(user_id, "❌ Клиент не выбран. Вернитесь к списку клиентов.")
+            return
+        
+        # Находим клиента в базе данных
+        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id, first_name, last_name, username FROM customers WHERE user_id = ?', (current_customer_user_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            send_message(user_id, "❌ Клиент не найден в базе данных.")
+            conn.close()
+            return
+        
+        customer_id, first_name, last_name, username = result
+        customer_name = f"{first_name or ''} {last_name or ''}".strip() or username or "Неизвестно"
+        
+        # Получаем последние сообщения
+        cursor.execute('''
+            SELECT message, created_at, is_from_admin
+            FROM support_messages
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT 10
+        ''', (customer_id,))
+        
+        messages = cursor.fetchall()
+        conn.close()
+        
+        if not messages:
+            message = f"💬 <b>Чат с клиентом {customer_name}</b>\n\nСообщений пока нет."
+        else:
+            message = f"💬 <b>Чат с клиентом {customer_name}</b>\n\n"
+            for msg in reversed(messages):
+                message_text, created_at, is_from_admin = msg
+                sender = "👑 Админ" if is_from_admin else "👤 Клиент"
+                message += f"{sender}: {message_text}\n📅 {created_at[:16]}\n\n"
+        
+        message += "\nДля отправки сообщения используйте:\n<code>/reply " + str(current_customer_user_id) + " ваше сообщение</code>"
+        
+        keyboard = [["🔙 Назад к клиенту"]]
+        reply_markup = {
+            "keyboard": keyboard,
+            "resize_keyboard": True,
+            "one_time_keyboard": False
+        }
+        send_message(user_id, message, reply_markup)
         
     except Exception as e:
         logger.error(f"Ошибка в handle_customer_chat_button: {e}")
