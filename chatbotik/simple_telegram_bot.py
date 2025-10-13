@@ -777,6 +777,19 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             transform: translateY(-1px);
         }
         
+        .size-btn-thin.required {
+            background: rgba(255, 193, 7, 0.8);
+            border-color: #ffc107;
+            color: #000;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
         .add-to-cart-btn-thin {
             background: rgba(0, 123, 255, 0.9);
             border-color: #007bff;
@@ -1719,10 +1732,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 <div class="product-price">${product.price.toLocaleString()} ₽</div>
                             </div>
                             <div class="product-buttons">
-                                <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
+                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="showSizeDrawer(${product.id})">
                                     Выбрать размер
                                 </button>
-                                <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
+                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="addToCart(${product.id})" style="display: none;">
                                     В корзину
                                 </button>
                             </div>
@@ -1796,10 +1809,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 <div class="product-price">${product.price.toLocaleString()} ₽</div>
                             </div>
                             <div class="product-buttons">
-                                <button class="size-btn-thin" onclick="showSizeDrawer(${product.id})">
+                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="showSizeDrawer(${product.id})">
                                     Выбрать размер
                                 </button>
-                                <button class="add-to-cart-btn-thin" onclick="addToCart(${product.id})">
+                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="addToCart(${product.id})" style="display: none;">
                                     В корзину
                                 </button>
                             </div>
@@ -1892,6 +1905,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     product: product
                 });
             }
+            
+            // Сбрасываем состояние кнопок
+            resetProductButtons(productId);
             
             updateCartUI();
             const sizeText = size ? ` (размер ${size})` : '';
@@ -2003,9 +2019,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             if (sizes.length === 0) {
-                // Для товаров без размера просто добавляем в корзину
-                addToCart(productId);
-                return;
+                // Для товаров без размера используем стандартные размеры
+                sizes = ['Без размера'];
             }
             
             currentProductSizes = sizes;
@@ -2034,7 +2049,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         function selectSizeInDrawer(size) {
             selectedSize = size;
             
-            // Обновляем визуальное состояние кнопок
+            // Обновляем визуальное состояние кнопок в шторке
             document.querySelectorAll('.drawer-size-btn').forEach(btn => {
                 btn.classList.remove('selected');
                 if (btn.dataset.size === size) {
@@ -2042,10 +2057,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 }
             });
             
-            // Активируем кнопку добавления
+            // Активируем кнопку добавления в шторке
             const addBtn = document.getElementById('addToCartDrawerBtn');
             addBtn.disabled = false;
             addBtn.textContent = `Добавить размер ${size}`;
+            
+            // Обновляем кнопки на карточке товара
+            const sizeBtn = document.getElementById(`sizeBtn_${currentProductId}`);
+            const cartBtn = document.getElementById(`cartBtn_${currentProductId}`);
+            
+            if (sizeBtn && cartBtn) {
+                sizeBtn.style.display = 'none';
+                cartBtn.style.display = 'flex';
+                cartBtn.textContent = `В корзину (${size})`;
+                sizeBtn.classList.remove('required');
+            }
         }
         
         function addToCartFromDrawer() {
@@ -2053,13 +2079,33 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             addToCart(currentProductId, selectedSize);
             closeSizeDrawer();
+            
+            // Сбрасываем глобальные переменные
+            currentProductId = null;
+            selectedSize = null;
+            currentProductSizes = [];
+        }
+        
+        function resetProductButtons(productId) {
+            const sizeBtn = document.getElementById(`sizeBtn_${productId}`);
+            const cartBtn = document.getElementById(`cartBtn_${productId}`);
+            
+            if (sizeBtn && cartBtn) {
+                sizeBtn.style.display = 'flex';
+                cartBtn.style.display = 'none';
+                sizeBtn.textContent = 'Выбрать размер';
+                cartBtn.textContent = 'В корзину';
+                sizeBtn.classList.add('required');
+            }
         }
         
         function closeSizeDrawer() {
             document.getElementById('sizeDrawer').classList.remove('open');
-            currentProductId = null;
-            selectedSize = null;
-            currentProductSizes = [];
+            // Не сбрасываем состояние, если размер уже выбран
+            if (!selectedSize) {
+                currentProductId = null;
+                currentProductSizes = [];
+            }
         }
         
         // Удаление из корзины
