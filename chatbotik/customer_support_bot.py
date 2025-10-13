@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 """
-🚀 ГЛАВНЫЙ ФАЙЛ ДЛЯ ЗАПУСКА ПРИЛОЖЕНИЯ
-=====================================
-Запускает и бота, и веб-сервер одновременно
-Включает функции поддержки клиентов и отзывов
+🤖 БОТ ПОДДЕРЖКИ КЛИЕНТОВ И ОТЗЫВОВ
+===================================
+Бот для связи клиентов с администраторами и управления отзывами
 """
 
 import os
-import sys
-import subprocess
-import threading
-import time
-import signal
-import sqlite3
 import json
+import sqlite3
 import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
@@ -30,12 +24,12 @@ logger = logging.getLogger(__name__)
 # Конфигурация
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 ADMIN_IDS = [1593426947]  # Ваш ID как админа
-SUPPORT_DATABASE_PATH = 'customer_support.db'
+DATABASE_PATH = 'customer_support.db'
 
-# База данных поддержки
-def init_support_database():
-    """Инициализация базы данных поддержки"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+# База данных
+def init_database():
+    """Инициализация базы данных"""
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     # Таблица клиентов
@@ -90,12 +84,12 @@ def init_support_database():
     
     conn.commit()
     conn.close()
-    print("✅ База данных поддержки инициализирована")
+    print("✅ База данных инициализирована")
 
-# Утилиты поддержки
+# Утилиты
 def get_or_create_customer(user_id, username=None, first_name=None, last_name=None):
     """Получить или создать клиента"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     # Пытаемся найти существующего клиента
@@ -130,8 +124,8 @@ def is_admin(user_id):
     """Проверить, является ли пользователь администратором"""
     return user_id in ADMIN_IDS
 
-# Обработчики команд бота поддержки
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Обработчики команд
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
     user = update.effective_user
     user_id = user.id
@@ -176,8 +170,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
 
-async def handle_support_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик текстовых сообщений поддержки"""
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик текстовых сообщений"""
     user = update.effective_user
     user_id = user.id
     message_text = update.message.text
@@ -219,63 +213,8 @@ async def handle_customer_message(update: Update, context: ContextTypes.DEFAULT_
         await show_customer_orders(update, context)
         
     else:
-        # Проверяем, не является ли это отзывом
-        if 'pending_rating' in context.user_data:
-            await save_review(update, context, message_text)
-        else:
-            # Сообщение для администратора
-            await forward_to_admin(update, context)
-
-async def save_review(update: Update, context: ContextTypes.DEFAULT_TYPE, review_text: str):
-    """Сохранение отзыва"""
-    user = update.effective_user
-    user_id = user.id
-    rating = context.user_data.get('pending_rating', 0)
-    
-    if rating == 0:
-        await update.message.reply_text("❌ Ошибка: рейтинг не найден. Попробуйте снова.")
-        return
-    
-    # Очищаем временные данные
-    del context.user_data['pending_rating']
-    
-    # Сохраняем отзыв в базу данных
-    customer_id = get_or_create_customer(user_id, user.username, user.first_name, user.last_name)
-    
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    # Проверяем, не оставлял ли уже отзыв этот пользователь
-    cursor.execute('SELECT id FROM reviews WHERE customer_id = ?', (customer_id,))
-    existing_review = cursor.fetchone()
-    
-    if existing_review:
-        # Обновляем существующий отзыв
-        cursor.execute('''
-            UPDATE reviews 
-            SET rating = ?, review_text = ?, created_at = CURRENT_TIMESTAMP
-            WHERE customer_id = ?
-        ''', (rating, review_text if review_text.lower() != 'пропустить' else None, customer_id))
-        message = "✅ *Отзыв обновлен!*"
-    else:
-        # Создаем новый отзыв
-        cursor.execute('''
-            INSERT INTO reviews (customer_id, rating, review_text)
-            VALUES (?, ?, ?)
-        ''', (customer_id, rating, review_text if review_text.lower() != 'пропустить' else None))
-        message = "✅ *Отзыв сохранен!*"
-    
-    conn.commit()
-    conn.close()
-    
-    stars = "⭐" * rating
-    await update.message.reply_text(
-        f"{message}\n\n"
-        f"⭐ Оценка: {stars}\n"
-        f"💬 Отзыв: {review_text if review_text.lower() != 'пропустить' else 'Только оценка'}\n\n"
-        f"Спасибо за ваш отзыв!",
-        parse_mode='Markdown'
-    )
+        # Сообщение для администратора
+        await forward_to_admin(update, context)
 
 async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка сообщений от администратора"""
@@ -304,7 +243,7 @@ async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Сохраняем сообщение в базу данных
     customer_id = get_or_create_customer(user_id, user.username, user.first_name, user.last_name)
     
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO support_messages (customer_id, message, is_from_admin)
@@ -341,7 +280,7 @@ async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_customers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать список клиентов"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -378,7 +317,7 @@ async def show_customers_list(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def show_support_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать сообщения поддержки"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -415,7 +354,7 @@ async def show_support_messages(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def show_admin_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать отзывы для администратора"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -454,7 +393,7 @@ async def show_customer_orders(update: Update, context: ContextTypes.DEFAULT_TYP
     user = update.effective_user
     user_id = user.id
     
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -500,7 +439,7 @@ async def show_customer_orders(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def show_admin_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать заказы для администратора"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -542,7 +481,7 @@ async def show_admin_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать статистику"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     # Общая статистика
@@ -626,7 +565,7 @@ async def process_review_rating(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def view_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать отзывы клиенту"""
-    conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -698,7 +637,7 @@ async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         # Сохраняем в базу данных
-        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         
         cursor.execute('SELECT id FROM customers WHERE user_id = ?', (user_id,))
@@ -721,249 +660,38 @@ async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Ошибка отправки: {e}")
 
-async def create_order_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда для создания заказа"""
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text("❌ У вас нет прав для выполнения этой команды.")
-        return
-    
-    if len(context.args) < 2:
-        await update.message.reply_text(
-            "❌ Неверный формат команды.\n"
-            "Используйте: /order <user_id> <описание_заказа>"
-        )
-        return
-    
-    try:
-        user_id = int(context.args[0])
-        order_description = " ".join(context.args[1:])
-        
-        # Генерируем номер заказа
-        order_number = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        
-        # Сохраняем заказ в базу данных
-        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT id FROM customers WHERE user_id = ?', (user_id,))
-        result = cursor.fetchone()
-        
-        if not result:
-            await update.message.reply_text("❌ Пользователь не найден в базе данных.")
-            conn.close()
-            return
-        
-        customer_id = result[0]
-        
-        cursor.execute('''
-            INSERT INTO orders (customer_id, order_number, order_data, status)
-            VALUES (?, ?, ?, 'pending')
-        ''', (customer_id, order_number, order_description))
-        
-        conn.commit()
-        conn.close()
-        
-        # Уведомляем клиента о создании заказа
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=f"📦 *Новый заказ создан!*\n\n"
-                 f"🆔 Номер заказа: #{order_number}\n"
-                 f"📝 Описание: {order_description}\n"
-                 f"📊 Статус: В обработке\n\n"
-                 f"Следите за статусом в разделе 'Мои заказы'",
-            parse_mode='Markdown'
-        )
-        
-        await update.message.reply_text(
-            f"✅ Заказ #{order_number} создан для пользователя {user_id}"
-        )
-        
-    except ValueError:
-        await update.message.reply_text("❌ Неверный ID пользователя.")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка создания заказа: {e}")
-
-async def update_order_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда для обновления статуса заказа"""
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text("❌ У вас нет прав для выполнения этой команды.")
-        return
-    
-    if len(context.args) < 2:
-        await update.message.reply_text(
-            "❌ Неверный формат команды.\n"
-            "Используйте: /update_order <номер_заказа> <новый_статус>"
-        )
-        return
-    
-    try:
-        order_number = context.args[0]
-        new_status = context.args[1].lower()
-        
-        valid_statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
-        if new_status not in valid_statuses:
-            await update.message.reply_text(
-                f"❌ Неверный статус. Доступные: {', '.join(valid_statuses)}"
-            )
-            return
-        
-        # Обновляем статус заказа
-        conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            UPDATE orders 
-            SET status = ? 
-            WHERE order_number = ?
-        ''', (new_status, order_number))
-        
-        if cursor.rowcount == 0:
-            await update.message.reply_text("❌ Заказ не найден.")
-            conn.close()
-            return
-        
-        # Получаем информацию о клиенте для уведомления
-        cursor.execute('''
-            SELECT c.user_id, o.order_data
-            FROM orders o
-            JOIN customers c ON o.customer_id = c.id
-            WHERE o.order_number = ?
-        ''', (order_number,))
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result:
-            user_id, order_data = result
-            
-            status_emoji = {
-                'pending': '⏳',
-                'confirmed': '✅',
-                'shipped': '🚚',
-                'delivered': '🎉',
-                'cancelled': '❌'
-            }.get(new_status, '❓')
-            
-            # Уведомляем клиента об изменении статуса
-            await context.bot.send_message(
-                chat_id=user_id,
-                text=f"📦 *Статус заказа обновлен!*\n\n"
-                     f"🆔 Номер заказа: #{order_number}\n"
-                     f"📝 Описание: {order_data}\n"
-                     f"📊 Новый статус: {status_emoji} {new_status.title()}",
-                parse_mode='Markdown'
-            )
-        
-        await update.message.reply_text(
-            f"✅ Статус заказа #{order_number} обновлен на '{new_status}'"
-        )
-        
-    except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка обновления заказа: {e}")
-
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик ошибок"""
     logger.error(f"Ошибка: {context.error}")
 
-def run_web_server():
-    """Запуск веб-сервера"""
-    print("🌐 Запуск веб-сервера...")
-    try:
-        # Импортируем и запускаем веб-сервер из simple_telegram_bot.py
-        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        from simple_telegram_bot import main as web_main
-        web_main()
-    except Exception as e:
-        print(f"❌ Ошибка запуска веб-сервера: {e}")
-
-def run_telegram_bot():
-    """Запуск Telegram бота поддержки"""
-    print("🤖 Запуск Telegram бота поддержки...")
-    try:
-        if not BOT_TOKEN:
-            print("⚠️ BOT_TOKEN не найден - бот поддержки отключен")
-            print("💡 Установите переменную окружения BOT_TOKEN")
-            return
-        
-        # Инициализация базы данных поддержки
-        init_support_database()
-        
-        # Создание приложения бота
-        application = Application.builder().token(BOT_TOKEN).build()
-        
-        # Добавление обработчиков
-        application.add_handler(CommandHandler("start", start_command))
-        application.add_handler(CommandHandler("reply", reply_command))
-        application.add_handler(CommandHandler("order", create_order_command))
-        application.add_handler(CommandHandler("update_order", update_order_command))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_text))
-        application.add_handler(CallbackQueryHandler(callback_query_handler))
-        application.add_error_handler(error_handler)
-        
-        print("✅ Бот поддержки запущен и готов к работе!")
-        print("📞 Клиенты могут писать сообщения администраторам")
-        print("⭐ Система отзывов активна")
-        print("📊 Статистика и заказы доступны админам")
-        
-        # Запуск бота
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
-        
-    except Exception as e:
-        print(f"❌ Ошибка запуска бота поддержки: {e}")
-        import traceback
-        traceback.print_exc()
-
-def signal_handler(sig, frame):
-    """Обработчик сигналов для корректного завершения"""
-    print("\n🛑 Получен сигнал завершения...")
-    print("👋 Завершение работы приложения")
-    sys.exit(0)
-
 def main():
     """Главная функция"""
-    print("🚀 ЗАПУСК ПРИЛОЖЕНИЯ LOOK & GO")
+    if not BOT_TOKEN:
+        print("❌ BOT_TOKEN не найден!")
+        print("💡 Установите переменную окружения BOT_TOKEN")
+        return
+    
+    print("🤖 ЗАПУСК БОТА ПОДДЕРЖКИ КЛИЕНТОВ")
     print("=" * 50)
     
-    # Устанавливаем обработчик сигналов
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # Инициализация базы данных
+    init_database()
     
-    try:
-        # Проверяем наличие BOT_TOKEN
-        bot_token = os.getenv('BOT_TOKEN')
-        if not bot_token:
-            print("⚠️ BOT_TOKEN не найден в переменных окружения")
-            print("💡 Установите переменную окружения BOT_TOKEN")
-            print("📝 Пример: export BOT_TOKEN='your_bot_token_here'")
-        else:
-            print(f"✅ BOT_TOKEN найден: {bot_token[:10]}...")
-        
-        print("\n🎯 Запуск компонентов:")
-        print("   🌐 Веб-сервер с интерфейсом магазина")
-        print("   🤖 Telegram бот поддержки клиентов")
-        print("   📱 WebApp для Telegram")
-        print("   📞 Система поддержки и отзывов")
-        print("\n" + "=" * 50)
-        
-        # Запускаем веб-сервер в отдельном потоке
-        web_server_thread = threading.Thread(target=run_web_server)
-        web_server_thread.daemon = True
-        web_server_thread.start()
-        
-        # Даем серверу немного времени на запуск
-        time.sleep(2)
-        
-        # Запускаем бота поддержки в основном потоке
-        run_telegram_bot()
-        
-    except KeyboardInterrupt:
-        print("\n🛑 Остановка по запросу пользователя")
-    except Exception as e:
-        print(f"❌ Критическая ошибка: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        print("👋 Приложение завершено")
+    # Создание приложения
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    # Добавление обработчиков
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("reply", reply_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    application.add_handler(CallbackQueryHandler(callback_query_handler))
+    application.add_error_handler(error_handler)
+    
+    print("✅ Бот запущен и готов к работе!")
+    print("=" * 50)
+    
+    # Запуск бота
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
