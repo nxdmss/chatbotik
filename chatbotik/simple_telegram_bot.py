@@ -1225,6 +1225,124 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 font-size: 10px;
             }
         }
+        
+        /* Модальное окно для выбора размера */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-content {
+            background: #2d2d2d;
+            margin: 10% auto;
+            padding: 0;
+            border: 1px solid #333;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #333;
+            background: #1a1a1a;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #ffffff;
+            font-size: 18px;
+        }
+        
+        .close {
+            color: #aaaaaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            color: #ffffff;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-body p {
+            margin-bottom: 16px;
+            color: #cccccc;
+        }
+        
+        .modal-body strong {
+            color: #ffffff;
+        }
+        
+        .size-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .size-btn {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            color: #ffffff;
+            padding: 12px 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .size-btn:hover {
+            background: #3d3d3d;
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+        
+        .size-btn:active {
+            transform: translateY(0);
+            background: #007bff;
+            border-color: #007bff;
+        }
+        
+        @media (max-width: 480px) {
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+            
+            .size-grid {
+                grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+                gap: 6px;
+            }
+            
+            .size-btn {
+                padding: 10px 6px;
+                font-size: 12px;
+                min-height: 40px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1378,8 +1496,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                     <div class="product-title">${product.title}</div>
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
-                    <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
-                        В корзину
+                    <button class="add-to-cart-btn" onclick="selectSize(${product.id})">
+                        Выбрать размер
                     </button>
                 </div>
             `).join('');
@@ -1446,8 +1564,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                     <div class="product-title">${product.title}</div>
                     <div class="product-price">${product.price.toLocaleString()} ₽</div>
-                    <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
-                        В корзину
+                    <button class="add-to-cart-btn" onclick="selectSize(${product.id})">
+                        Выбрать размер
                     </button>
                 </div>
             `).join('');
@@ -1521,39 +1639,114 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         // Добавление в корзину
-        function addToCart(productId) {
+        function addToCart(productId, size = null) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
             
-            const existingItem = cart.find(item => item.product_id === productId);
+            const existingItem = cart.find(item => item.product_id === productId && item.size === size);
             if (existingItem) {
                 existingItem.quantity += 1;
             } else {
                 cart.push({
                     product_id: productId,
                     quantity: 1,
+                    size: size,
                     product: product
                 });
             }
             
             updateCartUI();
-            tg.showAlert(`${product.title} добавлен в корзину!`);
+            const sizeText = size ? ` (размер ${size})` : '';
+            tg.showAlert(`${product.title}${sizeText} добавлен в корзину!`);
+        }
+        
+        function selectSize(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            // Определяем размеры в зависимости от типа товара
+            let sizes = [];
+            const title = product.title.toLowerCase();
+            
+            if (title.includes('кроссовки') || title.includes('кроссовки') || title.includes('sneakers') || 
+                title.includes('nike') || title.includes('adidas') || title.includes('puma') || 
+                title.includes('jordan') || title.includes('dunk') || title.includes('boost') || 
+                title.includes('balance') || title.includes('обувь') || title.includes('туфли')) {
+                sizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+            } else if (title.includes('футболка') || title.includes('майка') || title.includes('рубашка') || 
+                      title.includes('топ') || title.includes('блузка')) {
+                sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            } else if (title.includes('джинсы') || title.includes('брюки') || title.includes('штаны') || 
+                      title.includes('шорты') || title.includes('юбка')) {
+                sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            } else if (title.includes('куртка') || title.includes('пальто') || title.includes('пиджак') || 
+                      title.includes('костюм') || title.includes('платье')) {
+                sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            } else {
+                // Для товаров без размера просто добавляем в корзину
+                addToCart(productId);
+                return;
+            }
+            
+            showSizeModal(productId, sizes);
+        }
+        
+        function showSizeModal(productId, sizes) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            const sizeButtons = sizes.map(size => 
+                `<button class="size-btn" onclick="addToCartWithSize(${productId}, '${size}')">${size}</button>`
+            ).join('');
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Выберите размер</h3>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>${product.title}</strong></p>
+                        <p>Цена: ${product.price.toLocaleString()} ₽</p>
+                        <div class="size-grid">
+                            ${sizeButtons}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+        }
+        
+        function addToCartWithSize(productId, size) {
+            closeModal();
+            addToCart(productId, size);
+        }
+        
+        function closeModal() {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.remove();
+            }
         }
         
         // Удаление из корзины
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.product_id !== productId);
+        function removeFromCart(productId, size = null) {
+            cart = cart.filter(item => !(item.product_id === productId && item.size === size));
             updateCartUI();
         }
         
         // Обновление количества
-        function updateQuantity(productId, quantity) {
+        function updateQuantity(productId, quantity, size = null) {
             if (quantity <= 0) {
-                removeFromCart(productId);
+                removeFromCart(productId, size);
                 return;
             }
             
-            const item = cart.find(item => item.product_id === productId);
+            const item = cart.find(item => item.product_id === productId && item.size === size);
             if (item) {
                 item.quantity = quantity;
                 updateCartUI();
@@ -1582,15 +1775,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             cartItems.innerHTML = cart.map(item => `
                 <div class="cart-item">
                     <div class="cart-item-info">
-                        <div class="cart-item-title">${item.product.title}</div>
+                        <div class="cart-item-title">${item.product.title}${item.size ? ` (размер ${item.size})` : ''}</div>
                         <div class="cart-item-price">${item.product.price.toLocaleString()} ₽</div>
                     </div>
                     <div class="quantity-controls">
-                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1})">-</button>
+                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1}, '${item.size || ''}')">-</button>
                         <input type="number" class="quantity-input" value="${item.quantity}" min="1" 
-                               onchange="updateQuantity(${item.product_id}, parseInt(this.value))">
-                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1})">+</button>
-                        <button class="remove-btn" onclick="removeFromCart(${item.product_id})">🗑️</button>
+                               onchange="updateQuantity(${item.product_id}, parseInt(this.value), '${item.size || ''}')">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1}, '${item.size || ''}')">+</button>
+                        <button class="remove-btn" onclick="removeFromCart(${item.product_id}, '${item.size || ''}')">🗑️</button>
                     </div>
                 </div>
             `).join('');
