@@ -3144,26 +3144,23 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-container {{
             max-width: 100vw;
             margin: 0;
-            padding: 0px;
+            padding: 2px;
             min-height: 100vh;
         }}
         
         .product-gallery {{
-            margin-bottom: 0px;
+            margin-bottom: 4px;
         }}
         
         .main-image {{
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 95vh;
             background: #2d2d2d;
-            border-radius: 0px;
+            border-radius: 8px;
             overflow: hidden;
-            margin: 0;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1000;
-            box-shadow: none;
+            margin: 2px;
+            position: relative;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }}
         
         .main-image img {{
@@ -3378,13 +3375,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         @media (max-width: 480px) {{
             .product-container {{
-                padding: 0px;
+                padding: 1px;
             }}
             
             .main-image {{
-                width: 100vw;
-                height: 100vh;
-                border-radius: 0px;
+                width: 100%;
+                height: 93vh;
+                border-radius: 8px;
+                margin: 1px;
             }}
             
             .thumbnail {{
