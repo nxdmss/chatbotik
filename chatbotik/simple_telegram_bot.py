@@ -3436,6 +3436,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         let selectedSize = null;
         let cart = [];
         
+        // Инициализируем корзину из родительского окна
+        if (window.parent && window.parent.cart) {{
+            cart = window.parent.cart;
+        }}
+        
         // Загрузка данных товара
         async function loadProduct() {{
             const productId = window.location.pathname.split('/').pop();
@@ -3627,6 +3632,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 }});
             }}
             
+            // Обновляем корзину в родительском окне
+            if (window.parent) {{
+                window.parent.cart = cart;
+            }}
+            
             // Обновляем UI корзины
             updateCartUI();
             
@@ -3641,10 +3651,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
         }}
         
-        // Обновление интерфейса корзины (заглушка для страницы товара)
+        // Обновление интерфейса корзины
         function updateCartUI() {{
-            // На странице товара эта функция не используется, но нужна для совместимости
-            console.log('Корзина обновлена');
+            // Обновляем корзину в родительском окне
+            if (window.parent && window.parent.updateCartUI) {{
+                window.parent.cart = cart;
+                window.parent.updateCartUI();
+            }}
+            console.log('Корзина обновлена:', cart);
         }}
         
         // Возврат назад
