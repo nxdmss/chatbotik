@@ -3216,7 +3216,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .product-title {{
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             margin-bottom: 2px;
             color: #ffffff;
@@ -3224,7 +3224,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .product-price {{
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: #3b82f6;
             margin-bottom: 4px;
@@ -3235,7 +3235,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             color: #cccccc;
             line-height: 1.5;
             margin-bottom: 8px;
-            font-size: 14px;
+            font-size: 12px;
         }}
         
         .product-details {{
@@ -3327,25 +3327,25 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .add-to-cart-btn {{
-            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            background: #3b82f6;
             color: white;
             border: none;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
         }}
         
         .add-to-cart-btn:hover:not(:disabled) {{
-            background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+            background: #1d4ed8;
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }}
         
         .add-to-cart-btn:active:not(:disabled) {{
@@ -3391,11 +3391,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .product-title {{
-                font-size: 22px;
+                font-size: 20px;
             }}
             
             .product-price {{
-                font-size: 26px;
+                font-size: 24px;
             }}
             
             .product-info {{
@@ -3404,8 +3404,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .add-to-cart-btn {{
-                padding: 8px 12px;
-                font-size: 12px;
+                padding: 6px 10px;
+                font-size: 10px;
             }}
             
             .size-grid {{
