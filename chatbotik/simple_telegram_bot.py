@@ -879,6 +879,45 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             transform: scale(1.05);
         }
         
+        /* Стрелочки для смены фото */
+        .photo-nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            z-index: 10;
+            opacity: 0;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        
+        .photo-nav-arrow:hover {
+            background: rgba(0, 0, 0, 0.8);
+            opacity: 1 !important;
+        }
+        
+        .photo-nav-arrow.left {
+            left: 8px;
+        }
+        
+        .photo-nav-arrow.right {
+            right: 8px;
+        }
+        
+        .product-card:hover .photo-nav-arrow {
+            opacity: 0.7;
+        }
+        
         
         .product-description {
             color: #aaaaaa;
@@ -1839,7 +1878,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             <h2>🛒 Корзина покупок</h2>
             <div id="cartItems">Корзина пуста</div>
             <div id="cartTotal" style="font-size: 16px; font-weight: 600; color: #3b82f6; margin-top: 16px;">Итого: 0 ₽</div>
-            <button id="checkoutBtn" class="checkout-btn hidden">💳 Оформить заказ</button>
+            <button id="checkoutBtn" class="checkout-btn hidden" onclick="checkout()">💳 Оформить заказ</button>
         </div>
     </div>
     
@@ -2033,10 +2072,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                     <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
                                 `).join('')}
                             </div>
-                            <div class="swipe-arrows" style="position: absolute; top: 50%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 8px; pointer-events: none; z-index: 5;">
-                                <button class="arrow-left" onclick="event.stopPropagation(); prevSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">‹</button>
-                                <button class="arrow-right" onclick="event.stopPropagation(); nextSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">›</button>
-                            </div>
+                            <!-- Кликабельные стрелочки -->
+                            <button class="photo-nav-arrow left" onclick="event.stopPropagation(); prevSlide(${product.id})">‹</button>
+                            <button class="photo-nav-arrow right" onclick="event.stopPropagation(); nextSlide(${product.id})">›</button>
                         ` : ''}
                     </div>
                         <div class="product-overlay">
@@ -2046,11 +2084,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <div style="display: flex; gap: 6px; margin-top: 4px;">
-                                    <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
-                                        👁 Подробнее
-                                </button>
-                                </div>
+                                <!-- Кнопка "Подробнее" убрана - вся карточка кликабельна -->
                             </div>
                         </div>
                     </div>
@@ -2149,10 +2183,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                     <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
                                 `).join('')}
                             </div>
-                            <div class="swipe-arrows" style="position: absolute; top: 50%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 8px; pointer-events: none; z-index: 5;">
-                                <button class="arrow-left" onclick="event.stopPropagation(); prevSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">‹</button>
-                                <button class="arrow-right" onclick="event.stopPropagation(); nextSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">›</button>
-                            </div>
+                            <!-- Кликабельные стрелочки -->
+                            <button class="photo-nav-arrow left" onclick="event.stopPropagation(); prevSlide(${product.id})">‹</button>
+                            <button class="photo-nav-arrow right" onclick="event.stopPropagation(); nextSlide(${product.id})">›</button>
                         ` : ''}
                     </div>
                         <div class="product-overlay">
@@ -2162,11 +2195,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <div style="display: flex; gap: 6px; margin-top: 4px;">
-                                    <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
-                                        👁 Подробнее
-                                </button>
-                                </div>
+                                <!-- Кнопка "Подробнее" убрана - вся карточка кликабельна -->
                             </div>
                         </div>
                     </div>
@@ -2579,7 +2608,19 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Оформление заказа
         function checkout() {
-            if (cart.length === 0) return;
+            console.log('🛒 Функция checkout вызвана');
+            console.log('📦 Товаров в корзине:', cart.length);
+            console.log('🛍️ Корзина:', cart);
+            
+            if (cart.length === 0) {
+                console.log('❌ Корзина пуста');
+                if (typeof tg !== 'undefined' && tg.showAlert) {
+                    tg.showAlert('Корзина пуста!');
+                } else {
+                    alert('Корзина пуста!');
+                }
+                return;
+            }
             
             const orderData = {
                 type: 'order',
@@ -2590,11 +2631,29 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 }
             };
             
-            tg.sendData(JSON.stringify(orderData));
-            tg.showAlert('Заказ отправлен! Спасибо за покупку!');
+            console.log('📤 Отправляем заказ:', orderData);
             
-            cart = [];
-            updateCartUI();
+            try {
+                if (typeof tg !== 'undefined' && tg.sendData) {
+                    tg.sendData(JSON.stringify(orderData));
+                    console.log('✅ Данные отправлены через Telegram');
+                } else {
+                    console.log('⚠️ Telegram API недоступен, используем alert');
+                }
+                
+                if (typeof tg !== 'undefined' && tg.showAlert) {
+                    tg.showAlert('Заказ отправлен! Спасибо за покупку!');
+                } else {
+                    alert('Заказ отправлен! Спасибо за покупку!');
+                }
+                
+                cart = [];
+                updateCartUI();
+                console.log('🧹 Корзина очищена');
+            } catch (error) {
+                console.error('❌ Ошибка при отправке заказа:', error);
+                alert('Произошла ошибка при отправке заказа. Попробуйте еще раз.');
+            }
         }
         
         // Добавление/обновление товара
@@ -2854,8 +2913,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         // Обработчики событий
-        document.getElementById('checkoutBtn').addEventListener('click', checkout);
-        document.getElementById('adminForm').addEventListener('submit', addProduct);
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        if (checkoutBtn) {
+            checkoutBtn.addEventListener('click', checkout);
+        }
+        
+        const adminForm = document.getElementById('adminForm');
+        if (adminForm) {
+            adminForm.addEventListener('submit', addProduct);
+        }
         
         // Открытие страницы товара
         function openProductPage(productId) {
