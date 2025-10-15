@@ -94,9 +94,9 @@ class DarkShopBot:
             try:
                 cursor.execute(f'ALTER TABLE products ADD COLUMN {field_name} {field_type}')
                 print(f"✅ Добавлено поле {field_name} в таблицу products")
-        except sqlite3.OperationalError:
-            # Поле уже существует
-            pass
+            except sqlite3.OperationalError:
+                # Поле уже существует
+                pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
