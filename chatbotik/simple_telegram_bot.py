@@ -2313,6 +2313,31 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
         }
         
+        // Сохраняем корзину в localStorage
+        function saveCartToStorage() {
+            try {
+                localStorage.setItem('cart', JSON.stringify(cart));
+            } catch (e) {
+                console.error('Ошибка сохранения корзины:', e);
+            }
+        }
+        
+        // Загружаем корзину из localStorage
+        function loadCartFromStorage() {
+            try {
+                const savedCart = localStorage.getItem('cart');
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки корзины:', e);
+                cart = [];
+            }
+        }
+        
+        // Инициализируем корзину при загрузке
+        loadCartFromStorage();
+        
         // Добавление в корзину
         function addToCart(productId, size = null) {
             const product = products.find(p => p.id === productId);
@@ -2329,6 +2354,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     product: product
                 });
             }
+            
+            // Сохраняем корзину в localStorage
+            saveCartToStorage();
             
             // Сбрасываем состояние кнопок
             resetProductButtons(productId);
@@ -2554,6 +2582,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Обновление интерфейса корзины
         function updateCartUI() {
+            // Сохраняем корзину в localStorage
+            saveCartToStorage();
+            
             const cartItems = document.getElementById('cartItems');
             const cartTotal = document.getElementById('cartTotal');
             const checkoutBtn = document.getElementById('checkoutBtn');
@@ -3436,10 +3467,30 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         let selectedSize = null;
         let cart = [];
         
-        // Инициализируем корзину из родительского окна
-        if (window.parent && window.parent.cart) {{
-            cart = window.parent.cart;
+        // Инициализируем корзину из localStorage
+        function loadCartFromStorage() {{
+            try {{
+                const savedCart = localStorage.getItem('cart');
+                if (savedCart) {{
+                    cart = JSON.parse(savedCart);
+                }}
+            }} catch (e) {{
+                console.error('Ошибка загрузки корзины:', e);
+                cart = [];
+            }}
         }}
+        
+        // Сохраняем корзину в localStorage
+        function saveCartToStorage() {{
+            try {{
+                localStorage.setItem('cart', JSON.stringify(cart));
+            }} catch (e) {{
+                console.error('Ошибка сохранения корзины:', e);
+            }}
+        }}
+        
+        // Загружаем корзину при инициализации
+        loadCartFromStorage();
         
         // Загрузка данных товара
         async function loadProduct() {{
@@ -3632,10 +3683,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 }});
             }}
             
-            // Обновляем корзину в родительском окне
-            if (window.parent) {{
-                window.parent.cart = cart;
-            }}
+            // Сохраняем корзину в localStorage
+            saveCartToStorage();
             
             // Обновляем UI корзины
             updateCartUI();
@@ -3653,11 +3702,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Обновление интерфейса корзины
         function updateCartUI() {{
-            // Обновляем корзину в родительском окне
-            if (window.parent && window.parent.updateCartUI) {{
-                window.parent.cart = cart;
-                window.parent.updateCartUI();
-            }}
+            // Сохраняем корзину в localStorage для синхронизации
+            saveCartToStorage();
+            
+            // Отправляем событие об обновлении корзины
+            window.dispatchEvent(new CustomEvent('cartUpdated', {{ detail: cart }}));
+            
             console.log('Корзина обновлена:', cart);
         }}
         
