@@ -886,14 +886,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             background: rgba(0, 0, 0, 0.6);
             color: white;
             border: none;
-            width: 45px;
-            height: 45px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 14px;
             z-index: 10;
             opacity: 0;
             transition: all 0.3s ease;
@@ -2068,7 +2068,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         ${product.gallery_images && product.gallery_images.length > 0 ? `
                             <div class="image-indicators" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 10;">
                                 ${Array.from({length: (product.gallery_images ? product.gallery_images.length : 0) + 1}, (_, i) => `
-                                    <div class="indicator" style="width: 12px; height: 12px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
+                                    <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
                                 `).join('')}
                             </div>
                             <!-- Кликабельные стрелочки -->
@@ -2179,7 +2179,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         ${product.gallery_images && product.gallery_images.length > 0 ? `
                             <div class="image-indicators" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 10;">
                                 ${Array.from({length: (product.gallery_images ? product.gallery_images.length : 0) + 1}, (_, i) => `
-                                    <div class="indicator" style="width: 12px; height: 12px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
+                                    <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
                                 `).join('')}
                             </div>
                             <!-- Кликабельные стрелочки -->
@@ -3144,21 +3144,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-container {{
             max-width: 100vw;
             margin: 0;
-            padding: 16px;
+            padding: 8px;
             min-height: 100vh;
         }}
         
         .product-gallery {{
-            margin-bottom: 32px;
+            margin-bottom: 16px;
         }}
         
         .main-image {{
             width: 100%;
-            height: 60vh;
+            height: 70vh;
             background: #2d2d2d;
             border-radius: 16px;
             overflow: hidden;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             position: relative;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }}
@@ -3171,9 +3171,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .thumbnail-gallery {{
             display: flex;
-            gap: 16px;
+            gap: 12px;
             overflow-x: auto;
-            padding: 12px 0;
+            padding: 8px 0;
             justify-content: center;
         }}
         
@@ -3209,8 +3209,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-info {{
             background: #2d2d2d;
             border-radius: 16px;
-            padding: 32px;
-            margin-bottom: 32px;
+            padding: 20px;
+            margin-bottom: 16px;
             border: 1px solid #333;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }}
@@ -3218,7 +3218,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-title {{
             font-size: 32px;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
             color: #ffffff;
             line-height: 1.2;
         }}
@@ -3227,7 +3227,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             font-size: 36px;
             font-weight: 700;
             color: #3b82f6;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             text-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }}
         
@@ -3374,11 +3374,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         @media (max-width: 480px) {{
             .product-container {{
-                padding: 12px;
+                padding: 6px;
             }}
             
             .main-image {{
-                height: 50vh;
+                height: 60vh;
                 border-radius: 12px;
             }}
             
@@ -3396,8 +3396,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .product-info {{
-                padding: 24px;
-                margin-bottom: 24px;
+                padding: 16px;
+                margin-bottom: 16px;
             }}
             
             .add-to-cart-btn {{
