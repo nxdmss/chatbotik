@@ -3149,16 +3149,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .product-gallery {{
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }}
         
         .main-image {{
             width: 100%;
-            height: 85vh;
+            height: 90vh;
             background: #2d2d2d;
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             position: relative;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }}
@@ -3379,8 +3379,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .main-image {{
-                height: 75vh;
-                border-radius: 8px;
+                height: 85vh;
+                border-radius: 6px;
             }}
             
             .thumbnail {{
