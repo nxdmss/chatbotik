@@ -3090,7 +3090,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Товар - LOOK & GO</title>
+    <title>Внутрянка - LOOK & GO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {{ 
@@ -3144,7 +3144,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-container {{
             max-width: 100vw;
             margin: 0;
-            padding: 2px;
+            padding: 1px;
             min-height: 100vh;
         }}
         
@@ -3216,7 +3216,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .product-title {{
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             margin-bottom: 4px;
             color: #ffffff;
@@ -3224,7 +3224,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .product-price {{
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 700;
             color: #3b82f6;
             margin-bottom: 8px;
@@ -3233,8 +3233,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-description {{
             color: #cccccc;
-            line-height: 1.6;
+            line-height: 1.5;
             margin-bottom: 12px;
+            font-size: 14px;
         }}
         
         .product-details {{
@@ -3329,16 +3330,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             background: linear-gradient(135deg, #3b82f6, #1e40af);
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             transition: all 0.3s ease;
-            box-shadow: 0 6px 24px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }}
         
         .add-to-cart-btn:hover:not(:disabled) {{
@@ -3374,7 +3375,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         @media (max-width: 480px) {{
             .product-container {{
-                padding: 1px;
+                padding: 0px;
             }}
             
             .main-image {{
@@ -3388,11 +3389,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .product-title {{
-                font-size: 24px;
+                font-size: 22px;
             }}
             
             .product-price {{
-                font-size: 28px;
+                font-size: 26px;
             }}
             
             .product-info {{
@@ -3401,8 +3402,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .add-to-cart-btn {{
-                padding: 10px 16px;
-                font-size: 14px;
+                padding: 8px 12px;
+                font-size: 12px;
             }}
             
             .size-grid {{
@@ -3414,7 +3415,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
 <body>
     <div class="header">
         <button class="back-btn" onclick="goBack()">← Назад</button>
-        <h1>Товар</h1>
+        <h1>Внутрянка</h1>
         <div></div>
     </div>
     
