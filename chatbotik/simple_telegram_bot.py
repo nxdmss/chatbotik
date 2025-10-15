@@ -60,20 +60,43 @@ class DarkShopBot:
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
+                description TEXT DEFAULT '',
                 price INTEGER NOT NULL,
                 image_url TEXT DEFAULT '',
+                gallery_images TEXT DEFAULT '',
                 sizes TEXT DEFAULT '',
+                category TEXT DEFAULT '',
+                brand TEXT DEFAULT '',
+                color TEXT DEFAULT '',
+                material TEXT DEFAULT '',
+                weight TEXT DEFAULT '',
+                dimensions TEXT DEFAULT '',
+                in_stock INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
-        # Добавляем поле sizes если его нет
-        try:
-            cursor.execute('ALTER TABLE products ADD COLUMN sizes TEXT DEFAULT ""')
-            print("✅ Добавлено поле sizes в таблицу products")
-        except sqlite3.OperationalError:
-            # Поле уже существует
-            pass
+        # Добавляем новые поля если их нет (миграция)
+        new_fields = [
+            ('description', 'TEXT DEFAULT ""'),
+            ('gallery_images', 'TEXT DEFAULT ""'),
+            ('sizes', 'TEXT DEFAULT ""'),
+            ('category', 'TEXT DEFAULT ""'),
+            ('brand', 'TEXT DEFAULT ""'),
+            ('color', 'TEXT DEFAULT ""'),
+            ('material', 'TEXT DEFAULT ""'),
+            ('weight', 'TEXT DEFAULT ""'),
+            ('dimensions', 'TEXT DEFAULT ""'),
+            ('in_stock', 'INTEGER DEFAULT 1')
+        ]
+        
+        for field_name, field_type in new_fields:
+            try:
+                cursor.execute(f'ALTER TABLE products ADD COLUMN {field_name} {field_type}')
+                print(f"✅ Добавлено поле {field_name} в таблицу products")
+            except sqlite3.OperationalError:
+                # Поле уже существует
+                pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
@@ -283,6 +306,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             html_content = self.get_dark_page_v3()
             self.wfile.write(html_content.encode('utf-8'))
             
+        elif self.path.startswith('/product/'):
+            # Страница товара
+            product_id = self.path.split('/')[-1]
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            
+            html_content = self.get_product_page(product_id)
+            self.wfile.write(html_content.encode('utf-8'))
+            
         elif self.path == '/api/products':
             self.send_response(200)
             self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -298,12 +331,31 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 products_data = []
                 for product in products:
+                    # Парсим галерею изображений (JSON строка)
+                    gallery_images = []
+                    if len(product) > 6 and product[6]:  # gallery_images
+                        try:
+                            import json
+                            gallery_images = json.loads(product[6]) if product[6] else []
+                        except:
+                            gallery_images = []
+                    
                     products_data.append({
                         'id': product[0],
                         'title': product[1],
-                        'price': product[2],
-                        'image_url': product[3] or '',
-                        'created_at': product[4]
+                        'description': product[2] if len(product) > 2 else '',
+                        'price': product[3] if len(product) > 3 else product[2],
+                        'image_url': (product[4] if len(product) > 4 else product[3]) or '',
+                        'gallery_images': gallery_images,
+                        'sizes': (product[7] if len(product) > 7 else '') or '',
+                        'category': (product[8] if len(product) > 8 else '') or '',
+                        'brand': (product[9] if len(product) > 9 else '') or '',
+                        'color': (product[10] if len(product) > 10 else '') or '',
+                        'material': (product[11] if len(product) > 11 else '') or '',
+                        'weight': (product[12] if len(product) > 12 else '') or '',
+                        'dimensions': (product[13] if len(product) > 13 else '') or '',
+                        'in_stock': (product[14] if len(product) > 14 else 1),
+                        'created_at': product[15] if len(product) > 15 else product[4]
                     })
                 
                 print(f"📦 Отправляем {len(products_data)} товаров")
@@ -314,6 +366,63 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 print(f"❌ Ошибка получения товаров: {e}")
                 self.wfile.write(json.dumps([]).encode('utf-8'))
+        
+        elif self.path.startswith('/api/product/'):
+            # API для получения детальной информации о товаре
+            product_id = self.path.split('/')[-1]
+            
+            try:
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM products WHERE id = ?', (product_id,))
+                product = cursor.fetchone()
+                conn.close()
+                
+                if product:
+                    # Парсим галерею изображений (JSON строка)
+                    gallery_images = []
+                    if len(product) > 6 and product[6]:  # gallery_images
+                        try:
+                            import json
+                            gallery_images = json.loads(product[6]) if product[6] else []
+                        except:
+                            gallery_images = []
+                    
+                    product_data = {
+                        'id': product[0],
+                        'title': product[1],
+                        'description': product[2] if len(product) > 2 else '',
+                        'price': product[3] if len(product) > 3 else product[2],
+                        'image_url': (product[4] if len(product) > 4 else product[3]) or '',
+                        'gallery_images': gallery_images,
+                        'sizes': (product[7] if len(product) > 7 else '') or '',
+                        'category': (product[8] if len(product) > 8 else '') or '',
+                        'brand': (product[9] if len(product) > 9 else '') or '',
+                        'color': (product[10] if len(product) > 10 else '') or '',
+                        'material': (product[11] if len(product) > 11 else '') or '',
+                        'weight': (product[12] if len(product) > 12 else '') or '',
+                        'dimensions': (product[13] if len(product) > 13 else '') or '',
+                        'in_stock': (product[14] if len(product) > 14 else 1),
+                        'created_at': product[15] if len(product) > 15 else product[4]
+                    }
+                    
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(product_data, ensure_ascii=False).encode('utf-8'))
+                else:
+                    self.send_response(404)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Product not found'}).encode('utf-8'))
+                    
+            except Exception as e:
+                print(f"❌ Ошибка получения товара {product_id}: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Internal server error'}).encode('utf-8'))
         
         elif self.path == '/test-image':
             # Тестовый эндпоинт для проверки изображений
@@ -427,28 +536,49 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 
                 title = data.get('title', '')
+                description = data.get('description', '')
                 price = int(data.get('price', 0))
+                category = data.get('category', '')
+                brand = data.get('brand', '')
+                color = data.get('color', '')
+                material = data.get('material', '')
+                weight = data.get('weight', '')
+                dimensions = data.get('dimensions', '')
                 sizes = data.get('sizes', '')
                 image_data = data.get('image', '')
+                gallery_images_data = data.get('gallery_images', [])
                 
-                print(f"📝 Получены данные: title='{title}', price={price}, sizes='{sizes}', image_data_len={len(image_data)}")
+                print(f"📝 Получены данные: title='{title}', price={price}, sizes='{sizes}', image_data_len={len(image_data)}, gallery_len={len(gallery_images_data)}")
                 
                 if title and price > 0:
-                    # Сохраняем изображение
+                    # Сохраняем основное изображение
                     bot = DarkShopBot()
                     image_url = bot.save_image(image_data)
-                    print(f"🖼️ URL изображения: {image_url}")
+                    print(f"🖼️ URL основного изображения: {image_url}")
+                    
+                    # Сохраняем галерею изображений
+                    gallery_urls = []
+                    for gallery_image_data in gallery_images_data:
+                        if gallery_image_data:
+                            gallery_url = bot.save_image(gallery_image_data)
+                            if gallery_url:
+                                gallery_urls.append(gallery_url)
+                    
+                    gallery_images_json = json.dumps(gallery_urls)
+                    print(f"🖼️ Галерея изображений: {len(gallery_urls)} фото")
                     
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
                     cursor.execute('''
-                        INSERT INTO products (title, price, image_url, sizes)
-                        VALUES (?, ?, ?, ?)
-                    ''', (title, price, image_url, sizes))
+                        INSERT INTO products (title, description, price, image_url, gallery_images, 
+                                            category, brand, color, material, weight, dimensions, sizes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (title, description, price, image_url, gallery_images_json,
+                          category, brand, color, material, weight, dimensions, sizes))
                     conn.commit()
                     conn.close()
                     
-                    print(f"✅ Товар добавлен: {title} - {price} ₽, изображение: {image_url}")
+                    print(f"✅ Товар добавлен: {title} - {price} ₽, изображение: {image_url}, галерея: {len(gallery_urls)} фото")
                     response = {'success': True, 'message': 'Товар добавлен успешно!'}
                 else:
                     print(f"❌ Неверные данные: title='{title}', price={price}")
@@ -478,41 +608,69 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 
                 title = data.get('title', '')
+                description = data.get('description', '')
                 price = int(data.get('price', 0))
+                category = data.get('category', '')
+                brand = data.get('brand', '')
+                color = data.get('color', '')
+                material = data.get('material', '')
+                weight = data.get('weight', '')
+                dimensions = data.get('dimensions', '')
                 sizes = data.get('sizes', '')
                 image_data = data.get('image', '')
+                gallery_images_data = data.get('gallery_images', [])
                 
-                print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, sizes='{sizes}', image_len={len(image_data) if image_data else 0}")
+                print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, sizes='{sizes}', image_len={len(image_data) if image_data else 0}, gallery_len={len(gallery_images_data)}")
                 
                 if title and price > 0:
                     conn = sqlite3.connect(DATABASE_PATH)
                     cursor = conn.cursor()
                     
-                    # Если есть новое изображение, сохраняем его
+                    # Получаем текущие данные товара
+                    cursor.execute('SELECT image_url, gallery_images FROM products WHERE id = ?', (product_id,))
+                    current_product = cursor.fetchone()
+                    current_image_url = current_product[0] if current_product else ''
+                    current_gallery_images = current_product[1] if current_product else '[]'
+                    
+                    # Если есть новое основное изображение, сохраняем его
                     if image_data and image_data.strip():
                         bot = DarkShopBot()
                         image_url = bot.save_image(image_data)
-                        print(f"🖼️ Новое изображение сохранено: {image_url}")
-                        cursor.execute('''
-                            UPDATE products 
-                            SET title = ?, price = ?, image_url = ?, sizes = ?
-                            WHERE id = ?
-                        ''', (title, price, image_url, sizes, product_id))
-                        print(f"✅ Товар обновлен с новым изображением: {title} -> {image_url}")
+                        print(f"🖼️ Новое основное изображение сохранено: {image_url}")
                     else:
-                        print("📝 Обновление без изменения изображения")
-                        cursor.execute('''
-                            UPDATE products 
-                            SET title = ?, price = ?, sizes = ?
-                            WHERE id = ?
-                        ''', (title, price, sizes, product_id))
-                        print(f"✅ Товар обновлен без изображения: {title}")
+                        image_url = current_image_url
+                        print("📝 Основное изображение не изменено")
+                    
+                    # Если есть новая галерея, сохраняем её
+                    if gallery_images_data:
+                        bot = DarkShopBot()
+                        gallery_urls = []
+                        for gallery_image_data in gallery_images_data:
+                            if gallery_image_data:
+                                gallery_url = bot.save_image(gallery_image_data)
+                                if gallery_url:
+                                    gallery_urls.append(gallery_url)
+                        gallery_images_json = json.dumps(gallery_urls)
+                        print(f"🖼️ Новая галерея сохранена: {len(gallery_urls)} фото")
+                    else:
+                        gallery_images_json = current_gallery_images
+                        print("📝 Галерея не изменена")
+                    
+                    # Обновляем товар
+                    cursor.execute('''
+                        UPDATE products 
+                        SET title = ?, description = ?, price = ?, image_url = ?, gallery_images = ?,
+                            category = ?, brand = ?, color = ?, material = ?, weight = ?, dimensions = ?, sizes = ?
+                        WHERE id = ?
+                    ''', (title, description, price, image_url, gallery_images_json,
+                          category, brand, color, material, weight, dimensions, sizes, product_id))
                     
                     rows_affected = cursor.rowcount
                     conn.commit()
                     conn.close()
                     
                     print(f"📊 Обновлено строк: {rows_affected}")
+                    print(f"✅ Товар обновлен: {title}")
                     
                     response = {'success': True, 'message': 'Товар обновлен успешно!'}
                 else:
@@ -1710,8 +1868,36 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <input type="text" id="productTitle" required>
                 </div>
                 <div class="form-group">
+                    <label for="productDescription">Описание товара</label>
+                    <textarea id="productDescription" rows="3" placeholder="Подробное описание товара..."></textarea>
+                </div>
+                <div class="form-group">
                     <label for="productPrice">Цена (₽)</label>
                     <input type="number" id="productPrice" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="productCategory">Категория</label>
+                    <input type="text" id="productCategory" placeholder="Одежда, Обувь, Аксессуары...">
+                </div>
+                <div class="form-group">
+                    <label for="productBrand">Бренд</label>
+                    <input type="text" id="productBrand" placeholder="Nike, Adidas, Apple...">
+                </div>
+                <div class="form-group">
+                    <label for="productColor">Цвет</label>
+                    <input type="text" id="productColor" placeholder="Черный, Белый, Красный...">
+                </div>
+                <div class="form-group">
+                    <label for="productMaterial">Материал</label>
+                    <input type="text" id="productMaterial" placeholder="Хлопок, Кожа, Полиэстер...">
+                </div>
+                <div class="form-group">
+                    <label for="productWeight">Вес</label>
+                    <input type="text" id="productWeight" placeholder="500г, 1кг...">
+                </div>
+                <div class="form-group">
+                    <label for="productDimensions">Размеры</label>
+                    <input type="text" id="productDimensions" placeholder="30x20x10 см...">
                 </div>
                 <div class="form-group">
                     <label for="productSizes">Размерная сетка (через запятую)</label>
@@ -1719,12 +1905,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <small style="color: #666; font-size: 12px;">Оставьте пустым для товаров без размера</small>
                 </div>
                 <div class="form-group">
-                    <label for="productImage">Фотография</label>
+                    <label for="productImage">Основное фото</label>
                     <div class="file-input-wrapper">
                         <input type="file" id="productImage" class="file-input" accept="image/*" onchange="handleImageUpload(this)">
                         <button type="button" class="file-input-button">📷 Выбрать фото</button>
                     </div>
                     <div class="image-preview" id="imagePreview">Выберите изображение</div>
+                </div>
+                <div class="form-group">
+                    <label for="productGallery">Дополнительные фото (галерея)</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="productGallery" class="file-input" accept="image/*" multiple onchange="handleGalleryUpload(this)">
+                        <button type="button" class="file-input-button">📷 Выбрать фото для галереи</button>
+                    </div>
+                    <div class="gallery-preview" id="galleryPreview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px;"></div>
                 </div>
                 <button type="submit" class="add-product-btn" id="submitBtn">➕ Добавить товар</button>
             </form>
@@ -1770,6 +1964,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         let cart = [];
         let currentEditingProduct = null;
         let selectedImageData = '';
+        let selectedGalleryImages = [];
         
         // Загрузка товаров
         async function loadProducts() {
@@ -1808,7 +2003,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             });
             
             container.innerHTML = products.map(product => `
-                <div class="product-card">
+                <div class="product-card" onclick="openProductPage(${product.id})">
                     <div class="product-image-full">
                         ${product.image_url ? 
                             `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
@@ -1822,13 +2017,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                             <div class="product-info">
                                 <div class="product-title">${product.title}</div>
                                 <div class="product-price">${product.price.toLocaleString()} ₽</div>
+                                ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="showSizeDrawer(${product.id})">
+                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="event.stopPropagation(); showSizeDrawer(${product.id})">
                                     Добавить в корзину
                                 </button>
-                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="addToCart(${product.id})" style="display: none;">
+                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="event.stopPropagation(); addToCart(${product.id})" style="display: none;">
                                     В корзину
+                                </button>
+                                <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; width: 100%; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); margin-top: 4px;">
+                                    👁 Подробнее
                                 </button>
                             </div>
                         </div>
@@ -1888,7 +2087,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             container.innerHTML = filteredProducts.map(product => `
-                <div class="product-card">
+                <div class="product-card" onclick="openProductPage(${product.id})">
                     <div class="product-image-full">
                         ${product.image_url ? 
                             `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
@@ -1902,13 +2101,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                             <div class="product-info">
                                 <div class="product-title">${product.title}</div>
                                 <div class="product-price">${product.price.toLocaleString()} ₽</div>
+                                ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="showSizeDrawer(${product.id})">
+                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="event.stopPropagation(); showSizeDrawer(${product.id})">
                                     Добавить в корзину
                                 </button>
-                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="addToCart(${product.id})" style="display: none;">
+                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="event.stopPropagation(); addToCart(${product.id})" style="display: none;">
                                     В корзину
+                                </button>
+                                <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; width: 100%; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); margin-top: 4px;">
+                                    👁 Подробнее
                                 </button>
                             </div>
                         </div>
@@ -1924,6 +2127,43 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 product.title.toLowerCase().includes(searchTerm)
             );
             renderAdminProducts(filteredProducts);
+        }
+        
+        // Обработка загрузки галереи изображений
+        function handleGalleryUpload(input) {
+            console.log('📸 handleGalleryUpload вызвана');
+            
+            const files = Array.from(input.files);
+            if (files.length === 0) {
+                selectedGalleryImages = [];
+                document.getElementById('galleryPreview').innerHTML = '';
+                return;
+            }
+            
+            selectedGalleryImages = [];
+            const preview = document.getElementById('galleryPreview');
+            preview.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                if (file.size > 5 * 1024 * 1024) {
+                    console.log('❌ Файл слишком большой:', file.size, 'байт');
+                    alert(`Файл ${file.name} слишком большой! Максимум 5MB.`);
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedGalleryImages.push(e.target.result);
+                    
+                    // Добавляем превью
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #333;';
+                    preview.appendChild(img);
+                };
+                
+                reader.readAsDataURL(file);
+            });
         }
         
         // Простая обработка загрузки изображения
@@ -2290,14 +2530,29 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             console.log('🚀 Функция addProduct вызвана');
             
             const title = document.getElementById('productTitle').value;
+            const description = document.getElementById('productDescription').value;
             const price = parseInt(document.getElementById('productPrice').value);
+            const category = document.getElementById('productCategory').value.trim();
+            const brand = document.getElementById('productBrand').value.trim();
+            const color = document.getElementById('productColor').value.trim();
+            const material = document.getElementById('productMaterial').value.trim();
+            const weight = document.getElementById('productWeight').value.trim();
+            const dimensions = document.getElementById('productDimensions').value.trim();
             const sizes = document.getElementById('productSizes').value.trim();
             
             console.log('📝 Данные формы:', { 
                 title: title, 
+                description: description,
                 price: price, 
+                category: category,
+                brand: brand,
+                color: color,
+                material: material,
+                weight: weight,
+                dimensions: dimensions,
                 sizes: sizes,
                 imageData: selectedImageData ? `есть (${selectedImageData.length} символов)` : 'нет',
+                galleryImages: selectedGalleryImages.length,
                 currentEditingProduct: currentEditingProduct,
                 isEditMode: !!currentEditingProduct
             });
@@ -2317,9 +2572,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 const requestData = {
                     title: title,
+                    description: description,
                     price: price,
+                    category: category,
+                    brand: brand,
+                    color: color,
+                    material: material,
+                    weight: weight,
+                    dimensions: dimensions,
                     sizes: sizes,
-                    image: selectedImageData
+                    image: selectedImageData,
+                    gallery_images: selectedGalleryImages
                 };
                 
                 console.log('📤 Отправляем данные:', {
@@ -2380,7 +2643,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Заполняем форму добавления товара
             document.getElementById('productTitle').value = product.title;
+            document.getElementById('productDescription').value = product.description || '';
             document.getElementById('productPrice').value = product.price;
+            document.getElementById('productCategory').value = product.category || '';
+            document.getElementById('productBrand').value = product.brand || '';
+            document.getElementById('productColor').value = product.color || '';
+            document.getElementById('productMaterial').value = product.material || '';
+            document.getElementById('productWeight').value = product.weight || '';
+            document.getElementById('productDimensions').value = product.dimensions || '';
             document.getElementById('productSizes').value = product.sizes || '';
             
             // Очищаем выбранное изображение
@@ -2469,8 +2739,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         function resetForm() {
             currentEditingProduct = null;
             selectedImageData = '';
+            selectedGalleryImages = [];
             document.getElementById('adminForm').reset();
             document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            document.getElementById('galleryPreview').innerHTML = '';
             document.getElementById('submitBtn').textContent = '➕ Добавить товар';
         }
         
@@ -2511,6 +2783,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         document.getElementById('checkoutBtn').addEventListener('click', checkout);
         document.getElementById('adminForm').addEventListener('submit', addProduct);
         
+        // Открытие страницы товара
+        function openProductPage(productId) {
+            window.location.href = `/product/${productId}`;
+        }
+        
         // Запуск
         loadProducts();
     </script>
@@ -2535,6 +2812,517 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             </div>
         </div>
     </div>
+    </body>
+</html>'''
+
+    def get_product_page(self, product_id):
+        """Страница товара с подробной информацией и галереей"""
+        return f'''<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Товар - LOOK & GO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {{ 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 16px;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: #2d2d2d;
+            border-radius: 12px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }}
+        
+        .back-btn {{
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }}
+        
+        .back-btn:hover {{
+            background: #1d4ed8;
+        }}
+        
+        .header h1 {{
+            font-size: 20px;
+            margin: 0;
+            color: #ffffff;
+        }}
+        
+        .product-container {{
+            max-width: 600px;
+            margin: 0 auto;
+        }}
+        
+        .product-gallery {{
+            margin-bottom: 24px;
+        }}
+        
+        .main-image {{
+            width: 100%;
+            height: 300px;
+            background: #2d2d2d;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            position: relative;
+        }}
+        
+        .main-image img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }}
+        
+        .thumbnail-gallery {{
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 8px 0;
+        }}
+        
+        .thumbnail {{
+            min-width: 80px;
+            height: 80px;
+            background: #2d2d2d;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }}
+        
+        .thumbnail.active {{
+            border-color: #1e40af;
+        }}
+        
+        .thumbnail img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }}
+        
+        .product-info {{
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid #333;
+        }}
+        
+        .product-title {{
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }}
+        
+        .product-price {{
+            font-size: 28px;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 16px;
+        }}
+        
+        .product-description {{
+            color: #cccccc;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }}
+        
+        .product-details {{
+            display: grid;
+            gap: 12px;
+        }}
+        
+        .detail-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }}
+        
+        .detail-row:last-child {{
+            border-bottom: none;
+        }}
+        
+        .detail-label {{
+            color: #aaaaaa;
+            font-weight: 500;
+        }}
+        
+        .detail-value {{
+            color: #ffffff;
+            font-weight: 600;
+        }}
+        
+        .size-section {{
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid #333;
+        }}
+        
+        .size-section h3 {{
+            color: #3b82f6;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }}
+        
+        .size-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+        }}
+        
+        .size-btn {{
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            color: #ffffff;
+            padding: 12px 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        
+        .size-btn:hover {{
+            background: #3d3d3d;
+            border-color: #007bff;
+        }}
+        
+        .size-btn.selected {{
+            background: #007bff;
+            border-color: #007bff;
+        }}
+        
+        .size-btn.out-of-stock {{
+            background: #333;
+            border-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }}
+        
+        .add-to-cart-section {{
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #333;
+            position: sticky;
+            bottom: 16px;
+        }}
+        
+        .add-to-cart-btn {{
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+        }}
+        
+        .add-to-cart-btn:hover:not(:disabled) {{
+            background: #1d4ed8;
+            transform: scale(1.02);
+        }}
+        
+        .add-to-cart-btn:disabled {{
+            background: #333;
+            color: #888;
+            cursor: not-allowed;
+        }}
+        
+        .loading {{
+            text-align: center;
+            padding: 40px;
+            color: #aaaaaa;
+            font-size: 16px;
+        }}
+        
+        .error {{
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+            font-size: 16px;
+        }}
+        
+        @media (max-width: 480px) {{
+            .main-image {{
+                height: 250px;
+            }}
+            
+            .thumbnail {{
+                min-width: 60px;
+                height: 60px;
+            }}
+            
+            .product-title {{
+                font-size: 20px;
+            }}
+            
+            .product-price {{
+                font-size: 24px;
+            }}
+            
+            .size-grid {{
+                grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">← Назад</button>
+        <h1>Товар</h1>
+        <div></div>
+    </div>
+    
+    <div class="product-container">
+        <div id="productContent" class="loading">
+            Загрузка товара...
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let currentProduct = null;
+        let selectedSize = null;
+        
+        // Загрузка данных товара
+        async function loadProduct() {{
+            const productId = window.location.pathname.split('/').pop();
+            
+            try {{
+                const response = await fetch(`/api/product/${{productId}}`);
+                
+                if (!response.ok) {{
+                    throw new Error('Товар не найден');
+                }}
+                
+                currentProduct = await response.json();
+                renderProduct();
+            }} catch (error) {{
+                document.getElementById('productContent').innerHTML = `
+                    <div class="error">
+                        Ошибка загрузки товара: ${{error.message}}
+                    </div>
+                `;
+            }}
+        }}
+        
+        // Отображение товара
+        function renderProduct() {{
+            if (!currentProduct) return;
+            
+            const galleryImages = currentProduct.gallery_images || [];
+            const mainImage = currentProduct.image_url || (galleryImages.length > 0 ? galleryImages[0] : '');
+            
+            document.getElementById('productContent').innerHTML = `
+                <div class="product-gallery">
+                    <div class="main-image" id="mainImage">
+                        ${{mainImage ? 
+                            `<img src="${{window.location.origin}}${{mainImage}}" alt="${{currentProduct.title}}" id="mainImageImg">` : 
+                            '<div style="color: #666; font-size: 48px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
+                        }}
+                    </div>
+                    ${{galleryImages.length > 1 ? `
+                        <div class="thumbnail-gallery">
+                            ${{galleryImages.map((img, index) => `
+                                <div class="thumbnail ${{index === 0 ? 'active' : ''}}" onclick="changeMainImage('${{img}}', this)">
+                                    <img src="${{window.location.origin}}${{img}}" alt="Фото ${{index + 1}}">
+                                </div>
+                            `).join('')}}
+                        </div>
+                    ` : ''}}
+                </div>
+                
+                <div class="product-info">
+                    <h1 class="product-title">${{currentProduct.title}}</h1>
+                    <div class="product-price">${{currentProduct.price.toLocaleString()}} ₽</div>
+                    
+                    ${{currentProduct.description ? `
+                        <div class="product-description">
+                            ${{currentProduct.description}}
+                        </div>
+                    ` : ''}}
+                    
+                    <div class="product-details">
+                        ${{currentProduct.brand ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Бренд:</span>
+                                <span class="detail-value">${{currentProduct.brand}}</span>
+                            </div>
+                        ` : ''}}
+                        
+                        ${{currentProduct.category ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Категория:</span>
+                                <span class="detail-value">${{currentProduct.category}}</span>
+                            </div>
+                        ` : ''}}
+                        
+                        ${{currentProduct.color ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Цвет:</span>
+                                <span class="detail-value">${{currentProduct.color}}</span>
+                            </div>
+                        ` : ''}}
+                        
+                        ${{currentProduct.material ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Материал:</span>
+                                <span class="detail-value">${{currentProduct.material}}</span>
+                            </div>
+                        ` : ''}}
+                        
+                        ${{currentProduct.weight ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Вес:</span>
+                                <span class="detail-value">${{currentProduct.weight}}</span>
+                            </div>
+                        ` : ''}}
+                        
+                        ${{currentProduct.dimensions ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Размеры:</span>
+                                <span class="detail-value">${{currentProduct.dimensions}}</span>
+                            </div>
+                        ` : ''}}
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Наличие:</span>
+                            <span class="detail-value" style="color: ${{currentProduct.in_stock ? '#10b981' : '#dc2626'}}">
+                                ${{currentProduct.in_stock ? 'В наличии' : 'Нет в наличии'}}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${{currentProduct.sizes ? `
+                    <div class="size-section">
+                        <h3>Размеры</h3>
+                        <div class="size-grid" id="sizeGrid">
+                            ${{currentProduct.sizes.split(',').map(size => `
+                                <button class="size-btn" onclick="selectSize('${{size.trim()}}', this)">
+                                    ${{size.trim()}}
+                                </button>
+                            `).join('')}}
+                        </div>
+                    </div>
+                ` : ''}}
+                
+                <div class="add-to-cart-section">
+                    <button class="add-to-cart-btn" id="addToCartBtn" onclick="addToCart()" ${{!currentProduct.in_stock ? 'disabled' : ''}}>
+                        ${{!currentProduct.in_stock ? 'Нет в наличии' : 'Добавить в корзину'}}
+                    </button>
+                </div>
+            `;
+        }}
+        
+        // Смена главного изображения
+        function changeMainImage(imageUrl, thumbnail) {{
+            const mainImageImg = document.getElementById('mainImageImg');
+            if (mainImageImg) {{
+                mainImageImg.src = window.location.origin + imageUrl;
+            }}
+            
+            // Обновляем активный thumbnail
+            document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+            thumbnail.classList.add('active');
+        }}
+        
+        // Выбор размера
+        function selectSize(size, button) {{
+            selectedSize = size;
+            
+            // Обновляем визуальное состояние
+            document.querySelectorAll('.size-btn').forEach(btn => {{
+                btn.classList.remove('selected');
+            }});
+            button.classList.add('selected');
+            
+            // Обновляем кнопку добавления в корзину
+            updateAddToCartButton();
+        }}
+        
+        // Обновление кнопки добавления в корзину
+        function updateAddToCartButton() {{
+            const btn = document.getElementById('addToCartBtn');
+            if (!btn) return;
+            
+            if (currentProduct.sizes && !selectedSize) {{
+                btn.textContent = 'Выберите размер';
+                btn.disabled = true;
+            }} else {{
+                btn.textContent = selectedSize ? `Добавить в корзину (размер ${{selectedSize}})` : 'Добавить в корзину';
+                btn.disabled = false;
+            }}
+        }}
+        
+        // Добавление в корзину
+        function addToCart() {{
+            if (!currentProduct || !currentProduct.in_stock) return;
+            
+            if (currentProduct.sizes && !selectedSize) {{
+                tg.showAlert('Пожалуйста, выберите размер');
+                return;
+            }}
+            
+            // Здесь можно добавить логику добавления в корзину
+            // Пока просто показываем уведомление
+            const sizeText = selectedSize ? ` (размер ${{selectedSize}})` : '';
+            tg.showAlert(`${{currentProduct.title}}${{sizeText}} добавлен в корзину!`);
+        }}
+        
+        // Возврат назад
+        function goBack() {{
+            if (window.history.length > 1) {{
+                window.history.back();
+            }} else {{
+                window.location.href = '/';
+            }}
+        }}
+        
+        // Запуск
+        loadProduct();
+    </script>
 </body>
 </html>'''
 
