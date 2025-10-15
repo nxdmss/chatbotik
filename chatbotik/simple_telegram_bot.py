@@ -2015,9 +2015,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="event.stopPropagation(); addToCart(${product.id})" style="display: none;">
                                     В корзину
                                 </button>
-                                <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; width: 100%; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); margin-top: 4px;">
-                                    👁 Подробнее
-                                </button>
+                                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                    <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
+                                        👁 Подробнее
+                                    </button>
+                                    <button class="cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color: white; border: none; padding: 0; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s ease; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+                                        🛒
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2099,9 +2104,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="event.stopPropagation(); addToCart(${product.id})" style="display: none;">
                                     В корзину
                                 </button>
-                                <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; width: 100%; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); margin-top: 4px;">
-                                    👁 Подробнее
-                                </button>
+                                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                    <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
+                                        👁 Подробнее
+                                    </button>
+                                    <button class="cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color: white; border: none; padding: 0; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s ease; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+                                        🛒
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3208,12 +3218,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                             </div>
                         ` : ''}}
                         
-                        ${{currentProduct.dimensions ? `
-                            <div class="detail-row">
-                                <span class="detail-label">Размеры:</span>
-                                <span class="detail-value">${{currentProduct.dimensions}}</span>
-                            </div>
-                        ` : ''}}
                         
                         <div class="detail-row">
                             <span class="detail-label">Наличие:</span>
