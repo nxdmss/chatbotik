@@ -94,9 +94,9 @@ class DarkShopBot:
             try:
                 cursor.execute(f'ALTER TABLE products ADD COLUMN {field_name} {field_type}')
                 print(f"✅ Добавлено поле {field_name} в таблицу products")
-            except sqlite3.OperationalError:
-                # Поле уже существует
-                pass
+        except sqlite3.OperationalError:
+            # Поле уже существует
+            pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
@@ -646,11 +646,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         print("📝 Галерея не изменена")
                     
                     # Обновляем товар
-                    cursor.execute('''
-                        UPDATE products 
+                        cursor.execute('''
+                            UPDATE products 
                         SET title = ?, description = ?, price = ?, image_url = ?, gallery_images = ?,
                             category = ?, brand = ?, color = ?, material = ?, weight = ?, dimensions = ?, sizes = ?
-                        WHERE id = ?
+                            WHERE id = ?
                     ''', (title, description, price, image_url, gallery_images_json,
                           category, brand, color, material, weight, dimensions, sizes, product_id))
                     
@@ -1993,15 +1993,44 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             container.innerHTML = products.map(product => `
                 <div class="product-card" onclick="openProductPage(${product.id})">
-                    <div class="product-image-full">
+                    <div class="product-image-full" id="imageContainer_${product.id}" style="position: relative; overflow: hidden;">
+                        <div class="image-slider" id="slider_${product.id}" style="display: flex; transition: transform 0.3s ease; width: 100%; height: 100%;">
                         ${product.image_url ? 
-                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                `<div class="slide" style="min-width: 100%; height: 100%; position: relative;">
+                                    <img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
                                  style="width: 100%; height: 100%; object-fit: cover;"
                                  onload="console.log('✅ Изображение загружено в Telegram WebApp:', this.src)"
                                  onerror="console.error('❌ Ошибка загрузки в Telegram WebApp:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
-                            '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
-                        }
+                                    <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>
+                                </div>` : 
+                                `<div class="slide" style="min-width: 100%; height: 100%; position: relative;">
+                                    <div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>
+                                </div>`
+                            }
+                            ${product.gallery_images && product.gallery_images.length > 0 ? 
+                                product.gallery_images.map(img => `
+                                    <div class="slide" style="min-width: 100%; height: 100%; position: relative;">
+                                        <img src="${window.location.origin}${img}" alt="${product.title}" 
+                                             style="width: 100%; height: 100%; object-fit: cover;"
+                                             onload="console.log('✅ Галерея изображение загружено:', this.src)"
+                                             onerror="console.error('❌ Ошибка загрузки галереи:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>
+                                    </div>
+                                `).join('') : ''
+                            }
+                        </div>
+                        ${product.gallery_images && product.gallery_images.length > 0 ? `
+                            <div class="image-indicators" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 10;">
+                                ${Array.from({length: (product.gallery_images ? product.gallery_images.length : 0) + 1}, (_, i) => `
+                                    <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
+                                `).join('')}
+                            </div>
+                            <div class="swipe-arrows" style="position: absolute; top: 50%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 8px; pointer-events: none; z-index: 5;">
+                                <button class="arrow-left" onclick="event.stopPropagation(); prevSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">‹</button>
+                                <button class="arrow-right" onclick="event.stopPropagation(); nextSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">›</button>
+                            </div>
+                        ` : ''}
+                    </div>
                         <div class="product-overlay">
                             <div class="product-info">
                                 <div class="product-title">${product.title}</div>
@@ -2012,7 +2041,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 <div style="display: flex; gap: 6px; margin-top: 4px;">
                                     <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
                                         👁 Подробнее
-                                    </button>
+                                </button>
                                 </div>
                             </div>
                         </div>
@@ -2073,15 +2102,44 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             container.innerHTML = filteredProducts.map(product => `
                 <div class="product-card" onclick="openProductPage(${product.id})">
-                    <div class="product-image-full">
+                    <div class="product-image-full" id="imageContainer_${product.id}" style="position: relative; overflow: hidden;">
+                        <div class="image-slider" id="slider_${product.id}" style="display: flex; transition: transform 0.3s ease; width: 100%; height: 100%;">
                         ${product.image_url ? 
-                            `<img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
+                                `<div class="slide" style="min-width: 100%; height: 100%; position: relative;">
+                                    <img src="${window.location.origin}${product.image_url}" alt="${product.title}" 
                                  style="width: 100%; height: 100%; object-fit: cover;"
                                  onload="console.log('✅ Изображение загружено в Telegram WebApp:', this.src)"
                                  onerror="console.error('❌ Ошибка загрузки в Telegram WebApp:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>` : 
-                            '<div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>'
-                        }
+                                    <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>
+                                </div>` : 
+                                `<div class="slide" style="min-width: 100%; height: 100%; position: relative;">
+                                    <div style="color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>
+                                </div>`
+                            }
+                            ${product.gallery_images && product.gallery_images.length > 0 ? 
+                                product.gallery_images.map(img => `
+                                    <div class="slide" style="min-width: 100%; height: 100%; position: relative;">
+                                        <img src="${window.location.origin}${img}" alt="${product.title}" 
+                                             style="width: 100%; height: 100%; object-fit: cover;"
+                                             onload="console.log('✅ Галерея изображение загружено:', this.src)"
+                                             onerror="console.error('❌ Ошибка загрузки галереи:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div style="display:none; color: #666; font-size: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">📷</div>
+                                    </div>
+                                `).join('') : ''
+                            }
+                        </div>
+                        ${product.gallery_images && product.gallery_images.length > 0 ? `
+                            <div class="image-indicators" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 10;">
+                                ${Array.from({length: (product.gallery_images ? product.gallery_images.length : 0) + 1}, (_, i) => `
+                                    <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
+                                `).join('')}
+                            </div>
+                            <div class="swipe-arrows" style="position: absolute; top: 50%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 8px; pointer-events: none; z-index: 5;">
+                                <button class="arrow-left" onclick="event.stopPropagation(); prevSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">‹</button>
+                                <button class="arrow-right" onclick="event.stopPropagation(); nextSlide(${product.id})" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: all; opacity: 0.7; transition: opacity 0.3s ease;">›</button>
+                            </div>
+                        ` : ''}
+                    </div>
                         <div class="product-overlay">
                             <div class="product-info">
                                 <div class="product-title">${product.title}</div>
@@ -2092,7 +2150,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 <div style="display: flex; gap: 6px; margin-top: 4px;">
                                     <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
                                         👁 Подробнее
-                                    </button>
+                                </button>
                                 </div>
                             </div>
                         </div>
@@ -2767,6 +2825,57 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         // Открытие страницы товара
         function openProductPage(productId) {
             window.location.href = `/product/${productId}`;
+        }
+        
+        // Функции для управления слайдером изображений
+        let currentSlide = {}; // Хранит текущий слайд для каждого товара
+        
+        function nextSlide(productId) {
+            const slider = document.getElementById(`slider_${productId}`);
+            const indicators = document.querySelectorAll(`#imageContainer_${productId} .indicator`);
+            const totalSlides = indicators.length;
+            
+            if (!currentSlide[productId]) currentSlide[productId] = 0;
+            
+            currentSlide[productId] = (currentSlide[productId] + 1) % totalSlides;
+            
+            slider.style.transform = `translateX(-${currentSlide[productId] * 100}%)`;
+            
+            // Обновляем индикаторы
+            indicators.forEach((indicator, index) => {
+                indicator.style.background = index === currentSlide[productId] ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)';
+            });
+        }
+        
+        function prevSlide(productId) {
+            const slider = document.getElementById(`slider_${productId}`);
+            const indicators = document.querySelectorAll(`#imageContainer_${productId} .indicator`);
+            const totalSlides = indicators.length;
+            
+            if (!currentSlide[productId]) currentSlide[productId] = 0;
+            
+            currentSlide[productId] = currentSlide[productId] === 0 ? totalSlides - 1 : currentSlide[productId] - 1;
+            
+            slider.style.transform = `translateX(-${currentSlide[productId] * 100}%)`;
+            
+            // Обновляем индикаторы
+            indicators.forEach((indicator, index) => {
+                indicator.style.background = index === currentSlide[productId] ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)';
+            });
+        }
+        
+        function goToSlide(productId, slideIndex) {
+            const slider = document.getElementById(`slider_${productId}`);
+            const indicators = document.querySelectorAll(`#imageContainer_${productId} .indicator`);
+            
+            currentSlide[productId] = slideIndex;
+            
+            slider.style.transform = `translateX(-${currentSlide[productId] * 100}%)`;
+            
+            // Обновляем индикаторы
+            indicators.forEach((indicator, index) => {
+                indicator.style.background = index === currentSlide[productId] ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)';
+            });
         }
         
         // Запуск
