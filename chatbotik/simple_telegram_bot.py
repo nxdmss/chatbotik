@@ -331,22 +331,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 products_data = []
                 for product in products:
-                    # Парсим галерею изображений (JSON строка)
-                    gallery_images = []
-                    if len(product) > 6 and product[6]:  # gallery_images
-                        try:
-                            import json
-                            gallery_images = json.loads(product[6]) if product[6] else []
-                        except:
-                            gallery_images = []
-                    
                     products_data.append({
                         'id': product[0],
                         'title': product[1],
-                        'description': product[2] if len(product) > 2 else '',
-                        'price': product[3] if len(product) > 3 else product[2],
-                        'image_url': (product[4] if len(product) > 4 else product[3]) or '',
-                        'gallery_images': gallery_images,
+                        'price': product[2],
+                        'image_url': (product[3] if len(product) > 3 else '') or '',
+                        'description': product[5] if len(product) > 5 else '',
                         'sizes': (product[7] if len(product) > 7 else '') or '',
                         'category': (product[8] if len(product) > 8 else '') or '',
                         'brand': (product[9] if len(product) > 9 else '') or '',
@@ -355,12 +345,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'weight': (product[12] if len(product) > 12 else '') or '',
                         'dimensions': (product[13] if len(product) > 13 else '') or '',
                         'in_stock': (product[14] if len(product) > 14 else 1),
-                        'created_at': product[15] if len(product) > 15 else product[4]
+                        'created_at': product[4] if len(product) > 4 else ''
                     })
                 
                 print(f"📦 Отправляем {len(products_data)} товаров")
                 for p in products_data:
-                    print(f"  - {p['title']}: изображение = {p['image_url'] or 'НЕТ'}")
+                    print(f"  - {p['title']}: {p['price']} ₽")
                 
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
@@ -383,7 +373,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     gallery_images = []
                     if len(product) > 6 and product[6]:  # gallery_images
                         try:
-                            import json
                             gallery_images = json.loads(product[6]) if product[6] else []
                         except:
                             gallery_images = []
@@ -391,9 +380,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     product_data = {
                         'id': product[0],
                         'title': product[1],
-                        'description': product[2] if len(product) > 2 else '',
-                        'price': product[3] if len(product) > 3 else product[2],
-                        'image_url': (product[4] if len(product) > 4 else product[3]) or '',
+                        'description': product[5] if len(product) > 5 else '',
+                        'price': product[2],
+                        'image_url': (product[3] if len(product) > 3 else '') or '',
                         'gallery_images': gallery_images,
                         'sizes': (product[7] if len(product) > 7 else '') or '',
                         'category': (product[8] if len(product) > 8 else '') or '',
@@ -403,7 +392,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'weight': (product[12] if len(product) > 12 else '') or '',
                         'dimensions': (product[13] if len(product) > 13 else '') or '',
                         'in_stock': (product[14] if len(product) > 14 else 1),
-                        'created_at': product[15] if len(product) > 15 else product[4]
+                        'created_at': product[4] if len(product) > 4 else ''
                     }
                     
                     self.send_response(200)
