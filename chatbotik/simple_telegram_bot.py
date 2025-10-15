@@ -94,9 +94,9 @@ class DarkShopBot:
             try:
                 cursor.execute(f'ALTER TABLE products ADD COLUMN {field_name} {field_type}')
                 print(f"✅ Добавлено поле {field_name} в таблицу products")
-            except sqlite3.OperationalError:
-                # Поле уже существует
-                pass
+        except sqlite3.OperationalError:
+            # Поле уже существует
+            pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
@@ -808,7 +808,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             min-height: 220px;
             overflow: hidden;
             margin: 8px;
-            padding: 4px;
+            padding: 0;
             box-sizing: border-box;
         }
         
@@ -1502,7 +1502,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             .product-card {
-                padding: 6px;
+                padding: 0;
                 margin: 4px;
                 min-height: 200px;
             }
@@ -2048,6 +2048,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                 </div>
             `).join('');
+            
+            // Добавляем свайп-функциональность для всех товаров
+            products.forEach(product => {
+                if (product.gallery_images && product.gallery_images.length > 0) {
+                    addSwipeListeners(product.id);
+                }
+            });
         }
         
         // Отображение товаров в админ панели - ПРОСТАЯ ВЕРСИЯ
@@ -2157,6 +2164,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                 </div>
             `).join('');
+            
+            // Добавляем свайп-функциональность для отфильтрованных товаров
+            filteredProducts.forEach(product => {
+                if (product.gallery_images && product.gallery_images.length > 0) {
+                    addSwipeListeners(product.id);
+                }
+            });
         }
         
         // Фильтрация товаров в админ панели
@@ -2875,6 +2889,84 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             // Обновляем индикаторы
             indicators.forEach((indicator, index) => {
                 indicator.style.background = index === currentSlide[productId] ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)';
+            });
+        }
+        
+        // Свайп-функциональность для мобильных устройств
+        function addSwipeListeners(productId) {
+            const container = document.getElementById(`imageContainer_${productId}`);
+            if (!container) return;
+            
+            let startX = 0;
+            let startY = 0;
+            let isDragging = false;
+            
+            container.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                isDragging = true;
+            }, { passive: true });
+            
+            container.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+            }, { passive: false });
+            
+            container.addEventListener('touchend', function(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const diffX = startX - endX;
+                const diffY = startY - endY;
+                
+                // Проверяем, что это горизонтальный свайп, а не вертикальный
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                    if (diffX > 0) {
+                        // Свайп влево - следующий слайд
+                        nextSlide(productId);
+                    } else {
+                        // Свайп вправо - предыдущий слайд
+                        prevSlide(productId);
+                    }
+                }
+            }, { passive: true });
+            
+            // Добавляем поддержку мыши для десктопа
+            let mouseStartX = 0;
+            let isMouseDragging = false;
+            
+            container.addEventListener('mousedown', function(e) {
+                mouseStartX = e.clientX;
+                isMouseDragging = true;
+                e.preventDefault();
+            });
+            
+            container.addEventListener('mousemove', function(e) {
+                if (!isMouseDragging) return;
+                e.preventDefault();
+            });
+            
+            container.addEventListener('mouseup', function(e) {
+                if (!isMouseDragging) return;
+                isMouseDragging = false;
+                
+                const mouseEndX = e.clientX;
+                const mouseDiffX = mouseStartX - mouseEndX;
+                
+                if (Math.abs(mouseDiffX) > 50) {
+                    if (mouseDiffX > 0) {
+                        nextSlide(productId);
+                    } else {
+                        prevSlide(productId);
+                    }
+                }
+            });
+            
+            // Предотвращаем выделение текста при перетаскивании
+            container.addEventListener('selectstart', function(e) {
+                e.preventDefault();
             });
         }
         
