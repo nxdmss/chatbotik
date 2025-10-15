@@ -3144,7 +3144,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-container {{
             max-width: 100vw;
             margin: 0;
-            padding: 2px;
+            padding: 1px;
             min-height: 100vh;
         }}
         
@@ -3156,9 +3156,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             width: 100%;
             height: 95vh;
             background: #2d2d2d;
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            margin: 2px;
+            margin: 1px;
             position: relative;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }}
@@ -3171,9 +3171,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .thumbnail-gallery {{
             display: flex;
-            gap: 8px;
+            gap: 6px;
             overflow-x: auto;
-            padding: 4px 0;
+            padding: 2px 0;
             justify-content: center;
         }}
         
@@ -3208,9 +3208,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-info {{
             background: #2d2d2d;
-            border-radius: 8px;
-            padding: 6px;
-            margin-bottom: 4px;
+            border-radius: 6px;
+            padding: 4px;
+            margin-bottom: 2px;
             border: 1px solid #333;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }}
@@ -3375,14 +3375,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         @media (max-width: 480px) {{
             .product-container {{
-                padding: 1px;
+                padding: 0px;
             }}
             
             .main-image {{
                 width: 100%;
                 height: 93vh;
-                border-radius: 8px;
-                margin: 1px;
+                border-radius: 6px;
+                margin: 0px;
             }}
             
             .thumbnail {{
@@ -3399,8 +3399,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .product-info {{
-                padding: 6px;
-                margin-bottom: 4px;
+                padding: 4px;
+                margin-bottom: 2px;
             }}
             
             .add-to-cart-btn {{
