@@ -331,12 +331,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 products_data = []
                 for product in products:
+                    # Парсим галерею изображений (JSON строка)
+                    gallery_images = []
+                    if len(product) > 6 and product[6]:  # gallery_images
+                        try:
+                            gallery_images = json.loads(product[6]) if product[6] else []
+                        except:
+                            gallery_images = []
+                    
                     products_data.append({
                         'id': product[0],
                         'title': product[1],
                         'price': product[2],
                         'image_url': (product[3] if len(product) > 3 else '') or '',
                         'description': product[5] if len(product) > 5 else '',
+                        'gallery_images': gallery_images,
                         'sizes': (product[7] if len(product) > 7 else '') or '',
                         'category': (product[8] if len(product) > 8 else '') or '',
                         'brand': (product[9] if len(product) > 9 else '') or '',
@@ -355,7 +364,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(products_data, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 print(f"❌ Ошибка получения товаров: {e}")
-                self.wfile.write(json.dumps([]).encode('utf-8'))
+                self.wfile.write('[]'.encode('utf-8'))
         
         elif self.path.startswith('/api/product/'):
             # API для получения детальной информации о товаре
@@ -553,7 +562,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                             if gallery_url:
                                 gallery_urls.append(gallery_url)
                     
-                    gallery_images_json = json.dumps(gallery_urls)
+                    gallery_images_data = json.dumps(gallery_urls)
                     print(f"🖼️ Галерея изображений: {len(gallery_urls)} фото")
                     
                     conn = sqlite3.connect(DATABASE_PATH)
@@ -562,7 +571,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         INSERT INTO products (title, description, price, image_url, gallery_images, 
                                             category, brand, color, material, weight, dimensions, sizes)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (title, description, price, image_url, gallery_images_json,
+                    ''', (title, description, price, image_url, gallery_images_data,
                           category, brand, color, material, weight, dimensions, sizes))
                     conn.commit()
                     conn.close()
@@ -639,10 +648,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 gallery_url = bot.save_image(gallery_image_data)
                                 if gallery_url:
                                     gallery_urls.append(gallery_url)
-                        gallery_images_json = json.dumps(gallery_urls)
+                        gallery_images_data = json.dumps(gallery_urls)
                         print(f"🖼️ Новая галерея сохранена: {len(gallery_urls)} фото")
                     else:
-                        gallery_images_json = current_gallery_images
+                        gallery_images_data = current_gallery_images
                         print("📝 Галерея не изменена")
                     
                     # Обновляем товар
@@ -651,7 +660,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         SET title = ?, description = ?, price = ?, image_url = ?, gallery_images = ?,
                             category = ?, brand = ?, color = ?, material = ?, weight = ?, dimensions = ?, sizes = ?
                             WHERE id = ?
-                    ''', (title, description, price, image_url, gallery_images_json,
+                    ''', (title, description, price, image_url, gallery_images_data,
                           category, brand, color, material, weight, dimensions, sizes, product_id))
                     
                     rows_affected = cursor.rowcount
@@ -742,16 +751,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .header {
             text-align: center;
-            margin-bottom: 24px;
-            padding: 20px;
+            margin-bottom: 16px;
+            padding: 12px;
             background: #2d2d2d;
             border-radius: 12px;
             border: 1px solid #333;
         }
         
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
+            font-size: 20px;
+            margin-bottom: 4px;
             color: #ffffff;
         }
         
@@ -840,7 +849,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             left: 0;
             right: 0;
             background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-            padding: 16px 12px 12px;
+            padding: 20px 12px 12px;
             color: white;
             border-radius: 0 0 12px 12px;
         }
@@ -3318,6 +3327,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         let currentProduct = null;
         let selectedSize = null;
+        let cart = [];
         
         // Загрузка данных товара
         async function loadProduct() {{
@@ -3522,6 +3532,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }} else {{
                 alert(message);
             }}
+        }}
+        
+        // Обновление интерфейса корзины (заглушка для страницы товара)
+        function updateCartUI() {{
+            // На странице товара эта функция не используется, но нужна для совместимости
+            console.log('Корзина обновлена');
         }}
         
         // Возврат назад
