@@ -3144,7 +3144,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-container {{
             max-width: 100vw;
             margin: 0;
-            padding: 8px;
+            padding: 4px;
             min-height: 100vh;
         }}
         
@@ -3209,7 +3209,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-info {{
             background: #2d2d2d;
             border-radius: 16px;
-            padding: 20px;
+            padding: 16px;
             margin-bottom: 16px;
             border: 1px solid #333;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -3374,7 +3374,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         @media (max-width: 480px) {{
             .product-container {{
-                padding: 6px;
+                padding: 2px;
             }}
             
             .main-image {{
@@ -3396,7 +3396,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .product-info {{
-                padding: 16px;
+                padding: 12px;
                 margin-bottom: 16px;
             }}
             
