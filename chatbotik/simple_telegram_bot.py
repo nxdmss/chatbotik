@@ -94,9 +94,9 @@ class DarkShopBot:
             try:
                 cursor.execute(f'ALTER TABLE products ADD COLUMN {field_name} {field_type}')
                 print(f"✅ Добавлено поле {field_name} в таблицу products")
-            except sqlite3.OperationalError:
-                # Поле уже существует
-                pass
+        except sqlite3.OperationalError:
+            # Поле уже существует
+            pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
@@ -2635,20 +2635,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             try {
                 if (typeof tg !== 'undefined' && tg.sendData) {
-                    tg.sendData(JSON.stringify(orderData));
+            tg.sendData(JSON.stringify(orderData));
                     console.log('✅ Данные отправлены через Telegram');
                 } else {
                     console.log('⚠️ Telegram API недоступен, используем alert');
                 }
                 
                 if (typeof tg !== 'undefined' && tg.showAlert) {
-                    tg.showAlert('Заказ отправлен! Спасибо за покупку!');
+            tg.showAlert('Заказ отправлен! Спасибо за покупку!');
                 } else {
                     alert('Заказ отправлен! Спасибо за покупку!');
                 }
-                
-                cart = [];
-                updateCartUI();
+            
+            cart = [];
+            updateCartUI();
                 console.log('🧹 Корзина очищена');
             } catch (error) {
                 console.error('❌ Ошибка при отправке заказа:', error);
@@ -3143,22 +3143,25 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .product-container {{
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 100vw;
+            margin: 0;
+            padding: 16px;
+            min-height: 100vh;
         }}
         
         .product-gallery {{
-            margin-bottom: 24px;
+            margin-bottom: 32px;
         }}
         
         .main-image {{
             width: 100%;
-            height: 300px;
+            height: 60vh;
             background: #2d2d2d;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            margin-bottom: 16px;
+            margin-bottom: 24px;
             position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }}
         
         .main-image img {{
@@ -3169,24 +3172,33 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .thumbnail-gallery {{
             display: flex;
-            gap: 12px;
+            gap: 16px;
             overflow-x: auto;
-            padding: 8px 0;
+            padding: 12px 0;
+            justify-content: center;
         }}
         
         .thumbnail {{
-            min-width: 80px;
-            height: 80px;
+            min-width: 100px;
+            height: 100px;
             background: #2d2d2d;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
             cursor: pointer;
-            border: 2px solid transparent;
+            border: 3px solid transparent;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }}
+        
+        .thumbnail:hover {{
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
         }}
         
         .thumbnail.active {{
-            border-color: #1e40af;
+            border-color: #3b82f6;
+            transform: scale(1.1);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
         }}
         
         .thumbnail img {{
@@ -3197,24 +3209,27 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .product-info {{
             background: #2d2d2d;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
             border: 1px solid #333;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }}
         
         .product-title {{
-            font-size: 24px;
+            font-size: 32px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 16px;
             color: #ffffff;
+            line-height: 1.2;
         }}
         
         .product-price {{
-            font-size: 28px;
+            font-size: 36px;
             font-weight: 700;
-            color: #10b981;
-            margin-bottom: 16px;
+            color: #3b82f6;
+            margin-bottom: 24px;
+            text-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }}
         
         .product-description {{
@@ -3312,27 +3327,36 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .add-to-cart-btn {{
-            background: #1e40af;
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
             color: white;
             border: none;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 20px 32px;
+            border-radius: 16px;
+            font-size: 20px;
+            font-weight: 700;
             cursor: pointer;
             width: 100%;
             transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }}
         
         .add-to-cart-btn:hover:not(:disabled) {{
-            background: #1d4ed8;
-            transform: scale(1.02);
+            background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+        }}
+        
+        .add-to-cart-btn:active:not(:disabled) {{
+            transform: translateY(0) scale(0.98);
         }}
         
         .add-to-cart-btn:disabled {{
-            background: #333;
+            background: linear-gradient(135deg, #333, #444);
             color: #888;
             cursor: not-allowed;
+            box-shadow: none;
         }}
         
         .loading {{
@@ -3350,21 +3374,36 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         @media (max-width: 480px) {{
+            .product-container {{
+                padding: 12px;
+            }}
+            
             .main-image {{
-                height: 250px;
+                height: 50vh;
+                border-radius: 12px;
             }}
             
             .thumbnail {{
-                min-width: 60px;
-                height: 60px;
+                min-width: 80px;
+                height: 80px;
             }}
             
             .product-title {{
-                font-size: 20px;
+                font-size: 24px;
             }}
             
             .product-price {{
-                font-size: 24px;
+                font-size: 28px;
+            }}
+            
+            .product-info {{
+                padding: 24px;
+                margin-bottom: 24px;
+            }}
+            
+            .add-to-cart-btn {{
+                padding: 16px 24px;
+                font-size: 18px;
             }}
             
             .size-grid {{
