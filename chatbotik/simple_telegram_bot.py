@@ -94,9 +94,9 @@ class DarkShopBot:
             try:
                 cursor.execute(f'ALTER TABLE products ADD COLUMN {field_name} {field_type}')
                 print(f"✅ Добавлено поле {field_name} в таблицу products")
-            except sqlite3.OperationalError:
-                # Поле уже существует
-                pass
+        except sqlite3.OperationalError:
+            # Поле уже существует
+            pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
@@ -792,10 +792,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .products-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            gap: 16px;
             margin-bottom: 24px;
-            padding: 0 16px;
-            justify-items: center;
+            padding: 0;
         }
         
         .product-card {
@@ -807,7 +806,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             aspect-ratio: 0.85;
             min-height: 220px;
             overflow: hidden;
-            margin: 8px;
+            margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
@@ -1498,12 +1497,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             .products-grid {
                 grid-template-columns: 1fr 1fr;
                 gap: 12px;
-                padding: 0 12px;
+                padding: 0;
             }
             
             .product-card {
                 padding: 0;
-                margin: 4px;
+                margin: 0;
                 min-height: 200px;
             }
             
@@ -2525,38 +2524,38 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Обновляем счетчик в навигации (если элемент существует)
             if (cartCount) {
-                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-                cartCount.textContent = totalItems;
-                cartCount.style.display = totalItems > 0 ? 'block' : 'none';
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            cartCount.style.display = totalItems > 0 ? 'block' : 'none';
             }
             
             // Обновляем содержимое корзины только если элементы существуют
             if (cartItems) {
-                if (cart.length === 0) {
-                    cartItems.innerHTML = '<div style="text-align: center; color: #aaaaaa; padding: 20px;">Корзина пуста</div>';
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<div style="text-align: center; color: #aaaaaa; padding: 20px;">Корзина пуста</div>';
                 } else {
-                    cartItems.innerHTML = cart.map(item => `
-                        <div class="cart-item">
-                            <div class="cart-item-info">
-                                <div class="cart-item-title">${item.product.title}${item.size ? ` (размер ${item.size})` : ''}</div>
-                                <div class="cart-item-price">${item.product.price.toLocaleString()} ₽</div>
-                            </div>
-                            <div class="quantity-controls">
-                                <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1}, '${item.size || ''}')">-</button>
-                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" 
-                                       onchange="updateQuantity(${item.product_id}, parseInt(this.value), '${item.size || ''}')">
-                                <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1}, '${item.size || ''}')">+</button>
-                                <button class="remove-btn" onclick="removeFromCart(${item.product_id}, '${item.size || ''}')">🗑️</button>
-                            </div>
-                        </div>
-                    `).join('');
+            cartItems.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-title">${item.product.title}${item.size ? ` (размер ${item.size})` : ''}</div>
+                        <div class="cart-item-price">${item.product.price.toLocaleString()} ₽</div>
+                    </div>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1}, '${item.size || ''}')">-</button>
+                        <input type="number" class="quantity-input" value="${item.quantity}" min="1" 
+                               onchange="updateQuantity(${item.product_id}, parseInt(this.value), '${item.size || ''}')">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1}, '${item.size || ''}')">+</button>
+                        <button class="remove-btn" onclick="removeFromCart(${item.product_id}, '${item.size || ''}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
                 }
             }
             
             // Обновляем общую сумму только если элемент существует
             if (cartTotal) {
-                const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-                cartTotal.innerHTML = `Итого: ${total.toLocaleString()} ₽`;
+            const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+            cartTotal.innerHTML = `Итого: ${total.toLocaleString()} ₽`;
             }
             
             // Обновляем кнопку оформления заказа только если элемент существует
@@ -2564,7 +2563,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 if (cart.length === 0) {
                     checkoutBtn.classList.add('hidden');
                 } else {
-                    checkoutBtn.classList.remove('hidden');
+            checkoutBtn.classList.remove('hidden');
                 }
             }
         }
