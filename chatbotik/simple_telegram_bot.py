@@ -886,14 +886,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             background: rgba(0, 0, 0, 0.6);
             color: white;
             border: none;
-            width: 30px;
-            height: 30px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 20px;
             z-index: 10;
             opacity: 0;
             transition: all 0.3s ease;
@@ -2068,7 +2068,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         ${product.gallery_images && product.gallery_images.length > 0 ? `
                             <div class="image-indicators" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 10;">
                                 ${Array.from({length: (product.gallery_images ? product.gallery_images.length : 0) + 1}, (_, i) => `
-                                    <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
+                                    <div class="indicator" style="width: 12px; height: 12px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
                                 `).join('')}
                             </div>
                             <!-- Кликабельные стрелочки -->
@@ -2179,7 +2179,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         ${product.gallery_images && product.gallery_images.length > 0 ? `
                             <div class="image-indicators" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 10;">
                                 ${Array.from({length: (product.gallery_images ? product.gallery_images.length : 0) + 1}, (_, i) => `
-                                    <div class="indicator" style="width: 6px; height: 6px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
+                                    <div class="indicator" style="width: 12px; height: 12px; border-radius: 50%; background: ${i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}; cursor: pointer; transition: all 0.3s ease;" onclick="event.stopPropagation(); goToSlide(${product.id}, ${i})"></div>
                                 `).join('')}
                             </div>
                             <!-- Кликабельные стрелочки -->
@@ -3178,8 +3178,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .thumbnail {{
-            min-width: 100px;
-            height: 100px;
+            min-width: 120px;
+            height: 120px;
             background: #2d2d2d;
             border-radius: 12px;
             overflow: hidden;
@@ -3383,8 +3383,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .thumbnail {{
-                min-width: 80px;
-                height: 80px;
+                min-width: 100px;
+                height: 100px;
             }}
             
             .product-title {{
