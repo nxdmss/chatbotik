@@ -2523,37 +2523,50 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             const checkoutBtn = document.getElementById('checkoutBtn');
             const cartCount = document.getElementById('cartCount');
             
-            // Обновляем счетчик в навигации
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCount.textContent = totalItems;
-            cartCount.style.display = totalItems > 0 ? 'block' : 'none';
-            
-            if (cart.length === 0) {
-                cartItems.innerHTML = '<div style="text-align: center; color: #aaaaaa; padding: 20px;">Корзина пуста</div>';
-                cartTotal.innerHTML = 'Итого: 0 ₽';
-                checkoutBtn.classList.add('hidden');
-                return;
+            // Обновляем счетчик в навигации (если элемент существует)
+            if (cartCount) {
+                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+                cartCount.textContent = totalItems;
+                cartCount.style.display = totalItems > 0 ? 'block' : 'none';
             }
             
-            cartItems.innerHTML = cart.map(item => `
-                <div class="cart-item">
-                    <div class="cart-item-info">
-                        <div class="cart-item-title">${item.product.title}${item.size ? ` (размер ${item.size})` : ''}</div>
-                        <div class="cart-item-price">${item.product.price.toLocaleString()} ₽</div>
-                    </div>
-                    <div class="quantity-controls">
-                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1}, '${item.size || ''}')">-</button>
-                        <input type="number" class="quantity-input" value="${item.quantity}" min="1" 
-                               onchange="updateQuantity(${item.product_id}, parseInt(this.value), '${item.size || ''}')">
-                        <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1}, '${item.size || ''}')">+</button>
-                        <button class="remove-btn" onclick="removeFromCart(${item.product_id}, '${item.size || ''}')">🗑️</button>
-                    </div>
-                </div>
-            `).join('');
+            // Обновляем содержимое корзины только если элементы существуют
+            if (cartItems) {
+                if (cart.length === 0) {
+                    cartItems.innerHTML = '<div style="text-align: center; color: #aaaaaa; padding: 20px;">Корзина пуста</div>';
+                } else {
+                    cartItems.innerHTML = cart.map(item => `
+                        <div class="cart-item">
+                            <div class="cart-item-info">
+                                <div class="cart-item-title">${item.product.title}${item.size ? ` (размер ${item.size})` : ''}</div>
+                                <div class="cart-item-price">${item.product.price.toLocaleString()} ₽</div>
+                            </div>
+                            <div class="quantity-controls">
+                                <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity - 1}, '${item.size || ''}')">-</button>
+                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" 
+                                       onchange="updateQuantity(${item.product_id}, parseInt(this.value), '${item.size || ''}')">
+                                <button class="quantity-btn" onclick="updateQuantity(${item.product_id}, ${item.quantity + 1}, '${item.size || ''}')">+</button>
+                                <button class="remove-btn" onclick="removeFromCart(${item.product_id}, '${item.size || ''}')">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
             
-            const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-            cartTotal.innerHTML = `Итого: ${total.toLocaleString()} ₽`;
-            checkoutBtn.classList.remove('hidden');
+            // Обновляем общую сумму только если элемент существует
+            if (cartTotal) {
+                const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+                cartTotal.innerHTML = `Итого: ${total.toLocaleString()} ₽`;
+            }
+            
+            // Обновляем кнопку оформления заказа только если элемент существует
+            if (checkoutBtn) {
+                if (cart.length === 0) {
+                    checkoutBtn.classList.add('hidden');
+                } else {
+                    checkoutBtn.classList.remove('hidden');
+                }
+            }
         }
         
         // Оформление заказа
@@ -3477,14 +3490,39 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             if (!currentProduct || !currentProduct.in_stock) return;
             
             if (currentProduct.sizes && !selectedSize) {{
-                tg.showAlert('Пожалуйста, выберите размер');
+                if (typeof tg !== 'undefined' && tg.showAlert) {{
+                    tg.showAlert('Пожалуйста, выберите размер');
+                }} else {{
+                    alert('Пожалуйста, выберите размер');
+                }}
                 return;
             }}
             
-            // Здесь можно добавить логику добавления в корзину
-            // Пока просто показываем уведомление
+            // Добавляем товар в корзину
+            const existingItem = cart.find(item => item.product_id === currentProduct.id && item.size === selectedSize);
+            if (existingItem) {{
+                existingItem.quantity += 1;
+            }} else {{
+                cart.push({{
+                    product_id: currentProduct.id,
+                    quantity: 1,
+                    size: selectedSize,
+                    product: currentProduct
+                }});
+            }}
+            
+            // Обновляем UI корзины
+            updateCartUI();
+            
+            // Показываем уведомление
             const sizeText = selectedSize ? ` (размер ${{selectedSize}})` : '';
-            tg.showAlert(`${{currentProduct.title}}${{sizeText}} добавлен в корзину!`);
+            const message = `${{currentProduct.title}}${{sizeText}} добавлен в корзину!`;
+            
+            if (typeof tg !== 'undefined' && tg.showAlert) {{
+                tg.showAlert(message);
+            }} else {{
+                alert(message);
+            }}
         }}
         
         // Возврат назад
