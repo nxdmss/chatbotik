@@ -3154,11 +3154,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .main-image {{
             width: 100%;
-            height: 70vh;
+            height: 80vh;
             background: #2d2d2d;
             border-radius: 16px;
             overflow: hidden;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             position: relative;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }}
@@ -3171,15 +3171,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .thumbnail-gallery {{
             display: flex;
-            gap: 12px;
+            gap: 10px;
             overflow-x: auto;
-            padding: 8px 0;
+            padding: 6px 0;
             justify-content: center;
         }}
         
         .thumbnail {{
-            min-width: 120px;
-            height: 120px;
+            min-width: 100px;
+            height: 100px;
             background: #2d2d2d;
             border-radius: 12px;
             overflow: hidden;
@@ -3209,8 +3209,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-info {{
             background: #2d2d2d;
             border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
             border: 1px solid #333;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }}
@@ -3218,7 +3218,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         .product-title {{
             font-size: 32px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #ffffff;
             line-height: 1.2;
         }}
@@ -3227,14 +3227,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             font-size: 36px;
             font-weight: 700;
             color: #3b82f6;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             text-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }}
         
         .product-description {{
             color: #cccccc;
             line-height: 1.6;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }}
         
         .product-details {{
@@ -3378,13 +3378,13 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .main-image {{
-                height: 60vh;
+                height: 70vh;
                 border-radius: 12px;
             }}
             
             .thumbnail {{
-                min-width: 100px;
-                height: 100px;
+                min-width: 80px;
+                height: 80px;
             }}
             
             .product-title {{
@@ -3396,8 +3396,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }}
             
             .product-info {{
-                padding: 12px;
-                margin-bottom: 16px;
+                padding: 10px;
+                margin-bottom: 12px;
             }}
             
             .add-to-cart-btn {{
