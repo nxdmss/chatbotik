@@ -804,8 +804,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             border-radius: 12px;
             transition: all 0.3s ease;
             position: relative;
-            aspect-ratio: 1;
-            min-height: 180px;
+            aspect-ratio: 0.85;
+            min-height: 220px;
             overflow: hidden;
             margin: 8px;
             padding: 4px;
@@ -1504,7 +1504,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             .product-card {
                 padding: 6px;
                 margin: 4px;
-                min-height: 160px;
+                min-height: 200px;
             }
             
             .product-title {
@@ -2009,18 +2009,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="event.stopPropagation(); showSizeDrawer(${product.id})">
-                                    Добавить в корзину
-                                </button>
-                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="event.stopPropagation(); addToCart(${product.id})" style="display: none;">
-                                    В корзину
-                                </button>
                                 <div style="display: flex; gap: 6px; margin-top: 4px;">
                                     <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
                                         👁 Подробнее
-                                    </button>
-                                    <button class="cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color: white; border: none; padding: 0; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s ease; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
-                                        🛒
                                     </button>
                                 </div>
                             </div>
@@ -2098,18 +2089,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button class="size-btn-thin required" id="sizeBtn_${product.id}" onclick="event.stopPropagation(); showSizeDrawer(${product.id})">
-                                    Добавить в корзину
-                                </button>
-                                <button class="add-to-cart-btn-thin" id="cartBtn_${product.id}" onclick="event.stopPropagation(); addToCart(${product.id})" style="display: none;">
-                                    В корзину
-                                </button>
                                 <div style="display: flex; gap: 6px; margin-top: 4px;">
                                     <button class="view-product-btn" onclick="event.stopPropagation(); openProductPage(${product.id})" style="background: rgba(0, 0, 0, 0.7); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 500; transition: all 0.3s ease; height: 28px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); flex: 1;">
                                         👁 Подробнее
-                                    </button>
-                                    <button class="cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color: white; border: none; padding: 0; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s ease; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
-                                        🛒
                                     </button>
                                 </div>
                             </div>
