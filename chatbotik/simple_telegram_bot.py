@@ -1890,7 +1890,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
 </head>
 <body>
         <div class="header">
-            <h1>LOOK & GO</h1>
+            <h1 id="appTitle" ondblclick="showSecretAdminAccess()">LOOK & GO</h1>
         </div>
     
     <div id="catalog" class="tab-content active">
@@ -2058,6 +2058,35 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Проверяем права администратора при загрузке
         const isAdmin = checkAdmin();
+        
+        // Флаг секретного доступа к админ панели
+        let hasSecretAccess = false;
+        
+        // Скрытый доступ к админ панели через пароль
+        function showSecretAdminAccess() {
+            const password = prompt('🔐 Введите пароль для доступа к админ панели:');
+            
+            if (password === 'admin123') { // Замените на ваш пароль
+                // Активируем секретный доступ
+                hasSecretAccess = true;
+                
+                // Временно показываем админ панель
+                const adminBtn = document.querySelector('.admin-only');
+                const adminTab = document.getElementById('admin');
+                
+                adminBtn.style.display = 'flex';
+                adminTab.style.display = 'block';
+                
+                // Переключаемся на админ панель
+                showTab('admin');
+                
+                console.log('🔓 Секретный доступ к админ панели активирован');
+                alert('✅ Доступ разрешен! Админ панель активирована.');
+            } else if (password !== null) {
+                console.log('🚫 Неверный пароль для секретного доступа');
+                alert('❌ Неверный пароль! Доступ запрещен.');
+            }
+        }
         
         // Проверяем что мы в Telegram WebApp
         const isTelegramWebApp = typeof window.Telegram !== 'undefined' && window.Telegram.WebApp;
@@ -3125,7 +3154,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 const userId = tg.initDataUnsafe?.user?.id?.toString();
                 const isAdmin = userId && adminIds.includes(userId);
                 
-                if (!isAdmin) {
+                // Разрешаем доступ если пользователь админ ИЛИ есть секретный доступ
+                if (!isAdmin && !hasSecretAccess) {
                     console.log('🚫 ПРЯМОЙ ДОСТУП ЗАБЛОКИРОВАН');
                     console.log('❌ Попытка несанкционированного доступа к админ панели');
                     alert('❌ Доступ запрещен. Только администраторы могут использовать эту функцию.');
@@ -3449,9 +3479,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         .thumbnail.active {{
-            border-color: #3b82f6;
-            transform: scale(1.1);
-            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+            border-color: #555;
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
         }}
         
         .thumbnail img {{
