@@ -2189,7 +2189,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <!-- Кнопка "Подробнее" убрана - вся карточка кликабельна -->
+                                <button class="add-to-cart-btn-thin" onclick="event.stopPropagation(); addToCart(${product.id}); alert('Товар добавлен!');">
+                                    В корзину
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2300,7 +2302,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <!-- Кнопка "Подробнее" убрана - вся карточка кликабельна -->
+                                <button class="add-to-cart-btn-thin" onclick="event.stopPropagation(); addToCart(${product.id}); alert('Товар добавлен!');">
+                                    В корзину
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -4361,51 +4365,16 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }}
         
         // Добавление в корзину
-        function addToCart() {{
+        function addToCartFromProductPage() {{
             if (!currentProduct || !currentProduct.in_stock) return;
             
             if (currentProduct.sizes && !selectedSize) {{
-                if (typeof tg !== 'undefined' && tg.showAlert) {{
-                    tg.showAlert('Пожалуйста, выберите размер');
-                }} else {{
-                    alert('Пожалуйста, выберите размер');
-                }}
+                alert('Пожалуйста, выберите размер');
                 return;
             }}
             
-            // Добавляем товар в корзину
-            const existingItem = cart.find(item => item.product_id === currentProduct.id && item.size === selectedSize);
-            if (existingItem) {{
-                existingItem.quantity += 1;
-            }} else {{
-                cart.push({{
-                    product_id: currentProduct.id,
-                    quantity: 1,
-                    size: selectedSize,
-                    product: currentProduct
-                }});
-            }}
-            
-            // Сохраняем корзину в localStorage
-            saveCartToStorage();
-            
-            // Обновляем UI корзины
-            updateCartUI();
-            
-            // Переходим в корзину (если доступна функция)
-            if (typeof showTab === 'function') {{
-                showTab('cart');
-            }}
-            
-            // Показываем уведомление
-            const sizeText = selectedSize ? ` (размер ${{selectedSize}})` : '';
-            const message = `${{currentProduct.title}}${{sizeText}} добавлен в корзину!`;
-            
-            if (typeof tg !== 'undefined' && tg.showAlert) {{
-                tg.showAlert(message);
-            }} else {{
-                alert(message);
-            }}
+            // Используем основную функцию добавления
+            addToCart(currentProduct.id, selectedSize);
         }}
         
         // Обновление интерфейса корзины
