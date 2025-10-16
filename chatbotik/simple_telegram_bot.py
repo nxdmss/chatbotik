@@ -650,10 +650,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     
                     # Обновляем товар
                     cursor.execute('''
-                        UPDATE products 
+                            UPDATE products 
                         SET title = ?, description = ?, price = ?, image_url = ?, gallery_images = ?,
                             category = ?, brand = ?, color = ?, material = ?, weight = ?, sizes = ?
-                        WHERE id = ?
+                            WHERE id = ?
                     ''', (title, description, price, image_url, gallery_images_data,
                           category, brand, color, material, weight, sizes, product_id))
                     
@@ -1281,29 +1281,65 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            background: transparent;
-            border: none;
-            color: #aaaaaa;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #888;
             cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            min-width: 60px;
+            padding: 16px 12px;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 70px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn:hover::before {
+            opacity: 1;
         }
         
         .nav-btn.active {
             color: #3b82f6;
-            background: rgba(30, 64, 175, 0.1);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2));
+            border-color: #3b82f6;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.active::before {
+            opacity: 1;
         }
         
         .nav-btn i {
-            font-size: 18px;
+            font-size: 20px;
+            z-index: 1;
+            position: relative;
         }
         
         .nav-btn span {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
+            z-index: 1;
+            position: relative;
         }
         
         .tab-content {
@@ -1962,7 +1998,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             <span>Корзина</span>
             <span class="cart-count" id="cartCount">0</span>
         </button>
-        <button class="nav-btn" onclick="showTab('admin')">
+        <button class="nav-btn admin-only" onclick="showTab('admin')" style="display: none;">
             <span>⚙️</span>
             <span>Админ</span>
         </button>
@@ -1972,6 +2008,39 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        // Проверка администратора
+        function checkAdmin() {
+            // Список ID администраторов (замените на ваши реальные ID)
+            const adminIds = [
+                '123456789',  // Замените на ваш Telegram ID
+                '987654321'   // Добавьте других админов при необходимости
+            ];
+            
+            // Получаем ID пользователя из Telegram WebApp
+            const userId = tg.initDataUnsafe?.user?.id?.toString();
+            
+            // Проверяем, является ли пользователь администратором
+            const isAdmin = userId && adminIds.includes(userId);
+            
+            // Показываем админ панель только администраторам
+            const adminBtn = document.querySelector('.admin-only');
+            const adminTab = document.getElementById('admin');
+            
+            if (isAdmin) {
+                adminBtn.style.display = 'flex';
+                console.log('👑 Пользователь является администратором');
+            } else {
+                adminBtn.style.display = 'none';
+                adminTab.style.display = 'none';
+                console.log('👤 Обычный пользователь');
+            }
+            
+            return isAdmin;
+        }
+        
+        // Проверяем права администратора при загрузке
+        const isAdmin = checkAdmin();
         
         // Проверяем что мы в Telegram WebApp
         const isTelegramWebApp = typeof window.Telegram !== 'undefined' && window.Telegram.WebApp;
@@ -3030,6 +3099,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Переключение табов
         function showTab(tabName, clickedElement = null) {
+            // Проверяем права доступа к админ панели
+            if (tabName === 'admin' && !isAdmin) {
+                console.log('❌ Доступ к админ панели запрещен');
+                return;
+            }
+            
             // Скрыть все табы
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
