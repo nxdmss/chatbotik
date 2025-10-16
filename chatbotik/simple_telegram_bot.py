@@ -2009,33 +2009,50 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         tg.ready();
         tg.expand();
         
-        // Проверка администратора
+        // Профессиональная система авторизации администраторов
         function checkAdmin() {
-            // Список ID клиентов (которым НЕ показывать админ панель)
-            const clientIds = [
-                // Добавьте сюда ID клиентов, которым не нужен доступ к админ панели
-                // '123456789',  // Пример ID клиента
+            // Список ID администраторов (ТОЛЬКО эти пользователи имеют доступ)
+            const adminIds = [
+                // ЗАМЕНИТЕ НА ВАШИ РЕАЛЬНЫЕ TELEGRAM ID
+                '123456789',  // Ваш Telegram ID
+                '987654321',  // ID другого администратора (если нужен)
+                // Добавьте сюда другие ID администраторов
             ];
             
             // Получаем ID пользователя из Telegram WebApp
             const userId = tg.initDataUnsafe?.user?.id?.toString();
+            const username = tg.initDataUnsafe?.user?.username || 'Unknown';
+            const firstName = tg.initDataUnsafe?.user?.first_name || 'User';
             
-            // Проверяем, является ли пользователь клиентом (не админом)
-            const isClient = userId && clientIds.includes(userId);
+            // Проверяем, является ли пользователь администратором
+            const isAdmin = userId && adminIds.includes(userId);
             
-            // Скрываем админ панель только для клиентов
+            // Управляем видимостью админ панели
             const adminBtn = document.querySelector('.admin-only');
             const adminTab = document.getElementById('admin');
             
-            if (isClient) {
+            if (isAdmin) {
+                // ПОЛЬЗОВАТЕЛЬ - АДМИНИСТРАТОР
+                adminBtn.style.display = 'flex';
+                console.log('🔐 АВТОРИЗАЦИЯ: УСПЕШНО');
+                console.log('👑 Администратор авторизован:', {
+                    id: userId,
+                    username: username,
+                    firstName: firstName
+                });
+                return true;
+            } else {
+                // ПОЛЬЗОВАТЕЛЬ - НЕ АДМИНИСТРАТОР
                 adminBtn.style.display = 'none';
                 adminTab.style.display = 'none';
-                console.log('👤 Клиент - админ панель скрыта');
+                console.log('🚫 АВТОРИЗАЦИЯ: ОТКАЗАНО');
+                console.log('👤 Обычный пользователь:', {
+                    id: userId || 'Не определен',
+                    username: username,
+                    firstName: firstName
+                });
+                console.log('📋 Список администраторов:', adminIds);
                 return false;
-            } else {
-                adminBtn.style.display = 'flex';
-                console.log('👑 Администратор - админ панель доступна');
-                return true;
             }
         }
         
@@ -3097,8 +3114,24 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }, 3000);
         }
         
-        // Переключение табов
+        // Переключение табов с проверкой авторизации
         function showTab(tabName, clickedElement = null) {
+            // Проверка доступа к админ панели
+            if (tabName === 'admin') {
+                const adminIds = [
+                    '123456789',  // Ваш Telegram ID
+                    '987654321',  // ID другого администратора
+                ];
+                const userId = tg.initDataUnsafe?.user?.id?.toString();
+                const isAdmin = userId && adminIds.includes(userId);
+                
+                if (!isAdmin) {
+                    console.log('🚫 ПРЯМОЙ ДОСТУП ЗАБЛОКИРОВАН');
+                    console.log('❌ Попытка несанкционированного доступа к админ панели');
+                    alert('❌ Доступ запрещен. Только администраторы могут использовать эту функцию.');
+                    return;
+                }
+            }
             
             // Скрыть все табы
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -3374,7 +3407,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         .main-image {{
             width: 100%;
-            height: 95vh;
+            height: 60vh;
+            max-height: 400px;
             background: #2d2d2d;
             border-radius: 6px;
             overflow: hidden;
@@ -3600,7 +3634,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             .main-image {{
                 width: 100%;
-                height: 93vh;
+                height: 50vh;
+                max-height: 350px;
                 border-radius: 6px;
                 margin: 0px;
             }}
