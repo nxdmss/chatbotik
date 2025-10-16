@@ -4211,6 +4211,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 }}
                 
                 currentProduct = await response.json();
+                
+                // Устанавливаем заголовок страницы на название товара
+                document.title = currentProduct.title + ' - LOOK & GO';
+                
                 renderProduct();
             }} catch (error) {{
                 document.getElementById('productContent').innerHTML = `
@@ -4303,24 +4307,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                 </div>
                 
-                ${{currentProduct.sizes ? `
-                    <div class="size-section">
-                        <h3>Размеры</h3>
-                        <div class="size-grid" id="sizeGrid">
-                            ${{currentProduct.sizes.split(',').map(size => `
-                                <button class="size-btn" onclick="selectSize('${{size.trim()}}', this)">
-                                    ${{size.trim()}}
-                                </button>
-                            `).join('')}}
-                        </div>
-                    </div>
-                ` : ''}}
-                
-                <div class="add-to-cart-section">
-                    <button class="add-to-cart-btn" id="addToCartBtn" onclick="addToCart()" ${{!currentProduct.in_stock ? 'disabled' : ''}}>
-                        ${{!currentProduct.in_stock ? 'Нет в наличии' : 'Добавить в корзину'}}
-                    </button>
-                </div>
+                <!-- Размеры и кнопка корзины убраны -->
             `;
         }}
         
