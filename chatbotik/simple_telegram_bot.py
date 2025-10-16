@@ -2189,9 +2189,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button class="add-to-cart-btn-thin" onclick="event.stopPropagation(); addToCart(${product.id}); alert('Товар добавлен!');">
-                                    В корзину
-                                </button>
+                                ${product.sizes && product.sizes.length > 0 ? `
+                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.map(s => `'${s}'`).join(', ')}])">
+                                        Выбрать размер
+                                    </button>
+                                ` : `
+                                    <button class="add-to-cart-btn-thin" onclick="event.stopPropagation(); addToCart(${product.id}); alert('Товар добавлен!');">
+                                        В корзину
+                                    </button>
+                                `}
                             </div>
                         </div>
                     </div>
@@ -2302,9 +2308,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                <button class="add-to-cart-btn-thin" onclick="event.stopPropagation(); addToCart(${product.id}); alert('Товар добавлен!');">
-                                    В корзину
-                                </button>
+                                ${product.sizes && product.sizes.length > 0 ? `
+                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.map(s => `'${s}'`).join(', ')}])">
+                                        Выбрать размер
+                                    </button>
+                                ` : `
+                                    <button class="add-to-cart-btn-thin" onclick="event.stopPropagation(); addToCart(${product.id}); alert('Товар добавлен!');">
+                                        В корзину
+                                    </button>
+                                `}
                             </div>
                         </div>
                     </div>
@@ -4155,7 +4167,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
 <body>
     <div class="header">
         <button class="back-btn" onclick="goBack()">← Назад</button>
-        <h1>Внутрянка</h1>
+        <h1 id="appTitle">Внутрянка</h1>
         <div></div>
     </div>
     
@@ -4212,8 +4224,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 
                 currentProduct = await response.json();
                 
-                // Устанавливаем заголовок страницы на название товара
+                // Устанавливаем заголовок страницы и шапки на название товара
                 document.title = currentProduct.title + ' - LOOK & GO';
+                
+                // Меняем заголовок в шапке
+                const appTitle = document.getElementById('appTitle');
+                if (appTitle) {{
+                    appTitle.textContent = currentProduct.title;
+                }}
                 
                 renderProduct();
             }} catch (error) {{
@@ -4252,7 +4270,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 </div>
                 
                 <div class="product-info">
-                    <h1 class="product-title">${{currentProduct.title}}</h1>
+                    <!-- Название товара убрано - теперь только в шапке -->
                     <div class="product-price">${{currentProduct.price.toLocaleString()}} ₽</div>
                     
                     ${{currentProduct.description ? `
