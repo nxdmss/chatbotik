@@ -1286,7 +1286,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #888;
             cursor: pointer;
-            padding: 16px 12px;
+            padding: 10px 12px;
             border-radius: 16px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             min-width: 70px;
@@ -1998,7 +1998,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             <span>Корзина</span>
             <span class="cart-count" id="cartCount">0</span>
         </button>
-        <button class="nav-btn admin-only" onclick="showTab('admin')" style="display: none;">
+        <button class="nav-btn admin-only" onclick="showTab('admin')">
             <span>⚙️</span>
             <span>Админ</span>
         </button>
@@ -2011,32 +2011,32 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Проверка администратора
         function checkAdmin() {
-            // Список ID администраторов (замените на ваши реальные ID)
-            const adminIds = [
-                '123456789',  // Замените на ваш Telegram ID
-                '987654321'   // Добавьте других админов при необходимости
+            // Список ID клиентов (которым НЕ показывать админ панель)
+            const clientIds = [
+                // Добавьте сюда ID клиентов, которым не нужен доступ к админ панели
+                // '123456789',  // Пример ID клиента
             ];
             
             // Получаем ID пользователя из Telegram WebApp
             const userId = tg.initDataUnsafe?.user?.id?.toString();
             
-            // Проверяем, является ли пользователь администратором
-            const isAdmin = userId && adminIds.includes(userId);
+            // Проверяем, является ли пользователь клиентом (не админом)
+            const isClient = userId && clientIds.includes(userId);
             
-            // Показываем админ панель только администраторам
+            // Скрываем админ панель только для клиентов
             const adminBtn = document.querySelector('.admin-only');
             const adminTab = document.getElementById('admin');
             
-            if (isAdmin) {
-                adminBtn.style.display = 'flex';
-                console.log('👑 Пользователь является администратором');
-            } else {
+            if (isClient) {
                 adminBtn.style.display = 'none';
                 adminTab.style.display = 'none';
-                console.log('👤 Обычный пользователь');
+                console.log('👤 Клиент - админ панель скрыта');
+                return false;
+            } else {
+                adminBtn.style.display = 'flex';
+                console.log('👑 Администратор - админ панель доступна');
+                return true;
             }
-            
-            return isAdmin;
         }
         
         // Проверяем права администратора при загрузке
@@ -3099,11 +3099,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Переключение табов
         function showTab(tabName, clickedElement = null) {
-            // Проверяем права доступа к админ панели
-            if (tabName === 'admin' && !isAdmin) {
-                console.log('❌ Доступ к админ панели запрещен');
-                return;
-            }
             
             // Скрыть все табы
             document.querySelectorAll('.tab-content').forEach(tab => {
