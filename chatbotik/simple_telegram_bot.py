@@ -2362,6 +2362,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             resetProductButtons(productId);
             
             updateCartUI();
+            
+            // Переходим в корзину
+            showTab('cart');
             const sizeText = size ? ` (размер ${size})` : '';
             tg.showAlert(`${product.title}${sizeText} добавлен в корзину!`);
         }
@@ -2789,12 +2792,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Редактирование товара (используем существующую форму)
         function editProduct(productId) {
-            alert('Начинаем редактирование товара ID: ' + productId);
             console.log('🔧 Функция editProduct вызвана для ID:', productId);
             
             const product = products.find(p => p.id === productId);
             if (!product) {
-                alert('Товар не найден!');
+                showAdminMessage('Товар не найден!', 'error');
                 console.error('Товар не найден:', productId);
                 return;
             }
@@ -2871,7 +2873,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Удаление товара
         async function deleteProduct(productId) {
-            alert('Попытка удаления товара ID: ' + productId);
             console.log('🗑️ Функция deleteProduct вызвана для ID:', productId);
             
             if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
@@ -2920,7 +2921,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         // Переключение табов
-        function showTab(tabName) {
+        function showTab(tabName, clickedElement = null) {
             // Скрыть все табы
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -2932,7 +2933,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Показать выбранный таб
             document.getElementById(tabName).classList.add('active');
+            
+            // Активировать кнопку навигации
+            if (clickedElement) {
+                clickedElement.classList.add('active');
+            } else if (event && event.target) {
             event.target.classList.add('active');
+            } else {
+                // Найти кнопку по табу
+                const navBtn = document.querySelector(`[onclick*="showTab('${tabName}')"]`);
+                if (navBtn) navBtn.classList.add('active');
+            }
             
             // Обновить данные для определенных табов
             if (tabName === 'cart') {
@@ -3688,6 +3699,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Обновляем UI корзины
             updateCartUI();
+            
+            // Переходим в корзину (если доступна функция)
+            if (typeof showTab === 'function') {{
+                showTab('cart');
+            }}
             
             // Показываем уведомление
             const sizeText = selectedSize ? ` (размер ${{selectedSize}})` : '';
