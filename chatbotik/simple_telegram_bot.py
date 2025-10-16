@@ -616,6 +616,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 gallery_images_data = data.get('gallery_images', [])
                 
                 print(f"🔄 Обновление товара ID {product_id}: title='{title}', price={price}, sizes='{sizes}', image_len={len(image_data) if image_data else 0}, gallery_len={len(gallery_images_data)}")
+                print(f"📸 Данные галереи: {[len(img) if img else 0 for img in gallery_images_data]}")
                 
                 if title and price > 0:
                     conn = sqlite3.connect(DATABASE_PATH)
@@ -627,36 +628,32 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     current_image_url = current_product[0] if current_product else ''
                     current_gallery_images = current_product[1] if current_product else '[]'
                     
-                    # Если есть новое основное изображение, сохраняем его
-                    if image_data and image_data.strip():
+                    # Обрабатываем основное изображение (всегда обновляем)
+                    if image_data and image_data.strip() and len(image_data) > 100:  # base64 обычно длинный
                         bot = DarkShopBot()
                         image_url = bot.save_image(image_data)
-                        print(f"🖼️ Новое основное изображение сохранено: {image_url}")
+                        print(f"🖼️ Основное изображение обновлено: {image_url}")
                     else:
                         image_url = current_image_url
-                        print("📝 Основное изображение не изменено")
+                        print(f"📝 Основное изображение не изменено (длина данных: {len(image_data) if image_data else 0})")
                     
-                    # Если есть новая галерея, сохраняем её
-                    if gallery_images_data:
-                        bot = DarkShopBot()
-                        gallery_urls = []
-                        for gallery_image_data in gallery_images_data:
-                            if gallery_image_data:
-                                gallery_url = bot.save_image(gallery_image_data)
-                                if gallery_url:
-                                    gallery_urls.append(gallery_url)
-                        gallery_images_data = json.dumps(gallery_urls)
-                        print(f"🖼️ Новая галерея сохранена: {len(gallery_urls)} фото")
-                    else:
-                        gallery_images_data = current_gallery_images
-                        print("📝 Галерея не изменена")
+                    # Обрабатываем галерею (всегда обновляем, даже если пустая)
+                    bot = DarkShopBot()
+                    gallery_urls = []
+                    for gallery_image_data in gallery_images_data:
+                        if gallery_image_data and gallery_image_data.strip():
+                            gallery_url = bot.save_image(gallery_image_data)
+                            if gallery_url:
+                                gallery_urls.append(gallery_url)
+                    gallery_images_data = json.dumps(gallery_urls)
+                    print(f"🖼️ Галерея обновлена: {len(gallery_urls)} фото (было {len(json.loads(current_gallery_images) if current_gallery_images else '[]')})")
                     
                     # Обновляем товар
-                        cursor.execute('''
-                            UPDATE products 
+                    cursor.execute('''
+                        UPDATE products 
                         SET title = ?, description = ?, price = ?, image_url = ?, gallery_images = ?,
                             category = ?, brand = ?, color = ?, material = ?, weight = ?, sizes = ?
-                            WHERE id = ?
+                        WHERE id = ?
                     ''', (title, description, price, image_url, gallery_images_data,
                           category, brand, color, material, weight, sizes, product_id))
                     
@@ -2801,6 +2798,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     title: title,
                     price: price,
                     imageLength: selectedImageData ? selectedImageData.length : 0,
+                    galleryImagesCount: selectedGalleryImages.length,
+                    galleryImagesLengths: selectedGalleryImages.map(img => img ? img.length : 0),
                     fullRequestData: requestData
                 });
                 
