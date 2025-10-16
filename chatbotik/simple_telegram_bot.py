@@ -2825,6 +2825,21 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             if (product.image_url) {
                 const imageUrl = product.image_url.startsWith('http') ? product.image_url : `${window.location.origin}${product.image_url}`;
                 document.getElementById('imagePreview').innerHTML = `<img src="${imageUrl}" alt="${product.title}" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
+                
+                // Загружаем текущее изображение в selectedImageData для сохранения
+                fetch(imageUrl)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onload = function() {
+                            selectedImageData = reader.result;
+                            console.log('📷 Текущее изображение загружено для редактирования');
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(error => {
+                        console.log('⚠️ Не удалось загрузить текущее изображение:', error);
+                    });
             } else {
                 document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
             }
