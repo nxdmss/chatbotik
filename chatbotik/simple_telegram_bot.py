@@ -540,7 +540,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 color = data.get('color', '')
                 material = data.get('material', '')
                 weight = data.get('weight', '')
-                dimensions = data.get('dimensions', '')
                 sizes = data.get('sizes', '')
                 image_data = data.get('image', '')
                 gallery_images_data = data.get('gallery_images', [])
@@ -568,10 +567,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT INTO products (title, description, price, image_url, gallery_images, 
-                                            category, brand, color, material, weight, dimensions, sizes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            category, brand, color, material, weight, sizes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (title, description, price, image_url, gallery_images_data,
-                          category, brand, color, material, weight, dimensions, sizes))
+                          category, brand, color, material, weight, sizes))
                     conn.commit()
                     conn.close()
                     
@@ -612,7 +611,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 color = data.get('color', '')
                 material = data.get('material', '')
                 weight = data.get('weight', '')
-                dimensions = data.get('dimensions', '')
                 sizes = data.get('sizes', '')
                 image_data = data.get('image', '')
                 gallery_images_data = data.get('gallery_images', [])
@@ -657,10 +655,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         cursor.execute('''
                             UPDATE products 
                         SET title = ?, description = ?, price = ?, image_url = ?, gallery_images = ?,
-                            category = ?, brand = ?, color = ?, material = ?, weight = ?, dimensions = ?, sizes = ?
+                            category = ?, brand = ?, color = ?, material = ?, weight = ?, sizes = ?
                             WHERE id = ?
                     ''', (title, description, price, image_url, gallery_images_data,
-                          category, brand, color, material, weight, dimensions, sizes, product_id))
+                          category, brand, color, material, weight, sizes, product_id))
                     
                     rows_affected = cursor.rowcount
                     conn.commit()
@@ -1931,10 +1929,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     <input type="text" id="productWeight" placeholder="500г, 1кг...">
                 </div>
                 <div class="form-group">
-                    <label for="productDimensions">Размеры</label>
-                    <input type="text" id="productDimensions" placeholder="30x20x10 см...">
-                </div>
-                <div class="form-group">
                     <label for="productSizes">Размерная сетка (через запятую)</label>
                     <input type="text" id="productSizes" placeholder="36,37,38,39,40,41,42,43,44,45,46">
                     <small style="color: #666; font-size: 12px;">Оставьте пустым для товаров без размера</small>
@@ -2245,11 +2239,24 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     selectedGalleryImages.push(e.target.result);
                     console.log(`📷 Фото ${index + 1} добавлено в галерею: ${file.name}`);
                     
-                    // Добавляем превью
+                    // Добавляем превью с кнопкой удаления
+                    const photoContainer = document.createElement('div');
+                    photoContainer.style.cssText = 'position: relative; display: inline-block;';
+                    
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #333;';
-                    preview.appendChild(img);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '×';
+                    deleteBtn.style.cssText = 'position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; background: #ff4444; color: white; border: none; cursor: pointer; font-size: 14px; font-weight: bold;';
+                    deleteBtn.onclick = function() {
+                        removeGalleryPhoto(index);
+                    };
+                    
+                    photoContainer.appendChild(img);
+                    photoContainer.appendChild(deleteBtn);
+                    preview.appendChild(photoContainer);
                 };
                 reader.onerror = function() {
                     console.error('❌ Ошибка чтения файла:', file.name);
@@ -2260,6 +2267,41 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             });
             
             console.log(`📸 Загружено ${files.length} файлов в галерею`);
+        }
+        
+        // Удаление фото из галереи при редактировании
+        function removeGalleryPhoto(index) {
+            if (confirm('Удалить это фото из галереи?')) {
+                // Удаляем из массива
+                selectedGalleryImages.splice(index, 1);
+                
+                // Перерисовываем превью
+                const galleryPreview = document.getElementById('galleryPreview');
+                galleryPreview.innerHTML = '';
+                
+                // Перерисовываем все оставшиеся фото
+                selectedGalleryImages.forEach((imageData, newIndex) => {
+                    const photoContainer = document.createElement('div');
+                    photoContainer.style.cssText = 'position: relative; display: inline-block;';
+                    
+                    const img = document.createElement('img');
+                    img.src = imageData;
+                    img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #333;';
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '×';
+                    deleteBtn.style.cssText = 'position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; background: #ff4444; color: white; border: none; cursor: pointer; font-size: 14px; font-weight: bold;';
+                    deleteBtn.onclick = function() {
+                        removeGalleryPhoto(newIndex);
+                    };
+                    
+                    photoContainer.appendChild(img);
+                    photoContainer.appendChild(deleteBtn);
+                    galleryPreview.appendChild(photoContainer);
+                });
+                
+                console.log(`🗑️ Фото ${index + 1} удалено из галереи. Осталось: ${selectedGalleryImages.length}`);
+            }
         }
         
         // Простая обработка загрузки изображения
@@ -2710,7 +2752,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             const color = document.getElementById('productColor').value.trim();
             const material = document.getElementById('productMaterial').value.trim();
             const weight = document.getElementById('productWeight').value.trim();
-            const dimensions = document.getElementById('productDimensions').value.trim();
             const sizes = document.getElementById('productSizes').value.trim();
             
             console.log('📝 Данные формы:', { 
@@ -2722,7 +2763,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 color: color,
                 material: material,
                 weight: weight,
-                dimensions: dimensions,
                 sizes: sizes,
                 imageData: selectedImageData ? `есть (${selectedImageData.length} символов)` : 'нет',
                 galleryImages: selectedGalleryImages.length,
@@ -2752,7 +2792,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     color: color,
                     material: material,
                     weight: weight,
-                    dimensions: dimensions,
                     sizes: sizes,
                     image: selectedImageData,
                     gallery_images: selectedGalleryImages
@@ -2822,7 +2861,6 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             document.getElementById('productColor').value = product.color || '';
             document.getElementById('productMaterial').value = product.material || '';
             document.getElementById('productWeight').value = product.weight || '';
-            document.getElementById('productDimensions').value = product.dimensions || '';
             document.getElementById('productSizes').value = product.sizes || '';
             
             // Очищаем выбранное изображение
@@ -2862,11 +2900,24 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 product.gallery_images.forEach((galleryUrl, index) => {
                     const fullUrl = galleryUrl.startsWith('http') ? galleryUrl : `${window.location.origin}${galleryUrl}`;
                     
-                    // Добавляем превью
+                    // Добавляем превью с кнопкой удаления
+                    const photoContainer = document.createElement('div');
+                    photoContainer.style.cssText = 'position: relative; display: inline-block;';
+                    
                     const img = document.createElement('img');
                     img.src = fullUrl;
                     img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #333;';
-                    galleryPreview.appendChild(img);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '×';
+                    deleteBtn.style.cssText = 'position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; background: #ff4444; color: white; border: none; cursor: pointer; font-size: 14px; font-weight: bold;';
+                    deleteBtn.onclick = function() {
+                        removeGalleryPhoto(index);
+                    };
+                    
+                    photoContainer.appendChild(img);
+                    photoContainer.appendChild(deleteBtn);
+                    galleryPreview.appendChild(photoContainer);
                     
                     // Загружаем в selectedGalleryImages
                     fetch(fullUrl)
