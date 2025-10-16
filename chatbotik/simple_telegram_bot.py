@@ -347,6 +347,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         except:
                             gallery_images = []
                     
+                    # Обрабатываем размеры
+                    sizes_raw = str(product[7]) if len(product) > 7 and product[7] else ''
+                    sizes_list = [s.strip() for s in sizes_raw.split(',') if s.strip()]
+                    print(f"🔍 DEBUG: Товар {product[1]}, размеры raw: '{sizes_raw}', обработанные: {sizes_list}")
+                    
                     products_data.append({
                         'id': product[0],
                         'title': product[1],
@@ -354,7 +359,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'image_url': (product[3] if len(product) > 3 else '') or '',
                         'description': product[5] if len(product) > 5 else '',
                         'gallery_images': gallery_images,
-                        'sizes': (product[7] if len(product) > 7 else '') or '',
+                        'sizes': sizes_list,
                         'category': (product[8] if len(product) > 8 else '') or '',
                         'brand': (product[9] if len(product) > 9 else '') or '',
                         'color': (product[10] if len(product) > 10 else '') or '',
@@ -394,6 +399,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         except:
                             gallery_images = []
                     
+                    # Обрабатываем размеры
+                    sizes_raw = str(product[7]) if len(product) > 7 and product[7] else ''
+                    sizes_list = [s.strip() for s in sizes_raw.split(',') if s.strip()]
+                    
                     product_data = {
                         'id': product[0],
                         'title': product[1],
@@ -401,7 +410,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'price': product[2],
                         'image_url': (product[3] if len(product) > 3 else '') or '',
                         'gallery_images': gallery_images,
-                        'sizes': (product[7] if len(product) > 7 else '') or '',
+                        'sizes': sizes_list,
                         'category': (product[8] if len(product) > 8 else '') or '',
                         'brand': (product[9] if len(product) > 9 else '') or '',
                         'color': (product[10] if len(product) > 10 else '') or '',
@@ -2232,8 +2241,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                ${product.sizes && product.sizes.trim() ? `
-                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.split(',').map(s => `'${s.trim()}'`).join(', ')}])">
+                                ${product.sizes && product.sizes.length > 0 ? `
+                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.map(s => `'${s}'`).join(', ')}])">
                                         Выбрать размер
                                     </button>
                                 ` : `
@@ -2351,8 +2360,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                ${product.sizes && product.sizes.trim() ? `
-                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.split(',').map(s => `'${s.trim()}'`).join(', ')}])">
+                                ${product.sizes && product.sizes.length > 0 ? `
+                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.map(s => `'${s}'`).join(', ')}])">
                                         Выбрать размер
                                     </button>
                                 ` : `
@@ -2687,7 +2696,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             // Проверяем размеры
-            if (product.sizes && product.sizes.trim() && !size) {
+            if (product.sizes && !size) {
                 console.warn('⚠️ Не выбран размер для товара:', product.title);
                 showNotification('Пожалуйста, выберите размер', 'warning');
                 return;
@@ -4423,7 +4432,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         function addToCartFromProductPage() {{
             if (!currentProduct || !currentProduct.in_stock) return;
             
-            if (currentProduct.sizes && currentProduct.sizes.trim() && !selectedSize) {{
+            if (currentProduct.sizes && !selectedSize) {{
                 alert('Пожалуйста, выберите размер');
                 return;
             }}
