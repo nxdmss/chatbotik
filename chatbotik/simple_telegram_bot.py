@@ -2605,7 +2605,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Добавление в корзину
         // Профессиональное добавление в корзину
+        let lastAddTime = 0;
+        
         function addToCart(productId, size = null) {
+            // Защита от частых вызовов (не чаще раза в 300мс)
+            const now = Date.now();
+            if (now - lastAddTime < 300) {
+                console.log('⚠️ Слишком частые вызовы addToCart, пропускаем');
+                return false;
+            }
+            lastAddTime = now;
+            
             console.log('🛒 Добавление товара в корзину:', { productId, size });
             
             const product = products.find(p => p.id === productId);
@@ -2885,14 +2895,42 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
         }
         
-        // Удаление из корзины
+        // Удаление из корзины с защитой от частых вызовов
+        let lastRemoveTime = 0;
+        
         function removeFromCart(productId, size = null) {
+            // Защита от частых вызовов
+            const now = Date.now();
+            if (now - lastRemoveTime < 200) {
+                return;
+            }
+            lastRemoveTime = now;
+            
+            console.log('🗑️ Удаление товара:', { productId, size });
+            
+            const initialLength = cart.length;
             cart = cart.filter(item => !(item.product_id === productId && item.size === size));
-            updateCartUI();
+            
+            if (cart.length < initialLength) {
+                saveCartToStorage();
+                updateCartUI();
+                console.log('✅ Товар удален из корзины');
+            }
         }
         
-        // Обновление количества
+        // Обновление количества с защитой от частых вызовов
+        let lastUpdateTime = 0;
+        
         function updateQuantity(productId, quantity, size = null) {
+            // Защита от частых вызовов (не чаще раза в 100мс)
+            const now = Date.now();
+            if (now - lastUpdateTime < 100) {
+                return;
+            }
+            lastUpdateTime = now;
+            
+            console.log('🔄 Обновление количества:', { productId, quantity, size });
+            
             if (quantity <= 0) {
                 removeFromCart(productId, size);
                 return;
@@ -2901,7 +2939,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             const item = cart.find(item => item.product_id === productId && item.size === size);
             if (item) {
                 item.quantity = quantity;
+                saveCartToStorage();
                 updateCartUI();
+                console.log('✅ Количество обновлено:', quantity);
             }
         }
         
