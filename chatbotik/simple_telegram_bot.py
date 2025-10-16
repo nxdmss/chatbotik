@@ -2111,7 +2111,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         async function loadProducts() {
             try {
                 const response = await fetch('/api/products');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 products = await response.json();
+                console.log('📦 Загружено товаров:', products.length);
                 renderProducts();
                 if (document.getElementById('adminProductsList')) {
                     console.log('🛠️ Рендерим админ товары, количество:', products.length);
@@ -2119,9 +2123,11 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     console.log('✅ Админ товары отрендерены');
                 }
             } catch (error) {
-                document.getElementById('productsContainer').innerHTML = 
-                    '<div class="loading">Ошибка загрузки товаров</div>';
-                console.error('Error loading products:', error);
+                console.error('❌ Ошибка загрузки товаров:', error);
+                const container = document.getElementById('productsContainer');
+                if (container) {
+                    container.innerHTML = '<div class="loading">Ошибка загрузки товаров</div>';
+                }
             }
         }
         
@@ -3805,7 +3811,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         // Запуск
-        loadProducts();
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+        });
     </script>
     
     <!-- Шторка для выбора размера -->
