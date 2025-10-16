@@ -2499,21 +2499,176 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         // Инициализируем корзину при загрузке
         loadCartFromStorage();
         
-        // Добавление в корзину
-        function addToCart(productId, size = null) {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
+        // Система уведомлений
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <span class="notification-icon">
+                        ${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'}
+                    </span>
+                    <span class="notification-message">${message}</span>
+                </div>
+            `;
             
-            const existingItem = cart.find(item => item.product_id === productId && item.size === size);
+            // Добавляем стили если их нет
+            if (!document.querySelector('#notification-styles')) {
+                const styles = document.createElement('style');
+                styles.id = 'notification-styles';
+                styles.textContent = `
+                    .notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 10000;
+                        padding: 12px 16px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                        transform: translateX(100%);
+                        transition: transform 0.3s ease;
+                        max-width: 300px;
+                        font-size: 14px;
+                        font-weight: 500;
+                    }
+                    .notification-success {
+                        background: linear-gradient(135deg, #10b981, #059669);
+                        color: white;
+                    }
+                    .notification-error {
+                        background: linear-gradient(135deg, #ef4444, #dc2626);
+                        color: white;
+                    }
+                    .notification-warning {
+                        background: linear-gradient(135deg, #f59e0b, #d97706);
+                        color: white;
+                    }
+                    .notification-info {
+                        background: linear-gradient(135deg, #3b82f6, #2563eb);
+                        color: white;
+                    }
+                    .notification-content {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    .notification-icon {
+                        font-size: 16px;
+                    }
+                    .notification-message {
+                        flex: 1;
+                    }
+                `;
+                document.head.appendChild(styles);
+            }
+            
+            document.body.appendChild(notification);
+            
+            // Анимация появления
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Автоматическое скрытие
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+        
+        // Система аналитики
+        function trackEvent(eventName, data = {}) {
+            console.log(`📊 Аналитика: ${eventName}`, data);
+            
+            // Здесь можно добавить отправку в Google Analytics, Яндекс.Метрику и т.д.
+            // Например:
+            // gtag('event', eventName, data);
+            
+            // Сохраняем события в localStorage для отладки
+            const events = JSON.parse(localStorage.getItem('analytics_events') || '[]');
+            events.push({
+                event: eventName,
+                data: data,
+                timestamp: new Date().toISOString(),
+                user_id: tg.initDataUnsafe?.user?.id || 'anonymous'
+            });
+            
+            // Оставляем только последние 100 событий
+            if (events.length > 100) {
+                events.splice(0, events.length - 100);
+            }
+            
+            localStorage.setItem('analytics_events', JSON.stringify(events));
+        }
+        
+        // Добавление в корзину
+        // Профессиональное добавление в корзину
+        function addToCart(productId, size = null) {
+            console.log('🛒 Добавление товара в корзину:', { productId, size });
+            
+            const product = products.find(p => p.id === productId);
+            if (!product) {
+                console.error('❌ Товар не найден:', productId);
+                showNotification('Товар не найден', 'error');
+                return;
+            }
+            
+            // Проверяем наличие товара
+            if (!product.in_stock) {
+                console.warn('⚠️ Товар отсутствует на складе:', product.title);
+                showNotification('Товар отсутствует на складе', 'warning');
+                return;
+            }
+            
+            // Проверяем размеры
+            if (product.sizes && !size) {
+                console.warn('⚠️ Не выбран размер для товара:', product.title);
+                showNotification('Пожалуйста, выберите размер', 'warning');
+                return;
+            }
+            
+            // Ищем существующий товар в корзине
+            const existingItem = cart.find(item => 
+                item.product_id === productId && 
+                item.size === size
+            );
+            
             if (existingItem) {
+                // Увеличиваем количество
                 existingItem.quantity += 1;
+                console.log('📈 Увеличено количество товара:', {
+                    title: product.title,
+                    size: size,
+                    newQuantity: existingItem.quantity
+                });
+                showNotification(`${product.title} добавлен в корзину (${existingItem.quantity} шт.)`, 'success');
             } else {
-                cart.push({
+                // Добавляем новый товар
+                const cartItem = {
+                    id: Date.now() + Math.random(), // Уникальный ID для корзины
                     product_id: productId,
                     quantity: 1,
                     size: size,
-                    product: product
+                    product: {
+                        id: product.id,
+                        title: product.title,
+                        price: product.price,
+                        image_url: product.image_url,
+                        sizes: product.sizes,
+                        in_stock: product.in_stock
+                    },
+                    added_at: new Date().toISOString()
+                };
+                
+                cart.push(cartItem);
+                console.log('✅ Новый товар добавлен в корзину:', {
+                    title: product.title,
+                    size: size,
+                    price: product.price
                 });
+                showNotification(`${product.title} добавлен в корзину`, 'success');
             }
             
             // Сохраняем корзину в localStorage
@@ -2526,8 +2681,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Переходим в корзину
             showTab('cart');
-            const sizeText = size ? ` (размер ${size})` : '';
-            tg.showAlert(`${product.title}${sizeText} добавлен в корзину!`);
+            
+            // Отправляем аналитику
+            trackEvent('add_to_cart', {
+                product_id: productId,
+                product_title: product.title,
+                size: size,
+                price: product.price
+            });
         }
         
         function selectSize(productId) {
@@ -2800,53 +2961,329 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
         }
         
-        // Оформление заказа
+        // Профессиональная система оформления заказа
         function checkout() {
-            console.log('🛒 Функция checkout вызвана');
+            console.log('🚀 Профессиональное оформление заказа');
             console.log('📦 Товаров в корзине:', cart.length);
             console.log('🛍️ Корзина:', cart);
             
+            // Валидация корзины
             if (cart.length === 0) {
                 console.log('❌ Корзина пуста');
-                if (typeof tg !== 'undefined' && tg.showAlert) {
-                    tg.showAlert('Корзина пуста!');
-                } else {
-                    alert('Корзина пуста!');
-                }
+                showNotification('Корзина пуста! Добавьте товары для оформления заказа.', 'warning');
                 return;
             }
             
+            // Проверяем доступность товаров
+            const unavailableItems = cart.filter(item => !item.product.in_stock);
+            if (unavailableItems.length > 0) {
+                console.warn('⚠️ Найдены недоступные товары:', unavailableItems);
+                showNotification('Некоторые товары больше недоступны. Обновите корзину.', 'error');
+                return;
+            }
+            
+            // Показываем модальное окно с информацией о заказе
+            showOrderConfirmation();
+        }
+        
+        // Модальное окно подтверждения заказа
+        function showOrderConfirmation() {
+            const totalAmount = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            // Создаем модальное окно
+            const modal = document.createElement('div');
+            modal.className = 'order-modal';
+            modal.innerHTML = `
+                <div class="order-modal-content">
+                    <div class="order-modal-header">
+                        <h2>🛒 Подтверждение заказа</h2>
+                        <button class="close-modal" onclick="closeOrderModal()">&times;</button>
+                    </div>
+                    
+                    <div class="order-summary">
+                        <div class="order-items">
+                            <h3>Товары в заказе (${totalItems} шт.):</h3>
+                            ${cart.map(item => `
+                                <div class="order-item">
+                                    <div class="order-item-info">
+                                        <span class="item-name">${item.product.title}</span>
+                                        <span class="item-size">${item.size ? `Размер: ${item.size}` : ''}</span>
+                                    </div>
+                                    <div class="order-item-details">
+                                        <span class="item-quantity">${item.quantity} шт.</span>
+                                        <span class="item-price">${(item.product.price * item.quantity).toLocaleString()} ₽</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="order-total">
+                            <div class="total-line">
+                                <span>Итого товаров:</span>
+                                <span>${totalItems} шт.</span>
+                            </div>
+                            <div class="total-line total-amount">
+                                <span>Сумма заказа:</span>
+                                <span>${totalAmount.toLocaleString()} ₽</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="order-actions">
+                        <button class="btn btn-secondary" onclick="closeOrderModal()">Отмена</button>
+                        <button class="btn btn-primary" onclick="processPayment()">💳 Оформить заказ</button>
+                    </div>
+                </div>
+            `;
+            
+            // Добавляем стили
+            if (!document.querySelector('#order-modal-styles')) {
+                const styles = document.createElement('style');
+                styles.id = 'order-modal-styles';
+                styles.textContent = `
+                    .order-modal {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.8);
+                        z-index: 10000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                    }
+                    .order-modal-content {
+                        background: #1a1a1a;
+                        border-radius: 16px;
+                        max-width: 500px;
+                        width: 100%;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                    }
+                    .order-modal-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 20px 24px;
+                        border-bottom: 1px solid #333;
+                    }
+                    .order-modal-header h2 {
+                        margin: 0;
+                        color: #fff;
+                        font-size: 20px;
+                    }
+                    .close-modal {
+                        background: none;
+                        border: none;
+                        color: #888;
+                        font-size: 24px;
+                        cursor: pointer;
+                        padding: 0;
+                        width: 30px;
+                        height: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                        transition: background 0.2s;
+                    }
+                    .close-modal:hover {
+                        background: #333;
+                    }
+                    .order-summary {
+                        padding: 24px;
+                    }
+                    .order-items h3 {
+                        color: #fff;
+                        margin: 0 0 16px 0;
+                        font-size: 16px;
+                    }
+                    .order-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 12px 0;
+                        border-bottom: 1px solid #333;
+                    }
+                    .order-item:last-child {
+                        border-bottom: none;
+                    }
+                    .order-item-info {
+                        flex: 1;
+                    }
+                    .item-name {
+                        display: block;
+                        color: #fff;
+                        font-weight: 500;
+                        margin-bottom: 4px;
+                    }
+                    .item-size {
+                        display: block;
+                        color: #888;
+                        font-size: 12px;
+                    }
+                    .order-item-details {
+                        text-align: right;
+                    }
+                    .item-quantity {
+                        display: block;
+                        color: #888;
+                        font-size: 12px;
+                        margin-bottom: 4px;
+                    }
+                    .item-price {
+                        display: block;
+                        color: #3b82f6;
+                        font-weight: 600;
+                    }
+                    .order-total {
+                        margin-top: 20px;
+                        padding-top: 20px;
+                        border-top: 2px solid #333;
+                    }
+                    .total-line {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 8px;
+                        color: #888;
+                    }
+                    .total-amount {
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: #3b82f6;
+                        margin-top: 12px;
+                        padding-top: 12px;
+                        border-top: 1px solid #333;
+                    }
+                    .order-actions {
+                        padding: 24px;
+                        display: flex;
+                        gap: 12px;
+                        justify-content: flex-end;
+                    }
+                    .btn {
+                        padding: 12px 24px;
+                        border: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        font-size: 14px;
+                    }
+                    .btn-secondary {
+                        background: #333;
+                        color: #fff;
+                    }
+                    .btn-secondary:hover {
+                        background: #444;
+                    }
+                    .btn-primary {
+                        background: linear-gradient(135deg, #3b82f6, #2563eb);
+                        color: white;
+                    }
+                    .btn-primary:hover {
+                        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                        transform: translateY(-1px);
+                    }
+                `;
+                document.head.appendChild(styles);
+            }
+            
+            document.body.appendChild(modal);
+        }
+        
+        // Закрытие модального окна заказа
+        function closeOrderModal() {
+            const modal = document.querySelector('.order-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Процесс оплаты
+        function processPayment() {
+            console.log('💳 Начинаем процесс оплаты');
+            
+            const totalAmount = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+            
+            // Подготавливаем данные заказа
             const orderData = {
                 type: 'order',
-                order: {
-                    customer_name: 'Покупатель',
-                    customer_phone: '+7 (999) 123-45-67',
-                    items: cart
-                }
+                order_id: 'ORDER_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                timestamp: new Date().toISOString(),
+                customer: {
+                    id: tg.initDataUnsafe?.user?.id || 'anonymous',
+                    username: tg.initDataUnsafe?.user?.username || 'unknown',
+                    first_name: tg.initDataUnsafe?.user?.first_name || 'Customer',
+                    last_name: tg.initDataUnsafe?.user?.last_name || ''
+                },
+                items: cart.map(item => ({
+                    product_id: item.product_id,
+                    title: item.product.title,
+                    price: item.product.price,
+                    quantity: item.quantity,
+                    size: item.size,
+                    total_price: item.product.price * item.quantity
+                })),
+                totals: {
+                    items_count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                    subtotal: totalAmount,
+                    tax: 0,
+                    total: totalAmount
+                },
+                payment_method: 'telegram',
+                status: 'pending'
             };
             
-            console.log('📤 Отправляем заказ:', orderData);
+            console.log('📋 Данные заказа:', orderData);
+            
+            // Отправляем аналитику
+            trackEvent('initiate_checkout', {
+                order_id: orderData.order_id,
+                total_amount: totalAmount,
+                items_count: orderData.totals.items_count
+            });
+            
+            // Закрываем модальное окно
+            closeOrderModal();
+            
+            // Показываем индикатор загрузки
+            showNotification('Обрабатываем ваш заказ...', 'info');
             
             try {
                 if (typeof tg !== 'undefined' && tg.sendData) {
             tg.sendData(JSON.stringify(orderData));
-                    console.log('✅ Данные отправлены через Telegram');
+                    console.log('✅ Заказ отправлен через Telegram WebApp');
+            
+                    // Очищаем корзину после успешной отправки
+            cart = [];
+                    saveCartToStorage();
+            updateCartUI();
+                    
+                    // Показываем успешное уведомление
+                    setTimeout(() => {
+                        showNotification('🎉 Заказ успешно оформлен! С вами свяжется менеджер.', 'success');
+                    }, 1000);
+                    
+                    // Отправляем аналитику об успешном заказе
+                    trackEvent('purchase', {
+                        order_id: orderData.order_id,
+                        total_amount: totalAmount,
+                        items_count: orderData.totals.items_count
+                    });
+                    
                 } else {
-                    console.log('⚠️ Telegram API недоступен, используем alert');
+                    console.log('⚠️ Telegram API недоступен, используем fallback');
+                    showNotification('Заказ оформлен! Спасибо за покупку!', 'success');
                 }
                 
-                if (typeof tg !== 'undefined' && tg.showAlert) {
-            tg.showAlert('Заказ отправлен! Спасибо за покупку!');
-                } else {
-                    alert('Заказ отправлен! Спасибо за покупку!');
-                }
-            
-            cart = [];
-            updateCartUI();
-                console.log('🧹 Корзина очищена');
             } catch (error) {
                 console.error('❌ Ошибка при отправке заказа:', error);
-                alert('Произошла ошибка при отправке заказа. Попробуйте еще раз.');
+                showNotification('Произошла ошибка при отправке заказа. Попробуйте еще раз.', 'error');
             }
         }
         
