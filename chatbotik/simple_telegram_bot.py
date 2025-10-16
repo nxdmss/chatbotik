@@ -2232,8 +2232,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                ${product.sizes && product.sizes.length > 0 ? `
-                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.map(s => `'${s}'`).join(', ')}])">
+                                ${product.sizes && product.sizes.trim() ? `
+                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.split(',').map(s => `'${s.trim()}'`).join(', ')}])">
                                         Выбрать размер
                                     </button>
                                 ` : `
@@ -2351,8 +2351,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                                 ${product.description ? `<div class="product-description">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>` : ''}
                             </div>
                             <div class="product-buttons">
-                                ${product.sizes && product.sizes.length > 0 ? `
-                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.map(s => `'${s}'`).join(', ')}])">
+                                ${product.sizes && product.sizes.trim() ? `
+                                    <button class="size-btn-thin" onclick="event.stopPropagation(); showSizeModal(${product.id}, [${product.sizes.split(',').map(s => `'${s.trim()}'`).join(', ')}])">
                                         Выбрать размер
                                     </button>
                                 ` : `
@@ -2687,7 +2687,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             }
             
             // Проверяем размеры
-            if (product.sizes && !size) {
+            if (product.sizes && product.sizes.trim() && !size) {
                 console.warn('⚠️ Не выбран размер для товара:', product.title);
                 showNotification('Пожалуйста, выберите размер', 'warning');
                 return;
@@ -4423,7 +4423,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         function addToCartFromProductPage() {{
             if (!currentProduct || !currentProduct.in_stock) return;
             
-            if (currentProduct.sizes && !selectedSize) {{
+            if (currentProduct.sizes && currentProduct.sizes.trim() && !selectedSize) {{
                 alert('Пожалуйста, выберите размер');
                 return;
             }}
