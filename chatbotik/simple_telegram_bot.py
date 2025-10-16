@@ -305,6 +305,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             html_content = self.get_dark_page_v3()
             self.wfile.write(html_content.encode('utf-8'))
             
+        elif self.path == '/test':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            
+            with open('test_catalog.html', 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            self.wfile.write(html_content.encode('utf-8'))
+            
         elif self.path.startswith('/product/'):
             # Страница товара
             product_id = self.path.split('/')[-1]
@@ -2109,32 +2118,60 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Загрузка товаров
         async function loadProducts() {
+            console.log('🚀 Начинаем загрузку товаров...');
+            console.log('🔍 Проверяем наличие productsContainer:', document.getElementById('productsContainer'));
+            
             try {
+                console.log('📡 Отправляем запрос к /api/products');
                 const response = await fetch('/api/products');
+                console.log('📡 Получен ответ:', response.status, response.statusText);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                products = await response.json();
+                
+                const responseText = await response.text();
+                console.log('📄 Получен текст ответа:', responseText.substring(0, 200) + '...');
+                
+                products = JSON.parse(responseText);
                 console.log('📦 Загружено товаров:', products.length);
+                console.log('📦 Первые товары:', products.slice(0, 3));
+                
+                console.log('🎨 Вызываем renderProducts()');
                 renderProducts();
+                
                 if (document.getElementById('adminProductsList')) {
                     console.log('🛠️ Рендерим админ товары, количество:', products.length);
                     renderAdminProducts();
                     console.log('✅ Админ товары отрендерены');
                 }
+                
+                console.log('✅ Загрузка товаров завершена успешно');
             } catch (error) {
                 console.error('❌ Ошибка загрузки товаров:', error);
+                console.error('❌ Stack trace:', error.stack);
                 const container = document.getElementById('productsContainer');
                 if (container) {
-                    container.innerHTML = '<div class="loading">Ошибка загрузки товаров</div>';
+                    container.innerHTML = '<div class="loading">Ошибка загрузки товаров: ' + error.message + '</div>';
                 }
             }
         }
         
         // Отображение товаров в каталоге
         function renderProducts() {
+            console.log('🎨 renderProducts() вызвана');
+            console.log('📦 Количество товаров для отображения:', products.length);
+            
             const container = document.getElementById('productsContainer');
+            console.log('🎯 Контейнер найден:', container);
+            
+            if (!container) {
+                console.error('❌ Контейнер productsContainer не найден!');
+                return;
+            }
+            
             container.className = 'products-grid';
+            console.log('🎨 Установлен класс products-grid');
             
             if (products.length === 0) {
                 container.innerHTML = '<div class="loading">Товары не найдены</div>';
@@ -2329,12 +2366,17 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 </div>
             `).join('');
             
+            console.log('✅ HTML сгенерирован и вставлен в контейнер');
+            console.log('🎨 Длина HTML:', container.innerHTML.length);
+            
             // Добавляем свайп-функциональность для отфильтрованных товаров
             filteredProducts.forEach(product => {
                 if (product.gallery_images && product.gallery_images.length > 0) {
                     addSwipeListeners(product.id);
                 }
             });
+            
+            console.log('✅ renderProducts() завершена успешно');
         }
         
         // Фильтрация товаров в админ панели
