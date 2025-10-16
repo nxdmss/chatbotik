@@ -2236,13 +2236,14 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             files.forEach((file, index) => {
                 if (file.size > 5 * 1024 * 1024) {
                     console.log('❌ Файл слишком большой:', file.size, 'байт');
-                    alert(`Файл ${file.name} слишком большой! Максимум 5MB.`);
+                    showAdminMessage(`Файл ${file.name} слишком большой! Максимум 5MB.`, 'error');
                     return;
                 }
                 
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     selectedGalleryImages.push(e.target.result);
+                    console.log(`📷 Фото ${index + 1} добавлено в галерею: ${file.name}`);
                     
                     // Добавляем превью
                     const img = document.createElement('img');
@@ -2250,9 +2251,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #333;';
                     preview.appendChild(img);
                 };
+                reader.onerror = function() {
+                    console.error('❌ Ошибка чтения файла:', file.name);
+                    showAdminMessage(`Ошибка чтения файла ${file.name}`, 'error');
+                };
                 
                 reader.readAsDataURL(file);
             });
+            
+            console.log(`📸 Загружено ${files.length} файлов в галерею`);
         }
         
         // Простая обработка загрузки изображения
@@ -2820,6 +2827,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Очищаем выбранное изображение
             selectedImageData = '';
+            selectedGalleryImages = [];
             
             // Показываем текущее изображение
             if (product.image_url) {
@@ -2842,6 +2850,41 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     });
             } else {
                 document.getElementById('imagePreview').innerHTML = 'Выберите изображение';
+            }
+            
+            // Загружаем галерею изображений
+            const galleryPreview = document.getElementById('galleryPreview');
+            galleryPreview.innerHTML = '';
+            
+            if (product.gallery_images && product.gallery_images.length > 0) {
+                console.log('🖼️ Загружаем галерею:', product.gallery_images.length, 'фото');
+                
+                product.gallery_images.forEach((galleryUrl, index) => {
+                    const fullUrl = galleryUrl.startsWith('http') ? galleryUrl : `${window.location.origin}${galleryUrl}`;
+                    
+                    // Добавляем превью
+                    const img = document.createElement('img');
+                    img.src = fullUrl;
+                    img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #333;';
+                    galleryPreview.appendChild(img);
+                    
+                    // Загружаем в selectedGalleryImages
+                    fetch(fullUrl)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const reader = new FileReader();
+                            reader.onload = function() {
+                                selectedGalleryImages.push(reader.result);
+                                console.log(`📷 Фото ${index + 1} галереи загружено для редактирования`);
+                            };
+                            reader.readAsDataURL(blob);
+                        })
+                        .catch(error => {
+                            console.log(`⚠️ Не удалось загрузить фото ${index + 1} галереи:`, error);
+                        });
+                });
+            } else {
+                console.log('📷 Галерея пуста');
             }
             
             // Меняем текст кнопки на "Сохранить изменения"
