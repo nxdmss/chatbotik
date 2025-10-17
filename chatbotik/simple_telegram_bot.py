@@ -2190,7 +2190,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             console.log('🛍️ Отображение товаров:', products.length);
             products.forEach(product => {
                 console.log(`📦 Товар: ${product.title}, изображение: ${product.image_url || 'нет'}`);
-                if (product.image_url && product.image_url.startsWith('/uploads/')) {
+                if (product.image_url && typeof product.image_url === 'string' && product.image_url.startsWith('/uploads/')) {
                     console.log(`🖼️ Полный URL изображения: ${window.location.origin}${product.image_url}`);
                 }
             });
@@ -3505,7 +3505,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Показываем текущее изображение
             if (product.image_url) {
-                const imageUrl = product.image_url.startsWith('http') ? product.image_url : `${window.location.origin}${product.image_url}`;
+                const imageUrl = (product.image_url && typeof product.image_url === 'string' && product.image_url.startsWith('http')) ? product.image_url : `${window.location.origin}${product.image_url}`;
                 document.getElementById('imagePreview').innerHTML = `<img src="${imageUrl}" alt="${product.title}" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
                 
                 // Загружаем текущее изображение в selectedImageData для сохранения
@@ -3534,7 +3534,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 console.log('🖼️ Загружаем галерею:', product.gallery_images.length, 'фото');
                 
                 product.gallery_images.forEach((galleryUrl, index) => {
-                    const fullUrl = galleryUrl.startsWith('http') ? galleryUrl : `${window.location.origin}${galleryUrl}`;
+                    const fullUrl = (galleryUrl && typeof galleryUrl === 'string' && galleryUrl.startsWith('http')) ? galleryUrl : `${window.location.origin}${galleryUrl}`;
                     
                     // Добавляем превью с кнопкой удаления
                     const photoContainer = document.createElement('div');
