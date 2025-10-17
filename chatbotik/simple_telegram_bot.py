@@ -356,7 +356,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'id': product[0],
                         'title': product[1],
                         'price': product[2],
-                        'image_url': (product[3] if len(product) > 3 else '') or '',
+                        'image_url': str((product[3] if len(product) > 3 else '') or ''),
                         'description': product[5] if len(product) > 5 else '',
                         'gallery_images': gallery_images,
                         'sizes': sizes_list,
@@ -408,7 +408,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         'title': product[1],
                         'description': product[5] if len(product) > 5 else '',
                         'price': product[2],
-                        'image_url': (product[3] if len(product) > 3 else '') or '',
+                        'image_url': str((product[3] if len(product) > 3 else '') or ''),
                         'gallery_images': gallery_images,
                         'sizes': sizes_list,
                         'category': (product[8] if len(product) > 8 else '') or '',
@@ -3505,7 +3505,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             
             // Показываем текущее изображение
             if (product.image_url) {
-                const imageUrl = (product.image_url && typeof product.image_url === 'string' && product.image_url.startsWith('http')) ? product.image_url : `${window.location.origin}${product.image_url}`;
+                const imageUrl = (typeof product.image_url === 'string' && product.image_url.startsWith('http')) ? product.image_url : `${window.location.origin}${product.image_url}`;
                 document.getElementById('imagePreview').innerHTML = `<img src="${imageUrl}" alt="${product.title}" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px;">`;
                 
                 // Загружаем текущее изображение в selectedImageData для сохранения
@@ -3534,7 +3534,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 console.log('🖼️ Загружаем галерею:', product.gallery_images.length, 'фото');
                 
                 product.gallery_images.forEach((galleryUrl, index) => {
-                    const fullUrl = (galleryUrl && typeof galleryUrl === 'string' && galleryUrl.startsWith('http')) ? galleryUrl : `${window.location.origin}${galleryUrl}`;
+                    const fullUrl = galleryUrl.startsWith('http') ? galleryUrl : `${window.location.origin}${galleryUrl}`;
                     
                     // Добавляем превью с кнопкой удаления
                     const photoContainer = document.createElement('div');
