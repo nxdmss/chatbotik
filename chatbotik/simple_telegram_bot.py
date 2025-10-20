@@ -30,7 +30,11 @@ try:
     import requests
     REQUESTS_AVAILABLE = True
 except ImportError:
-    REQUESTS_AVAILABLE = False
+    print("📦 Устанавливаем requests...")
+    import subprocess
+    subprocess.check_call(['pip', 'install', '--quiet', 'requests'])
+    import requests
+    REQUESTS_AVAILABLE = True
 
 # Конфигурация
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
