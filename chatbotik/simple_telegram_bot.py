@@ -754,11 +754,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a1a;
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 25%, #252525 50%, #1a1a1a 75%, #2d2d2d 100%);
+            background-attachment: fixed;
             color: #ffffff;
             padding: 16px;
             min-height: 100vh;
-            padding-bottom: 100px;
+            padding-bottom: 70px;
         }
         
         .header {
@@ -1287,29 +1288,31 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             bottom: 0;
             left: 0;
             right: 0;
-            background: #2d2d2d;
-            border-top: 1px solid #333;
-            padding: 8px 16px;
+            background: rgba(45, 45, 45, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 4px 8px;
             display: flex;
             justify-content: space-around;
             z-index: 1000;
+            height: 52px;
         }
         
         .nav-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 2px;
+            background: transparent;
+            border: none;
             color: #888;
             cursor: pointer;
-            padding: 10px 12px;
-            border-radius: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            min-width: 70px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            min-width: 60px;
             position: relative;
-            overflow: hidden;
+            font-size: 10px;
         }
         
         .nav-btn::before {
@@ -2124,6 +2127,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         let currentEditingProduct = null;
         let selectedImageData = '';
         let selectedGalleryImages = [];
+        let currentCategory = null;
+        let currentBrand = null;
         
         // Загрузка товаров
         async function loadProducts() {
@@ -2168,34 +2173,50 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         
         // Отображение товаров в каталоге
         function renderProducts() {
-            console.log('🎨 renderProducts() вызвана');
-            console.log('📦 Количество товаров для отображения:', products.length);
-            
+            console.log('🎨 renderProducts() вызвана, category:', currentCategory);
             const container = document.getElementById('productsContainer');
-            console.log('🎯 Контейнер найден:', container);
             
             if (!container) {
-                console.error('❌ Контейнер productsContainer не найден!');
+                console.error('❌ Контейнер не найден!');
                 return;
             }
             
+            // Показываем категории
+            if (!currentCategory) {
+                const clothing = products.filter(p => p.category === 'Одежда').length;
+                const shoes = products.filter(p => p.category === 'Обувь').length;
+                
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '16px';
+                container.innerHTML = `
+                    <div onclick="currentCategory='Одежда'; renderProducts();" style="background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 40px 20px; cursor: pointer; text-align: center; transition: transform 0.2s;">
+                        <div style="font-size: 56px; margin-bottom: 12px;">👕</div>
+                        <h2 style="font-size: 22px; margin-bottom: 8px;">Одежда</h2>
+                        <p style="color: rgba(255,255,255,0.6);">${clothing} товаров</p>
+                    </div>
+                    <div onclick="currentCategory='Обувь'; renderProducts();" style="background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 40px 20px; cursor: pointer; text-align: center; transition: transform 0.2s;">
+                        <div style="font-size: 56px; margin-bottom: 12px;">👟</div>
+                        <h2 style="font-size: 22px; margin-bottom: 8px;">Обувь</h2>
+                        <p style="color: rgba(255,255,255,0.6);">${shoes} товаров</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Показываем товары категории
             container.className = 'products-grid';
-            console.log('🎨 Установлен класс products-grid');
+            container.style.display = 'grid';
+            container.style.gridTemplateColumns = 'repeat(2, 1fr)';
             
-            if (products.length === 0) {
-                container.innerHTML = '<div class="loading">Товары не найдены</div>';
-                return;
-            }
+            let filtered = products.filter(p => p.category === currentCategory);
+            const brands = [...new Set(filtered.map(p => p.brand).filter(b => b))];
+            if (currentBrand) filtered = filtered.filter(p => p.brand === currentBrand);
             
-            console.log('🛍️ Отображение товаров:', products.length);
-            products.forEach(product => {
-                console.log(`📦 Товар: ${product.title}, изображение: ${product.image_url || 'нет'}`);
-                if (product.image_url && typeof product.image_url === 'string' && product.image_url.startsWith('/uploads/')) {
-                    console.log(`🖼️ Полный URL изображения: ${window.location.origin}${product.image_url}`);
-                }
-            });
+            const back = `<div style="grid-column: 1/-1; margin-bottom: 8px;"><button onclick="currentCategory=null; currentBrand=null; renderProducts();" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; width: 100%; cursor: pointer;">← Назад</button></div>`;
+            const brandBar = brands.length > 0 ? `<div style="grid-column: 1/-1; overflow-x: auto; white-space: nowrap; margin-bottom: 12px;">${brands.map(b => `<button onclick="currentBrand=${currentBrand===b?'null':`'${b}'`}; renderProducts();" style="display: inline-block; background: ${currentBrand===b?'rgba(59,130,246,0.3)':'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${currentBrand===b?'#3b82f6':'rgba(255,255,255,0.15)'}; padding: 6px 14px; border-radius: 16px; margin-right: 6px; cursor: pointer; font-size: 12px;">${b}</button>`).join('')}</div>` : '';
             
-            container.innerHTML = products.map(product => `
+            container.innerHTML = back + brandBar + filtered.map(product => `
                 <div class="product-card" onclick="openProductPage(${product.id})">
                     <div class="product-image-full" id="imageContainer_${product.id}" style="position: relative; overflow: hidden;">
                         <div class="image-slider" id="slider_${product.id}" style="display: flex; transition: transform 0.3s ease; width: 100%; height: 100%;">
@@ -2256,8 +2277,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 </div>
             `).join('');
             
-            // Добавляем свайп-функциональность для всех товаров
-            products.forEach(product => {
+            // Добавляем свайп-функциональность
+            filtered.forEach(product => {
                 if (product.gallery_images && product.gallery_images.length > 0) {
                     addSwipeListeners(product.id);
                 }
@@ -3713,6 +3734,10 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 updateCartUI();
             } else if (tabName === 'admin') {
                 renderAdminProducts();
+            } else if (tabName === 'catalog') {
+                currentCategory = null;
+                currentBrand = null;
+                renderProducts();
             }
         }
         
