@@ -782,6 +782,124 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': False, 'message': str(e)}, ensure_ascii=False).encode('utf-8'))
         
+        elif self.path == '/api/orders':
+            # Обработка заказа
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                customer = data.get('customer', {})
+                items = data.get('items', [])
+                totals = data.get('totals', {})
+                
+                print(f"\\n📦 НОВЫЙ ЗАКАЗ:")
+                print(f"👤 {customer.get('name')}")
+                print(f"📞 {customer.get('phone')}")
+                print(f"📍 {customer.get('address')}")
+                print(f"💰 Сумма: {totals.get('total')}₽")
+                
+                # Сохраняем в БД
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                
+                # Генерируем номер заказа
+                cursor.execute('SELECT MAX(order_number) FROM orders')
+                max_order = cursor.fetchone()[0]
+                order_number = (max_order or 0) + 1
+                
+                cursor.execute('''
+                    INSERT INTO orders (order_number, customer_name, customer_phone, customer_address,
+                                       telegram_id, telegram_username, items, total_amount, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new')
+                ''', (order_number, customer.get('name'), customer.get('phone'), customer.get('address'),
+                      customer.get('telegram_id'), customer.get('telegram_username'),
+                      json.dumps(items, ensure_ascii=False), totals.get('total')))
+                
+                conn.commit()
+                conn.close()
+                
+                print(f"✅ Заказ #{order_number} сохранён")
+                
+                # Отправляем уведомления
+                bot_token = os.getenv('BOT_TOKEN', '')
+                admin_id = os.getenv('ADMIN_ID', '')
+                
+                if bot_token and admin_id and REQUESTS_AVAILABLE:
+                    items_text = "\\n".join([f"{i+1}. {item['title']} - {item['size']} - {item['quantity']}шт. - {item['total_price']:,}₽" for i, item in enumerate(items)])
+                    
+                    message = f"""🎉 НОВЫЙ ЗАКАЗ #{order_number}
+
+👤 {customer.get('name')}
+📞 {customer.get('phone')}
+📍 {customer.get('address')}"""
+                    
+                    if customer.get('telegram_username'):
+                        message += f"\\n💬 @{customer.get('telegram_username')}"
+                    
+                    message += f"""
+
+🛍️ Товары:
+{items_text}
+
+💰 Итого: {totals.get('total'):,} ₽"""
+                    
+                    buttons = []
+                    if customer.get('telegram_username'):
+                        buttons.append([{'text': '💬 Связаться', 'url': f"https://t.me/{customer.get('telegram_username')}"}])
+                    
+                    payload = {'chat_id': admin_id, 'text': message}
+                    if buttons:
+                        payload['reply_markup'] = {'inline_keyboard': buttons}
+                    
+                    try:
+                        requests.post(f'https://api.telegram.org/bot{bot_token}/sendMessage', json=payload, timeout=10)
+                        print("✅ Уведомление админу отправлено")
+                    except Exception as e:
+                        print(f"⚠️ Ошибка отправки уведомления: {e}")
+                    
+                    # СБП реквизиты клиенту
+                    if customer.get('telegram_id'):
+                        sbp_phone = os.getenv('SBP_PHONE', '+79991234567')
+                        sbp_msg = f"""💳 Реквизиты для оплаты заказа #{order_number}
+
+💰 Сумма: {totals.get('total'):,} ₽
+
+📱 Оплата через СБП (БЕЗ комиссии):
+
+1️⃣ Откройте приложение банка
+2️⃣ "Переводы" → "По номеру телефона"
+3️⃣ Номер: {sbp_phone}
+4️⃣ Сумма: {totals.get('total')} ₽
+5️⃣ Комментарий: Заказ #{order_number}
+
+✅ Отправьте скриншот чека
+📦 Отправим заказ в течение часа
+
+Спасибо! 🎉"""
+                        
+                        try:
+                            requests.post(f'https://api.telegram.org/bot{bot_token}/sendMessage', json={'chat_id': customer.get('telegram_id'), 'text': sbp_msg}, timeout=10)
+                            print("✅ Реквизиты СБП отправлены клиенту")
+                        except Exception as e:
+                            print(f"⚠️ Ошибка отправки реквизитов: {e}")
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True, 'order_number': order_number}, ensure_ascii=False).encode('utf-8'))
+                
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
+                import traceback
+                traceback.print_exc()
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False}, ensure_ascii=False).encode('utf-8'))
+        
         else:
             self.send_response(404)
             self.end_headers()
@@ -3264,9 +3382,22 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         </div>
                     </div>
                     
-                    <div class="order-actions">
-                        <button class="btn btn-secondary" onclick="closeOrderModal()">Отмена</button>
-                        <button class="btn btn-primary" onclick="processPayment()">💳 Оформить заказ</button>
+                    <div class="order-form" style="padding: 0 24px 24px;">
+                        <h3 style="color: #fff; margin-bottom: 16px; font-size: 16px;">📝 Данные для доставки</h3>
+                        <div style="margin-bottom: 12px;">
+                            <input type="text" id="customerName" placeholder="Ваше имя *" value="${tg.initDataUnsafe?.user?.first_name || ''}" required style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <input type="tel" id="customerPhone" placeholder="Телефон *" required style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <textarea id="customerAddress" placeholder="Адрес доставки *" required style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="order-actions" style="padding: 0 24px 24px; display: flex; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="closeOrderModal()" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; cursor: pointer; font-size: 14px;">Отмена</button>
+                        <button class="btn btn-primary" onclick="submitOrder()" style="flex: 2; padding: 14px; background: #3b82f6; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;">💳 Оформить</button>
                     </div>
                 </div>
             `;
@@ -3439,6 +3570,68 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         }
         
         // Процесс оплаты
+        // Отправка заказа на сервер
+        async function submitOrder() {
+            const name = document.getElementById('customerName')?.value.trim();
+            const phone = document.getElementById('customerPhone')?.value.trim();
+            const address = document.getElementById('customerAddress')?.value.trim();
+            
+            if (!name || !phone || !address) {
+                alert('Пожалуйста, заполните все поля');
+                return;
+            }
+            
+            const totalAmount = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+            
+            const orderData = {
+                customer: {
+                    name: name,
+                    phone: phone,
+                    address: address,
+                    telegram_id: tg.initDataUnsafe?.user?.id || null,
+                    telegram_username: tg.initDataUnsafe?.user?.username || null
+                },
+                items: cart.map(item => ({
+                    product_id: item.product_id,
+                    title: item.product.title,
+                    brand: item.product.brand || '',
+                    price: item.product.price,
+                    quantity: item.quantity,
+                    size: item.size || '',
+                    total_price: item.product.price * item.quantity
+                })),
+                totals: {
+                    total: totalAmount
+                }
+            };
+            
+            console.log('📦 Отправка заказа:', orderData);
+            
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(orderData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    closeOrderModal();
+                    cart = [];
+                    saveCartToStorage();
+                    updateCartUI();
+                    alert('🎉 Заказ оформлен!\\n\\nВам придут реквизиты для оплаты.');
+                    showTab('catalog');
+                } else {
+                    alert('Ошибка оформления заказа');
+                }
+            } catch (error) {
+                console.error('❌ Ошибка:', error);
+                alert('Ошибка отправки заказа');
+            }
+        }
+        
         function processPayment() {
             console.log('💳 Начинаем процесс оплаты');
             
