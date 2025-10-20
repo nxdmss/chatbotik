@@ -3383,15 +3383,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                     
                     <div class="order-form" style="padding: 0 24px 24px;">
-                        <h3 style="color: #fff; margin-bottom: 16px; font-size: 16px;">📝 Данные для доставки</h3>
+                        <h3 style="color: #fff; margin-bottom: 16px; font-size: 16px;">📝 Данные для доставки (необязательно)</h3>
                         <div style="margin-bottom: 12px;">
-                            <input type="text" id="customerName" placeholder="Ваше имя *" value="${tg.initDataUnsafe?.user?.first_name || ''}" required style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
+                            <input type="text" id="customerName" placeholder="Ваше имя (можно не указывать)" value="${tg.initDataUnsafe?.user?.first_name || ''}" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <input type="tel" id="customerPhone" placeholder="Телефон *" required style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
+                            <input type="text" id="customerPhone" placeholder="Телефон или любые данные" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
                         </div>
                         <div style="margin-bottom: 16px;">
-                            <textarea id="customerAddress" placeholder="Адрес доставки *" required style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
+                            <textarea id="customerAddress" placeholder="Адрес, комментарии или любая информация" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
                         </div>
                     </div>
                     
@@ -3572,14 +3572,9 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
         // Процесс оплаты
         // Отправка заказа на сервер
         async function submitOrder() {
-            const name = document.getElementById('customerName')?.value.trim();
-            const phone = document.getElementById('customerPhone')?.value.trim();
-            const address = document.getElementById('customerAddress')?.value.trim();
-            
-            if (!name || !phone || !address) {
-                alert('Пожалуйста, заполните все поля');
-                return;
-            }
+            const name = document.getElementById('customerName')?.value.trim() || 'Не указан';
+            const phone = document.getElementById('customerPhone')?.value.trim() || 'Не указан';
+            const address = document.getElementById('customerAddress')?.value.trim() || 'Не указан';
             
             const totalAmount = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
             
