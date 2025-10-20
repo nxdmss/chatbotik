@@ -731,6 +731,57 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
         
+        elif self.path == '/api/add-to-category':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                product_id = data.get('product_id')
+                category = data.get('category')
+                
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute('UPDATE products SET category = ? WHERE id = ?', (category, product_id))
+                conn.commit()
+                conn.close()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'message': str(e)}, ensure_ascii=False).encode('utf-8'))
+        
+        elif self.path.startswith('/api/remove-from-category/'):
+            product_id = self.path.split('/')[-1]
+            
+            try:
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute('UPDATE products SET category = NULL WHERE id = ?', (product_id,))
+                conn.commit()
+                conn.close()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'message': str(e)}, ensure_ascii=False).encode('utf-8'))
+        
         else:
             self.send_response(404)
             self.end_headers()
@@ -2213,11 +2264,20 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             const brands = [...new Set(filtered.map(p => p.brand).filter(b => b))];
             if (currentBrand) filtered = filtered.filter(p => p.brand === currentBrand);
             
+            // Проверяем админ режим
+            const adminId = '${os.getenv("ADMIN_ID", "")}';
+            const userId = tg.initDataUnsafe?.user?.id?.toString();
+            const isAdmin = (userId === adminId) || hasSecretAccess;
+            
             const back = `<div style="grid-column: 1/-1; margin-bottom: 8px;"><button onclick="currentCategory=null; currentBrand=null; renderProducts();" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; width: 100%; cursor: pointer;">← Назад</button></div>`;
             const brandBar = brands.length > 0 ? `<div style="grid-column: 1/-1; overflow-x: auto; white-space: nowrap; margin-bottom: 12px;">${brands.map(b => `<button onclick="currentBrand=${currentBrand===b?'null':`'${b}'`}; renderProducts();" style="display: inline-block; background: ${currentBrand===b?'rgba(59,130,246,0.3)':'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${currentBrand===b?'#3b82f6':'rgba(255,255,255,0.15)'}; padding: 6px 14px; border-radius: 16px; margin-right: 6px; cursor: pointer; font-size: 12px;">${b}</button>`).join('')}</div>` : '';
             
+            // Пустая ячейка для админа
+            const addCell = isAdmin ? `<div onclick="showAddModal()" style="cursor: pointer; border: 2px dashed rgba(59,130,246,0.5); background: rgba(59,130,246,0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 250px;"><div style="text-align: center;"><div style="font-size: 40px; margin-bottom: 8px;">➕</div><div style="color: #3b82f6; font-size: 13px; font-weight: 500;">Добавить</div></div></div>` : '';
+            
             container.innerHTML = back + brandBar + filtered.map(product => `
-                <div class="product-card" onclick="openProductPage(${product.id})">
+                <div class="product-card" onclick="openProductPage(${product.id})" style="position: relative;">
+                    ${isAdmin ? `<button onclick="event.stopPropagation(); removeFromCat(${product.id});" style="position: absolute; top: 8px; right: 8px; z-index: 100; background: rgba(220,38,38,0.9); color: #fff; border: none; width: 26px; height: 26px; border-radius: 50%; font-size: 16px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(220,38,38,0.5); font-weight: bold;">×</button>` : ''}
                     <div class="product-image-full" id="imageContainer_${product.id}" style="position: relative; overflow: hidden;">
                         <div class="image-slider" id="slider_${product.id}" style="display: flex; transition: transform 0.3s ease; width: 100%; height: 100%;">
                         ${product.image_url ? 
@@ -2275,7 +2335,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `).join('') + addCell;
             
             // Добавляем свайп-функциональность
             filtered.forEach(product => {
@@ -2283,6 +2343,74 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     addSwipeListeners(product.id);
                 }
             });
+        }
+        
+        // Показать модалку добавления товара в категорию
+        function showAddModal() {
+            const available = products.filter(p => !p.category || p.category !== currentCategory);
+            
+            if (available.length === 0) {
+                alert('Нет товаров для добавления. Все товары уже в категории.');
+                return;
+            }
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;';
+            modal.innerHTML = `
+                <div style="background: #1a1a1a; border-radius: 16px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                        <h3 style="margin: 0; color: #fff;">Добавить в "${currentCategory}"</h3>
+                        <button onclick="this.closest('[style*=fixed]').remove();" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">×</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                        ${available.map(p => `
+                            <div onclick="addToCat(${p.id})" style="cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">
+                                ${p.image_url ? `<img src="${window.location.origin}${p.image_url}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">` : '<div style="width: 100%; height: 100px; background: #333; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px;">📷</div>'}
+                                <div style="color: #fff; font-size: 13px; margin-bottom: 4px;">${p.title}</div>
+                                <div style="color: #3b82f6; font-size: 12px;">${p.price.toLocaleString()} ₽</div>
+                                ${p.category ? `<div style="color: #888; font-size: 10px; margin-top: 4px;">Сейчас: ${p.category}</div>` : '<div style="color: #90EE90; font-size: 10px; margin-top: 4px;">Без категории</div>'}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.onclick = e => { if (e.target === modal) modal.remove(); };
+        }
+        
+        // Добавить товар в категорию
+        async function addToCat(id) {
+            try {
+                const r = await fetch('/api/add-to-category', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({product_id: id, category: currentCategory})
+                });
+                const res = await r.json();
+                if (res.success) {
+                    document.querySelectorAll('[style*="z-index: 9999"]').forEach(m => m.remove());
+                    await loadProducts();
+                    renderProducts();
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+        
+        // Удалить из категории
+        async function removeFromCat(id) {
+            if (!confirm('Убрать из категории?\\n(Товар останется в базе)')) return;
+            
+            try {
+                const r = await fetch(`/api/remove-from-category/${id}`, {method: 'POST'});
+                const res = await r.json();
+                if (res.success) {
+                    await loadProducts();
+                    renderProducts();
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
         }
         
         // Отображение товаров в админ панели - ПРОСТАЯ ВЕРСИЯ
