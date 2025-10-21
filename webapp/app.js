@@ -365,23 +365,17 @@ class MobileShopApp {
     showAdminPanel() {
         console.log('Показываем админ-панель...');
         
-        // Показываем кнопку админ-панели в навигации
+        // Показываем ТОЛЬКО кнопку админ-панели в навигации
         const adminNavBtn = document.getElementById('admin-nav-btn');
         if (adminNavBtn) {
             adminNavBtn.style.display = 'block';
-            console.log('Кнопка админ-панели показана');
-    } else {
+            console.log('Кнопка админ-панели в навигации показана');
+        } else {
             console.error('Кнопка админ-панели не найдена!');
         }
         
-        // Показываем кнопку добавления товара в каталоге
-        const adminActions = document.getElementById('admin-actions');
-        if (adminActions) {
-            adminActions.style.display = 'block';
-            console.log('Кнопка добавления товара показана');
-      } else {
-            console.error('Кнопка добавления товара не найдена!');
-        }
+        // НЕ показываем кнопку добавления товара в каталоге
+        // Она будет показываться только на странице "Админ"
     }
 
     // ===== НАВИГАЦИЯ =====
@@ -407,6 +401,18 @@ class MobileShopApp {
         });
         
         this.currentPage = page;
+        
+        // Управление видимостью админских элементов
+        const adminActions = document.getElementById('admin-actions');
+        if (adminActions) {
+            // Скрываем админские кнопки на всех страницах КРОМЕ админ-панели
+            if (page === 'admin' && this.isAdmin) {
+                // Можно показать на админ-панели если нужно
+                // adminActions.style.display = 'block';
+            } else {
+                adminActions.style.display = 'none';
+            }
+        }
         
         // Рендерим содержимое страницы
         this.renderCurrentPage();
