@@ -12,6 +12,7 @@ import os
 import sqlite3
 from datetime import datetime
 from typing import List, Dict, Any
+from pathlib import Path
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
@@ -22,6 +23,39 @@ import requests
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 WEBAPP_URL = os.getenv('WEBAPP_URL', 'http://localhost:8000')
 DATABASE_PATH = "shop.db"
+
+# Загрузка ID администраторов
+def load_admin_ids():
+    """Загрузка ID администраторов из файла или переменных окружения"""
+    admin_ids = []
+    
+    # Сначала пытаемся загрузить из переменных окружения
+    admin_ids_env = os.getenv('ADMIN_IDS', '')
+    if admin_ids_env:
+        try:
+            admin_ids = [int(x.strip()) for x in admin_ids_env.split(',') if x.strip()]
+        except ValueError:
+            pass
+    
+    # Если не нашли, пытаемся загрузить из файла
+    if not admin_ids:
+        admins_file = Path(__file__).parent / 'webapp' / 'admins.json'
+        if admins_file.exists():
+            try:
+                with open(admins_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    admin_ids = [int(x) for x in data.get('admins', [])]
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"⚠️ Ошибка загрузки admins.json: {e}")
+    
+    # По умолчанию используем ваш ID
+    if not admin_ids:
+        admin_ids = [1593426947]
+    
+    print(f"👑 Администраторы: {admin_ids}")
+    return admin_ids
+
+ADMIN_IDS = load_admin_ids()
 
 class TelegramBot:
     def __init__(self):
@@ -252,17 +286,124 @@ class TelegramBot:
         if update.message and update.message.web_app_data:
             try:
                 data = json.loads(update.message.web_app_data.data)
-                print(f"Received WebApp data: {data}")
+                print(f"📦 Received WebApp data: {data}")
                 
-                # Здесь можно обработать данные от веб-приложения
-                await update.message.reply_text(
-                    "✅ Данные получены! Спасибо за использование нашего магазина!",
-                    reply_to_message_id=update.message.message_id
-                )
+                user = update.effective_user
+                user_info = f"👤 {user.first_name}"
+                if user.last_name:
+                    user_info += f" {user.last_name}"
+                if user.username:
+                    user_info += f" (@{user.username})"
+                user_info += f"\n🆔 ID: {user.id}"
+                
+                # Обрабатываем заказ
+                if data.get('action') == 'order':
+                    items = data.get('items', [])
+                    total = data.get('total', 0)
+                    
+                    # Формируем сообщение о заказе
+                    order_message = f"🛒 **НОВЫЙ ЗАКАЗ**\n\n"
+                    order_message += f"{user_info}\n\n"
+                    order_message += f"📋 **Товары:**\n"
+                    
+                    # Получаем информацию о товарах
+                    try:
+                        response = requests.get(f"{self.webapp_url}/api/products", timeout=5)
+                        if response.status_code == 200:
+                            products = {p['id']: p for p in response.json()}
+                            
+                            for i, item in enumerate(items, 1):
+                                product_id = item.get('productId')
+                                quantity = item.get('quantity', 1)
+                                size = item.get('size')
+                                
+                                product = products.get(product_id)
+                                if product:
+                                    order_message += f"{i}. **{product['title']}**\n"
+                                    order_message += f"   Количество: {quantity}\n"
+                                    if size:
+                                        order_message += f"   Размер: {size}\n"
+                                    price = product.get('price', 0)
+                                    item_total = price * quantity
+                                    order_message += f"   Сумма: {item_total:,} ₽\n".replace(',', ' ')
+                                    order_message += "\n"
+                                else:
+                                    order_message += f"{i}. Товар ID: {product_id} (кол-во: {quantity})\n\n"
+                        else:
+                            # Если не удалось получить товары, просто показываем ID
+                            for i, item in enumerate(items, 1):
+                                order_message += f"{i}. Товар ID: {item.get('productId')} (кол-во: {item.get('quantity', 1)})\n"
+                            order_message += "\n"
+                    except Exception as e:
+                        print(f"⚠️ Ошибка загрузки товаров: {e}")
+                        # Показываем базовую информацию
+                        for i, item in enumerate(items, 1):
+                            order_message += f"{i}. Товар ID: {item.get('productId')} (кол-во: {item.get('quantity', 1)})\n"
+                        order_message += "\n"
+                    
+                    order_message += f"💰 **Итого: {total:,} ₽**\n".replace(',', ' ')
+                    order_message += f"\n📅 {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
+                    
+                    # Отправляем уведомление администраторам
+                    sent_to_admins = 0
+                    for admin_id in ADMIN_IDS:
+                        try:
+                            await context.bot.send_message(
+                                chat_id=admin_id,
+                                text=order_message,
+                                parse_mode=ParseMode.MARKDOWN
+                            )
+                            sent_to_admins += 1
+                            print(f"✅ Заказ отправлен администратору {admin_id}")
+                        except Exception as e:
+                            print(f"❌ Ошибка отправки администратору {admin_id}: {e}")
+                    
+                    # Отправляем подтверждение пользователю
+                    if sent_to_admins > 0:
+                        await update.message.reply_text(
+                            "✅ **Заказ успешно оформлен!**\n\n"
+                            "Ваш заказ получен и передан администратору.\n"
+                            "Мы свяжемся с вами в ближайшее время!\n\n"
+                            "Спасибо за покупку! 🛍️",
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_to_message_id=update.message.message_id
+                        )
+                        print(f"✅ Заказ обработан, отправлено {sent_to_admins} администраторам")
+                    else:
+                        await update.message.reply_text(
+                            "⚠️ **Заказ получен, но возникла проблема с уведомлением администратора.**\n\n"
+                            "Мы исправим это в ближайшее время. Ваш заказ не потерян!",
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_to_message_id=update.message.message_id
+                        )
+                        print("⚠️ Не удалось отправить заказ ни одному администратору")
+                else:
+                    # Другие типы данных
+                    await update.message.reply_text(
+                        "✅ Данные получены! Спасибо за использование нашего магазина!",
+                        reply_to_message_id=update.message.message_id
+                    )
+                    
+                    # Отправляем данные администраторам
+                    data_message = f"📨 **Данные от пользователя**\n\n{user_info}\n\n```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+                    for admin_id in ADMIN_IDS:
+                        try:
+                            await context.bot.send_message(
+                                chat_id=admin_id,
+                                text=data_message,
+                                parse_mode=ParseMode.MARKDOWN
+                            )
+                        except Exception as e:
+                            print(f"❌ Ошибка отправки данных администратору {admin_id}: {e}")
+                
             except Exception as e:
-                print(f"Error processing WebApp data: {e}")
+                print(f"❌ Error processing WebApp data: {e}")
+                import traceback
+                traceback.print_exc()
+                
                 await update.message.reply_text(
-                    "❌ Произошла ошибка при обработке данных.",
+                    "❌ Произошла ошибка при обработке данных.\n"
+                    "Пожалуйста, попробуйте еще раз или свяжитесь с поддержкой.",
                     reply_to_message_id=update.message.message_id
                 )
 

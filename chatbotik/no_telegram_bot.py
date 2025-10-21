@@ -871,8 +871,12 @@ def handle_webapp_order(user_id, web_app_data):
         # Парсим данные из WebApp
         order_data = json.loads(web_app_data)
         
-        if order_data.get('type') == 'order':
-            order = order_data.get('order', {})
+        logger.info(f"📦 Получены данные WebApp от пользователя {user_id}: {order_data}")
+        
+        # Проверяем оба варианта: 'action' и 'type' для совместимости
+        if order_data.get('action') == 'order' or order_data.get('type') == 'order':
+            # Данные заказа могут быть либо в 'order', либо напрямую
+            order = order_data.get('order', order_data)
             
             # Создаем номер заказа
             order_number = f"WEB{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -882,22 +886,62 @@ def handle_webapp_order(user_id, web_app_data):
             
             # Формируем описание заказа
             items = order.get('items', [])
-            order_description = "Заказ из WebApp:\n"
-            total_price = 0
+            order_description = "🛒 Заказ из WebApp:\n\n"
             
-            for item in items:
-                product_name = item.get('product', {}).get('title', 'Неизвестный товар')
-                quantity = item.get('quantity', 1)
-                price = item.get('product', {}).get('price', 0)
-                size = item.get('size', '')
-                
-                item_total = price * quantity
-                total_price += item_total
-                
-                size_text = f" (размер: {size})" if size else ""
-                order_description += f"• {product_name}{size_text} x{quantity} = {item_total}₽\n"
+            # Если есть 'total' в данных, используем его
+            total_price = order.get('total', 0)
             
-            order_description += f"\n💰 Итого: {total_price}₽"
+            # Если total не указан, вычисляем по товарам
+            if total_price == 0:
+                # Загружаем товары из JSON
+                try:
+                    products_json_path = os.path.join(os.path.dirname(__file__), 'webapp', 'products.json')
+                    with open(products_json_path, 'r', encoding='utf-8') as f:
+                        products_data = json.load(f)
+                        products = {p['id']: p for p in products_data}
+                except Exception as e:
+                    logger.error(f"Ошибка загрузки products.json: {e}")
+                    products = {}
+                
+                for i, item in enumerate(items, 1):
+                    product_id = item.get('productId')
+                    quantity = item.get('quantity', 1)
+                    size = item.get('size', '')
+                    
+                    # Получаем информацию о товаре
+                    product = products.get(product_id, {})
+                    product_name = product.get('title', f'Товар #{product_id}')
+                    price = product.get('price', 0)
+                    
+                    item_total = price * quantity
+                    total_price += item_total
+                    
+                    size_text = f" (размер: {size})" if size else ""
+                    order_description += f"{i}. {product_name}{size_text}\n"
+                    order_description += f"   Количество: {quantity}\n"
+                    order_description += f"   Цена: {price}₽ × {quantity} = {item_total}₽\n\n"
+            else:
+                # Если total уже есть, просто перечисляем товары
+                for i, item in enumerate(items, 1):
+                    product_id = item.get('productId')
+                    quantity = item.get('quantity', 1)
+                    size = item.get('size', '')
+                    
+                    # Пытаемся получить имя товара
+                    try:
+                        products_json_path = os.path.join(os.path.dirname(__file__), 'webapp', 'products.json')
+                        with open(products_json_path, 'r', encoding='utf-8') as f:
+                            products_data = json.load(f)
+                            products = {p['id']: p for p in products_data}
+                            product = products.get(product_id, {})
+                            product_name = product.get('title', f'Товар #{product_id}')
+                    except:
+                        product_name = f'Товар #{product_id}'
+                    
+                    size_text = f" (размер: {size})" if size else ""
+                    order_description += f"{i}. {product_name}{size_text} × {quantity}\n"
+            
+            order_description += f"\n💰 ИТОГО: {total_price}₽"
             
             # Сохраняем заказ в базу данных
             conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
@@ -921,30 +965,63 @@ def handle_webapp_order(user_id, web_app_data):
                 f"📞 По вопросам обращайтесь в поддержку")
             
             # Уведомляем всех админов о новом заказе
-            conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
-            admins = cursor.fetchall()
-            conn.close()
+            # Сначала пытаемся найти админов в базе
+            admins_from_db = []
+            try:
+                conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
+                admins_from_db = [row[0] for row in cursor.fetchall()]
+                conn.close()
+                logger.info(f"📋 Найдено администраторов в БД: {admins_from_db}")
+            except Exception as e:
+                logger.error(f"Ошибка получения админов из БД: {e}")
             
-            for admin_row in admins:
-                admin_id = admin_row[0]
-                send_message(admin_id, 
-                    f"🛍️ <b>Новый заказ из WebApp!</b>\n\n"
-                    f"🆔 Номер: #{order_number}\n"
-                    f"👤 Клиент: {user_id}\n"
-                    f"💰 Сумма: {total_price}₽\n"
-                    f"📝 Детали:\n{order_description}\n\n"
-                    f"💬 Для связи: /reply {user_id}")
+            # Если админов в БД нет, используем ADMIN_IDS из конфига
+            if not admins_from_db:
+                admins_from_db = ADMIN_IDS
+                logger.info(f"⚙️ Используем админов из конфига: {admins_from_db}")
             
-            logger.info(f"Заказ {order_number} создан для пользователя {user_id}")
+            # Отправляем уведомления всем админам
+            sent_count = 0
+            for admin_id in admins_from_db:
+                try:
+                    send_message(admin_id, 
+                        f"🛍️ <b>НОВЫЙ ЗАКАЗ из WebApp!</b>\n\n"
+                        f"🆔 Номер: #{order_number}\n"
+                        f"👤 Клиент: {user_id}\n"
+                        f"💰 Сумма: {total_price}₽\n\n"
+                        f"📝 Детали заказа:\n{order_description}\n\n"
+                        f"💬 Для связи с клиентом: /reply {user_id}")
+                    sent_count += 1
+                    logger.info(f"✅ Уведомление о заказе отправлено администратору {admin_id}")
+                except Exception as e:
+                    logger.error(f"❌ Ошибка отправки уведомления администратору {admin_id}: {e}")
             
-    except json.JSONDecodeError:
-        send_message(user_id, "❌ Ошибка обработки заказа. Попробуйте еще раз.")
-        logger.error(f"Ошибка парсинга WebApp данных: {web_app_data}")
+            logger.info(f"✅ Заказ {order_number} создан для пользователя {user_id}. Уведомлено админов: {sent_count}/{len(admins_from_db)}")
+        else:
+            # Данные не являются заказом
+            logger.warning(f"⚠️ Получены неизвестные данные WebApp от пользователя {user_id}: {order_data}")
+            send_message(user_id, "⚠️ Данные получены, но не распознаны как заказ. Попробуйте еще раз.")
+            
+            # Отправляем админам для анализа
+            for admin_id in ADMIN_IDS:
+                try:
+                    send_message(admin_id, 
+                        f"⚠️ Получены неизвестные данные WebApp\n\n"
+                        f"👤 От пользователя: {user_id}\n"
+                        f"📄 Данные:\n{json.dumps(order_data, indent=2, ensure_ascii=False)}")
+                except Exception as e:
+                    logger.error(f"Ошибка отправки данных админу {admin_id}: {e}")
+            
+    except json.JSONDecodeError as e:
+        send_message(user_id, "❌ Ошибка обработки данных заказа. Попробуйте еще раз.")
+        logger.error(f"❌ Ошибка парсинга WebApp данных от {user_id}: {web_app_data}. Ошибка: {e}")
     except Exception as e:
         send_message(user_id, "❌ Ошибка создания заказа. Попробуйте еще раз.")
-        logger.error(f"Ошибка в handle_webapp_order: {e}")
+        logger.error(f"❌ Ошибка в handle_webapp_order от {user_id}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def forward_to_admin(sender_user_id, sender_username, sender_first_name, sender_last_name, message_text):
     """Пересылка сообщения клиента администратору"""
