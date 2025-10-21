@@ -538,11 +538,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 print(f"📦 Данные: {data}")
                 print("=" * 60)
                 
-                # Получаем данные заказа
-                user_id = data.get('user_id', 'unknown')
-                user_name = data.get('user_name', 'Клиент')
+                # Получаем данные заказа (поддерживаем оба формата)
+                customer = data.get('customer', {})
+                user_id = customer.get('telegram_id') or data.get('user_id', 'unknown')
+                user_name = customer.get('name') or data.get('user_name', 'Клиент')
                 items = data.get('items', [])
-                total = data.get('total', 0)
+                
+                # Получаем total (поддерживаем оба формата)
+                totals = data.get('totals', {})
+                total = totals.get('total') or data.get('total', 0)
                 
                 # Загружаем товары для деталей
                 products_file = Path('webapp/products.json')
@@ -552,38 +556,44 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 else:
                     products = {}
                 
-                # Формируем детали заказа
+                # Формируем детали заказа (поддерживаем оба формата)
                 order_details = ""
                 for i, item in enumerate(items, 1):
-                    product_id = item.get('productId')
+                    # Поддерживаем разные форматы данных
+                    product_id = item.get('product_id') or item.get('productId')
+                    title = item.get('title', f'Товар #{product_id}')
+                    price = item.get('price', 0)
                     quantity = item.get('quantity', 1)
                     size = item.get('size', '')
                     
-                    product = products.get(product_id, {})
-                    title = product.get('title', f'Товар #{product_id}')
+                    # Если цены нет в item, берем из products.json
+                    if not price and product_id and products:
+                        product = products.get(product_id, {})
+                        title = product.get('title', title)
+                        price = product.get('price', 0)
                     
                     order_details += f"{i}. {title}"
                     if size:
                         order_details += f" (размер: {size})"
                     order_details += f" × {quantity}\n"
                 
-                # Создаем таблицу заказов если её нет
+                # Создаем таблицу webapp_orders если её нет
                 conn = sqlite3.connect(DATABASE_PATH)
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS orders (
+                    CREATE TABLE IF NOT EXISTS webapp_orders (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT,
-                        user_name TEXT,
-                        items TEXT,
-                        total REAL,
+                        telegram_id TEXT,
+                        customer_name TEXT,
+                        items_data TEXT,
+                        total_amount REAL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
                 
                 # Сохраняем заказ и получаем его ID
                 cursor.execute('''
-                    INSERT INTO orders (user_id, user_name, items, total)
+                    INSERT INTO webapp_orders (telegram_id, customer_name, items_data, total_amount)
                     VALUES (?, ?, ?, ?)
                 ''', (str(user_id), user_name, json.dumps(items), total))
                 
@@ -602,13 +612,18 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     # Формируем детали товаров для шаблона
                     items_for_template = ""
                     for i, item in enumerate(items, 1):
-                        product_id = item.get('productId')
+                        # Поддерживаем оба формата
+                        product_id = item.get('product_id') or item.get('productId')
+                        title = item.get('title', f'Товар #{product_id}')
+                        price = item.get('price', 0)
                         quantity = item.get('quantity', 1)
                         size = item.get('size', '')
                         
-                        product = products.get(product_id, {})
-                        title = product.get('title', f'Товар #{product_id}')
-                        price = product.get('price', 0)
+                        # Если цены нет, берем из products.json
+                        if not price and product_id and products:
+                            product = products.get(product_id, {})
+                            title = product.get('title', title)
+                            price = product.get('price', 0)
                         
                         items_for_template += f"{i}. {title}"
                         if size:
