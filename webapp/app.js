@@ -402,18 +402,6 @@ class MobileShopApp {
         
         this.currentPage = page;
         
-        // Управление видимостью админских элементов
-        const adminActions = document.getElementById('admin-actions');
-        if (adminActions) {
-            // Скрываем админские кнопки на всех страницах КРОМЕ админ-панели
-            if (page === 'admin' && this.isAdmin) {
-                // Можно показать на админ-панели если нужно
-                // adminActions.style.display = 'block';
-            } else {
-                adminActions.style.display = 'none';
-            }
-        }
-        
         // Рендерим содержимое страницы
         this.renderCurrentPage();
     }
