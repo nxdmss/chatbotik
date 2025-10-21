@@ -912,18 +912,18 @@ def handle_webapp_order(user_id, web_app_data):
                 
                 for i, item in enumerate(items, 1):
                     product_id = item.get('productId')
-                quantity = item.get('quantity', 1)
-                size = item.get('size', '')
+                    quantity = item.get('quantity', 1)
+                    size = item.get('size', '')
                     
                     # Получаем информацию о товаре
                     product = products.get(product_id, {})
                     product_name = product.get('title', f'Товар #{product_id}')
                     price = product.get('price', 0)
-                
-                item_total = price * quantity
-                total_price += item_total
-                
-                size_text = f" (размер: {size})" if size else ""
+                    
+                    item_total = price * quantity
+                    total_price += item_total
+                    
+                    size_text = f" (размер: {size})" if size else ""
                     order_description += f"{i}. {product_name}{size_text}\n"
                     order_description += f"   Количество: {quantity}\n"
                     order_description += f"   Цена: {price}₽ × {quantity} = {item_total}₽\n\n"
