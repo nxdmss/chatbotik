@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "title": "Кроссовки Nike Air Max",
+    "description": "Удобные спортивные кроссовки с воздушной подушкой",
+    "price": 5999,
+    "photo": "/webapp/uploads/default.jpg",
+    "sizes": ["39", "40", "41", "42", "43", "44"],
+    "is_active": true
+  },
+  {
+    "id": 2,
+    "title": "Футболка Adidas",
+    "description": "Классическая спортивная футболка из хлопка",
+    "price": 1999,
+    "photo": "/webapp/uploads/default.jpg",
+    "sizes": ["S", "M", "L", "XL"],
+    "is_active": true
+  },
+  {
+    "id": 3,
+    "title": "Джинсы Levi's 501",
+    "description": "Легендарные прямые джинсы",
+    "price": 6999,
+    "photo": "/webapp/uploads/default.jpg",
+    "sizes": ["30", "32", "34", "36"],
+    "is_active": true
+  },
+  {
+    "id": 4,
+    "title": "Куртка The North Face",
+    "description": "Теплая зимняя куртка с утеплителем",
+    "price": 12999,
+    "photo": "/webapp/uploads/default.jpg",
+    "sizes": ["S", "M", "L", "XL"],
+    "is_active": true
+  },
+  {
+    "id": 5,
+    "title": "Рюкзак Eastpak",
+    "description": "Вместительный городской рюкзак",
+    "price": 3499,
+    "photo": "/webapp/uploads/default.jpg",
+    "is_active": true
+  }
+]
+
