@@ -3618,15 +3618,15 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     </div>
                     
                     <div class="order-form" style="padding: 0 24px 24px;">
-                        <h3 style="color: #fff; margin-bottom: 16px; font-size: 16px;">📝 Данные для доставки (необязательно)</h3>
+                        <h3 style="color: #fff; margin-bottom: 16px; font-size: 16px;">📝 Контактные данные</h3>
                         <div style="margin-bottom: 12px;">
-                            <input type="text" id="customerName" placeholder="Ваше имя (можно не указывать)" value="${tg.initDataUnsafe?.user?.first_name || ''}" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
+                            <input type="text" id="customerName" placeholder="Ваше имя" value="${tg.initDataUnsafe?.user?.first_name || ''}" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <input type="text" id="customerPhone" placeholder="Телефон или любые данные" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
+                            <input type="text" id="customerPhone" placeholder="Телефон" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px;">
                         </div>
                         <div style="margin-bottom: 16px;">
-                            <textarea id="customerAddress" placeholder="Адрес, комментарии или любая информация" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
+                            <textarea id="customerAddress" placeholder="Адрес доставки" style="width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
                         </div>
                     </div>
                     
