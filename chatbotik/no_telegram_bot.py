@@ -982,11 +982,11 @@ def handle_webapp_order(user_id, web_app_data):
             # Сначала пытаемся найти админов в базе
             admins_from_db = []
             try:
-            conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
+                conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
                 admins_from_db = [row[0] for row in cursor.fetchall()]
-            conn.close()
+                conn.close()
                 logger.info(f"📋 Найдено администраторов в БД: {admins_from_db}")
             except Exception as e:
                 logger.error(f"Ошибка получения админов из БД: {e}")
