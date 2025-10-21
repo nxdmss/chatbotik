@@ -15,6 +15,7 @@ import sqlite3
 import base64
 import uuid
 from datetime import datetime
+from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import time
@@ -532,20 +533,103 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(post_data.decode('utf-8'))
                 
+                print("=" * 60)
+                print(f"🎯 ПОЛУЧЕН ЗАКАЗ!")
+                print(f"📦 Данные: {data}")
+                print("=" * 60)
+                
+                # Получаем данные заказа
+                user_id = data.get('user_id', 'unknown')
+                user_name = data.get('user_name', 'Клиент')
+                items = data.get('items', [])
+                total = data.get('total', 0)
+                
+                # Загружаем товары для деталей
+                products_file = Path('webapp/products.json')
+                if products_file.exists():
+                    with open(products_file, 'r', encoding='utf-8') as f:
+                        products = {p['id']: p for p in json.load(f)}
+                else:
+                    products = {}
+                
+                # Формируем детали заказа
+                order_details = ""
+                for i, item in enumerate(items, 1):
+                    product_id = item.get('productId')
+                    quantity = item.get('quantity', 1)
+                    size = item.get('size', '')
+                    
+                    product = products.get(product_id, {})
+                    title = product.get('title', f'Товар #{product_id}')
+                    
+                    order_details += f"{i}. {title}"
+                    if size:
+                        order_details += f" (размер: {size})"
+                    order_details += f" × {quantity}\n"
+                
+                # Номер заказа
+                order_number = f"WEB{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                
+                # ОТПРАВКА АДМИНИСТРАТОРУ ЧЕРЕЗ TELEGRAM API
+                ADMIN_ID = 1593426947
+                BOT_TOKEN = os.getenv('BOT_TOKEN', '')
+                
+                if BOT_TOKEN:
+                    admin_msg = (
+                        f"🔔 <b>НОВЫЙ ЗАКАЗ #{order_number}</b>\n\n"
+                        f"💰 <b>{total} ₽</b>\n"
+                        f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
+                        f"👤 Клиент: {user_name} (ID: {user_id})\n\n"
+                        f"<b>ТОВАРЫ:</b>\n{order_details}\n"
+                        f"<b>ДЕЙСТВИЯ:</b>\n"
+                        f"1. Связаться с клиентом\n"
+                        f"2. Уточнить адрес доставки\n"
+                        f"3. Согласовать оплату (СБП/карта/наличные)\n"
+                        f"4. Подтвердить сроки\n\n"
+                        f"⏱ <b>Обработать в течение 15 минут</b>"
+                    )
+                    
+                    # Отправляем через Telegram API
+                    telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                    telegram_data = {
+                        'chat_id': ADMIN_ID,
+                        'text': admin_msg,
+                        'parse_mode': 'HTML'
+                    }
+                    
+                    try:
+                        import requests
+                        resp = requests.post(telegram_url, json=telegram_data, timeout=10)
+                        if resp.json().get('ok'):
+                            print(f"✅✅✅ ЗАКАЗ ОТПРАВЛЕН АДМИНИСТРАТОРУ {ADMIN_ID}!")
+                        else:
+                            print(f"❌ Ошибка отправки админу: {resp.text}")
+                    except Exception as e:
+                        print(f"❌ Ошибка отправки через Telegram API: {e}")
+                else:
+                    print("⚠️ BOT_TOKEN не найден, заказ не отправлен админу")
+                
+                # Ответ клиенту
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 
-                # Простая обработка заказа
-                response = {'success': True, 'order_id': 12345}
+                response = {'success': True, 'order_id': order_number}
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
             
             except Exception as e:
                 print(f"❌ Ошибка обработки заказа: {e}")
+                import traceback
+                traceback.print_exc()
+                
                 self.send_response(500)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(b'Internal Server Error')
+                
+                error_response = {'success': False, 'error': str(e)}
+                self.wfile.write(json.dumps(error_response, ensure_ascii=False).encode('utf-8'))
         
         elif self.path == '/api/add-product':
             content_length = int(self.headers['Content-Length'])

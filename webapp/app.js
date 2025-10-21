@@ -813,31 +813,69 @@ class MobileShopApp {
     async checkout() {
         if (this.cart.length === 0) {
             alert('Корзина пуста');
-    return;
-  }
+            return;
+        }
         
         try {
+            // Получаем информацию о пользователе
+            let userId = 'unknown';
+            let userName = 'Клиент';
+            
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+                const user = window.Telegram.WebApp.initDataUnsafe.user;
+                if (user) {
+                    userId = user.id || 'unknown';
+                    userName = user.first_name || 'Клиент';
+                    if (user.last_name) {
+                        userName += ' ' + user.last_name;
+                    }
+                }
+            }
+            
             const orderData = {
-                action: 'order',
+                user_id: userId,
+                user_name: userName,
                 items: this.cart,
                 total: this.getCartTotal()
             };
             
-            // Отправляем данные в бот
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.sendData(JSON.stringify(orderData));
+            console.log('📦 Отправка заказа через API:', orderData);
+            
+            // НОВЫЙ ПОДХОД: Отправляем через API endpoint
+            const response = await fetch(`${this.API_BASE}/api/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Заказ принят:', result);
+                
+                // Показываем уведомление
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.showAlert('✅ Заказ оформлен! Менеджер свяжется с вами в течение 15 минут.');
+                    window.Telegram.WebApp.close();
+                } else {
+                    alert('✅ Заказ оформлен! Номер: ' + result.order_id);
+                }
+                
+                // Очищаем корзину
+                this.clearCart();
             } else {
-                // Для тестирования в браузере
-                console.log('Данные заказа:', orderData);
-                alert('Заказ отправлен! (тестовый режим)');
+                throw new Error('Ошибка сервера');
             }
             
-            // Очищаем корзину
-            this.clearCart();
-            
         } catch (error) {
-            console.error('Ошибка оформления заказа:', error);
-            alert('Ошибка при оформлении заказа');
+            console.error('❌ Ошибка оформления заказа:', error);
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.showAlert('❌ Ошибка оформления заказа. Попробуйте еще раз.');
+            } else {
+                alert('❌ Ошибка при оформлении заказа');
+            }
         }
     }
 
