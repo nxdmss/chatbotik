@@ -567,8 +567,29 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         order_details += f" (размер: {size})"
                     order_details += f" × {quantity}\n"
                 
-                # Номер заказа
-                order_number = f"WEB{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                # Создаем таблицу заказов если её нет
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS orders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT,
+                        user_name TEXT,
+                        items TEXT,
+                        total REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Сохраняем заказ и получаем его ID
+                cursor.execute('''
+                    INSERT INTO orders (user_id, user_name, items, total)
+                    VALUES (?, ?, ?, ?)
+                ''', (str(user_id), user_name, json.dumps(items), total))
+                
+                order_number = cursor.lastrowid  # Простой номер: 1, 2, 3...
+                conn.commit()
+                conn.close()
                 
                 # ОТПРАВКА АДМИНИСТРАТОРУ ЧЕРЕЗ TELEGRAM API
                 ADMIN_ID = 1593426947
@@ -578,10 +599,27 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     # Получаем номер телефона из Secrets
                     admin_phone = os.getenv('ADMIN_PHONE', '+7 (999) 123-45-67')
                     
+                    # Формируем детали товаров для шаблона
+                    items_for_template = ""
+                    for i, item in enumerate(items, 1):
+                        product_id = item.get('productId')
+                        quantity = item.get('quantity', 1)
+                        size = item.get('size', '')
+                        
+                        product = products.get(product_id, {})
+                        title = product.get('title', f'Товар #{product_id}')
+                        price = product.get('price', 0)
+                        
+                        items_for_template += f"{i}. {title}"
+                        if size:
+                            items_for_template += f" (размер: {size})"
+                        items_for_template += f" — {price} ₽ × {quantity} = {price * quantity} ₽\n"
+                    
                     # Формируем шаблон для клиента (чистый текст без HTML)
                     client_template = (
-                        f"Здравствуйте! Ваш заказ #{order_number} подтвержден.\n\n"
-                        f"К оплате: {total} ₽\n\n"
+                        f"Здравствуйте! Ваш заказ №{order_number} подтвержден.\n\n"
+                        f"ВАШИ ТОВАРЫ:\n{items_for_template}\n"
+                        f"ИТОГО: {total} ₽\n\n"
                         f"ОПЛАТА СБП (без комиссии):\n"
                         f"📱 {admin_phone}\n"
                         f"👤 Администратор магазина\n\n"
@@ -599,7 +637,7 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                     
                     # СООБЩЕНИЕ: Информация о заказе + кнопка связи
                     admin_msg = (
-                        f"🔔 <b>НОВЫЙ ЗАКАЗ #{order_number}</b>\n\n"
+                        f"🔔 <b>НОВЫЙ ЗАКАЗ {order_number}</b>\n\n"
                         f"💰 <b>{total} ₽</b>\n"
                         f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n\n"
                         f"👤 <b>КЛИЕНТ:</b>\n"

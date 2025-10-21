@@ -879,11 +879,17 @@ def handle_webapp_order(user_id, web_app_data):
             # Данные заказа могут быть либо в 'order', либо напрямую
             order = order_data.get('order', order_data)
             
-            # Создаем номер заказа
-            order_number = f"WEB{datetime.now().strftime('%Y%m%d%H%M%S')}"
-            
             # Получаем customer_id
             customer_id = get_or_create_customer(user_id, None, None, None)
+            
+            # Создаем простой номер заказа: 1, 2, 3...
+            # Считаем количество заказов в базе и добавляем 1
+            conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM orders")
+            orders_count = cursor.fetchone()[0]
+            order_number = str(orders_count + 1)
+            conn.close()
             
             # Формируем описание заказа
             items = order.get('items', [])
@@ -906,18 +912,18 @@ def handle_webapp_order(user_id, web_app_data):
                 
                 for i, item in enumerate(items, 1):
                     product_id = item.get('productId')
-                    quantity = item.get('quantity', 1)
-                    size = item.get('size', '')
+                quantity = item.get('quantity', 1)
+                size = item.get('size', '')
                     
                     # Получаем информацию о товаре
                     product = products.get(product_id, {})
                     product_name = product.get('title', f'Товар #{product_id}')
                     price = product.get('price', 0)
-                    
-                    item_total = price * quantity
-                    total_price += item_total
-                    
-                    size_text = f" (размер: {size})" if size else ""
+                
+                item_total = price * quantity
+                total_price += item_total
+                
+                size_text = f" (размер: {size})" if size else ""
                     order_description += f"{i}. {product_name}{size_text}\n"
                     order_description += f"   Количество: {quantity}\n"
                     order_description += f"   Цена: {price}₽ × {quantity} = {item_total}₽\n\n"
@@ -976,11 +982,11 @@ def handle_webapp_order(user_id, web_app_data):
             # Сначала пытаемся найти админов в базе
             admins_from_db = []
             try:
-                conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
-                cursor = conn.cursor()
-                cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
+            conn = sqlite3.connect(SUPPORT_DATABASE_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id FROM customers WHERE is_admin = 1")
                 admins_from_db = [row[0] for row in cursor.fetchall()]
-                conn.close()
+            conn.close()
                 logger.info(f"📋 Найдено администраторов в БД: {admins_from_db}")
             except Exception as e:
                 logger.error(f"Ошибка получения админов из БД: {e}")
@@ -998,10 +1004,36 @@ def handle_webapp_order(user_id, web_app_data):
             
             for admin_id in admins_from_db:
                 try:
+                    # Формируем детальный список товаров для шаблона
+                    items_for_template = ""
+                    for i, item in enumerate(items, 1):
+                        product_id = item.get('productId')
+                        quantity = item.get('quantity', 1)
+                        size = item.get('size', '')
+                        
+                        # Загружаем товары из JSON для получения цены
+                        try:
+                            products_json_path = os.path.join(os.path.dirname(__file__), 'webapp', 'products.json')
+                            with open(products_json_path, 'r', encoding='utf-8') as f:
+                                products_data = json.load(f)
+                                products = {p['id']: p for p in products_data}
+                                product = products.get(product_id, {})
+                                title = product.get('title', f'Товар #{product_id}')
+                                price = product.get('price', 0)
+                        except:
+                            title = f'Товар #{product_id}'
+                            price = 0
+                        
+                        items_for_template += f"{i}. {title}"
+                        if size:
+                            items_for_template += f" (размер: {size})"
+                        items_for_template += f" — {price} ₽ × {quantity} = {price * quantity} ₽\n"
+                    
                     # Формируем шаблон для клиента (чистый текст для копирования)
                     client_template = (
-                        f"Здравствуйте! Ваш заказ #{order_number} подтвержден.\n\n"
-                        f"К оплате: {total_price} ₽\n\n"
+                        f"Здравствуйте! Ваш заказ №{order_number} подтвержден.\n\n"
+                        f"ВАШИ ТОВАРЫ:\n{items_for_template}\n"
+                        f"ИТОГО: {total_price} ₽\n\n"
                         f"ОПЛАТА СБП (без комиссии):\n"
                         f"📱 {admin_phone}\n"
                         f"👤 Администратор магазина\n\n"
@@ -1014,7 +1046,7 @@ def handle_webapp_order(user_id, web_app_data):
                     
                     # СООБЩЕНИЕ 1: Информация о заказе с кнопкой
                     admin_message = (
-                        f"🔔 <b>НОВЫЙ ЗАКАЗ #{order_number}</b>\n\n"
+                        f"🔔 <b>НОВЫЙ ЗАКАЗ {order_number}</b>\n\n"
                         f"💰 <b>{total_price:,} ₽</b>\n"
                         f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n\n"
                         f"👤 <b>КЛИЕНТ:</b>\n"
