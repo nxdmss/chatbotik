@@ -542,6 +542,8 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                 customer = data.get('customer', {})
                 user_id = customer.get('telegram_id') or data.get('user_id', 'unknown')
                 user_name = customer.get('name') or data.get('user_name', 'Клиент')
+                user_phone = customer.get('phone') or data.get('phone', 'Не указан')
+                user_address = customer.get('address') or data.get('address', 'Не указан')
                 items = data.get('items', [])
                 
                 # Получаем total (поддерживаем оба формата)
@@ -657,11 +659,12 @@ class DarkWebAppHandler(BaseHTTPRequestHandler):
                         f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n\n"
                         f"👤 <b>КЛИЕНТ:</b>\n"
                         f"   Имя: {user_name}\n"
-                        f"   ID: <code>{user_id}</code>\n\n"
+                        f"   Телефон: {user_phone}\n"
+                        f"   Адрес: {user_address}\n\n"
                         f"<b>ТОВАРЫ:</b>\n{order_details}\n"
                         f"<b>ЧТО ДЕЛАТЬ:</b>\n\n"
                         f"1️⃣ Нажать кнопку ниже\n"
-                        f"2️⃣ Уточнить адрес доставки\n"
+                        f"2️⃣ Уточнить детали доставки\n"
                         f"3️⃣ Получить подтверждение оплаты\n\n"
                         f"⏱ <b>Обработать в течение 15 минут</b>"
                     )
