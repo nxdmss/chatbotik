@@ -17,6 +17,10 @@
         <main class="main">
             <!-- Каталог -->
             <div class="page" id="catalog-page">
+                <div class="page-header">
+                    <button class="btn-back" onclick="goBack()" style="display: none;">← Назад</button>
+                    <h2>🛍️ Каталог</h2>
+                </div>
                 <div class="search-container">
                     <input type="text" id="search" placeholder="🔍 Поиск товаров..." class="search-input">
                 </div>
@@ -35,7 +39,8 @@
 
             <!-- Корзина -->
             <div class="page" id="cart-page" style="display: none;">
-                <div class="cart-header">
+                <div class="page-header">
+                    <button class="btn-back" onclick="goBack()">← Назад</button>
                     <h2>🛒 Корзина</h2>
                     <button class="btn btn-outline btn-sm" onclick="clearCart()">Очистить</button>
                 </div>
@@ -56,7 +61,8 @@
 
             <!-- Профиль -->
             <div class="page" id="profile-page" style="display: none;">
-                <div class="profile-header">
+                <div class="page-header">
+                    <button class="btn-back" onclick="goBack()">← Назад</button>
                     <h2>👤 Профиль</h2>
                 </div>
                 
@@ -82,7 +88,8 @@
 
             <!-- Админ-панель -->
             <div class="page" id="admin-page" style="display: none;">
-                <div class="admin-header">
+                <div class="page-header">
+                    <button class="btn-back" onclick="goBack()">← Назад</button>
                     <h2>⚙️ Админ-панель</h2>
                 </div>
                 
@@ -172,6 +179,55 @@
                 </div>
         </div>
       </div>
+    </div>
+
+    <!-- Модальное окно просмотра товара -->
+    <div class="modal" id="product-detail-modal">
+        <div class="modal-content product-detail-modal">
+            <div class="modal-header">
+                <h3 id="product-detail-title">Товар</h3>
+                <button class="modal-close" onclick="hideModal('product-detail-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="product-detail-container">
+                    <div class="product-detail-images">
+                        <div class="image-container" id="product-image-container">
+                            <img id="product-detail-image" src="" alt="Товар">
+                            <button class="image-nav prev" id="prev-image">‹</button>
+                            <button class="image-nav next" id="next-image">›</button>
+                        </div>
+                        <div class="image-indicators" id="image-indicators">
+                            <!-- Индикаторы изображений -->
+                        </div>
+                    </div>
+                    <div class="product-detail-info">
+                        <h2 id="product-detail-name">Название товара</h2>
+                        <p id="product-detail-description">Описание товара</p>
+                        <div class="product-detail-price" id="product-detail-price">0 ₽</div>
+                        
+                        <div class="product-detail-sizes" id="product-detail-sizes" style="display: none;">
+                            <label>Размер:</label>
+                            <select id="product-size-select">
+                                <option value="">Выберите размер</option>
+                            </select>
+                        </div>
+                        
+                        <div class="product-detail-quantity">
+                            <label>Количество:</label>
+                            <div class="quantity-controls">
+                                <button class="qty-btn" id="qty-decrease">-</button>
+                                <span class="qty-display" id="qty-display">1</span>
+                                <button class="qty-btn" id="qty-increase">+</button>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary btn-lg btn-full" id="add-to-cart-btn">
+                            🛒 Добавить в корзину
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Модальное окно добавления/редактирования товара -->

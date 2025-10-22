@@ -29,6 +29,7 @@ class MobileShopApp {
         this.isAdmin = false;
         this.currentPage = 'catalog';
         this.editingProduct = null;
+        this.pageHistory = ['catalog']; // История страниц для кнопки "Назад"
         
         // Определяем базовый URL для API
         this.API_BASE = this.getApiBase();
@@ -401,6 +402,18 @@ class MobileShopApp {
         });
         
         this.currentPage = page;
+        
+        // Добавляем в историю (если это не текущая страница)
+        if (page !== this.currentPage) {
+            this.pageHistory.push(page);
+            // Ограничиваем историю 10 страницами
+            if (this.pageHistory.length > 10) {
+                this.pageHistory.shift();
+            }
+        }
+        
+        // Обновляем кнопку "Назад"
+        this.updateBackButton();
         
         // Управление видимостью админских элементов
         const adminActions = document.getElementById('admin-actions');
@@ -1337,6 +1350,19 @@ class MobileShopApp {
             });
         });
 
+        // Клик по карточке товара для открытия детального просмотра
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // Не открываем модальное окно при клике на кнопки
+                if (e.target.closest('.add-to-cart, .qty-increase, .qty-decrease, .size-select')) {
+                    return;
+                }
+                
+                const productId = parseInt(card.dataset.productId);
+                this.showProductDetail(productId);
+            });
+        });
+
         // Добавить в корзину
         document.querySelectorAll('.add-to-cart').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1680,6 +1706,215 @@ class MobileShopApp {
 
     // ===== ОЧИСТКА РЕСУРСОВ =====
 
+    // ===== ФУНКЦИИ ДЛЯ МОДАЛЬНОГО ОКНА ТОВАРА =====
+    
+    showProductDetail(productId) {
+        const product = this.products.find(p => p.id === productId);
+        if (!product) {
+            console.error('❌ Товар не найден:', productId);
+            return;
+        }
+
+        // Заполняем информацию о товаре
+        document.getElementById('product-detail-title').textContent = product.title || 'Товар';
+        document.getElementById('product-detail-name').textContent = product.title || 'Без названия';
+        document.getElementById('product-detail-description').textContent = product.description || 'Без описания';
+        document.getElementById('product-detail-price').textContent = this.formatPrice(product.price || 0);
+
+        // Настройка изображений
+        this.setupProductImages(product);
+        
+        // Настройка размеров
+        this.setupProductSizes(product);
+        
+        // Сброс количества
+        document.getElementById('qty-display').textContent = '1';
+        
+        // Настройка кнопки добавления в корзину
+        this.setupAddToCartButton(product);
+        
+        // Показываем модальное окно
+        this.showModal('product-detail-modal');
+        
+        console.log('✅ Модальное окно товара открыто:', product.title);
+    }
+
+    setupProductImages(product) {
+        const imageContainer = document.getElementById('product-image-container');
+        const imageElement = document.getElementById('product-detail-image');
+        const indicatorsContainer = document.getElementById('image-indicators');
+        
+        // Получаем все изображения товара
+        const images = [];
+        if (product.photo) {
+            images.push(product.photo);
+        }
+        if (product.photos && Array.isArray(product.photos)) {
+            images.push(...product.photos);
+        }
+        
+        // Если нет изображений, используем дефолтное
+        if (images.length === 0) {
+            images.push('/webapp/uploads/default.jpg');
+        }
+        
+        let currentImageIndex = 0;
+        
+        // Функция обновления изображения
+        const updateImage = () => {
+            imageElement.src = images[currentImageIndex];
+            imageElement.alt = product.title || 'Товар';
+            
+            // Обновляем индикаторы
+            indicatorsContainer.innerHTML = '';
+            images.forEach((_, index) => {
+                const indicator = document.createElement('div');
+                indicator.className = `image-indicator ${index === currentImageIndex ? 'active' : ''}`;
+                indicator.addEventListener('click', () => {
+                    currentImageIndex = index;
+                    updateImage();
+                });
+                indicatorsContainer.appendChild(indicator);
+            });
+        };
+        
+        // Настройка навигации по изображениям
+        const prevBtn = document.getElementById('prev-image');
+        const nextBtn = document.getElementById('next-image');
+        
+        prevBtn.onclick = () => {
+            currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+            updateImage();
+        };
+        
+        nextBtn.onclick = () => {
+            currentImageIndex = (currentImageIndex + 1) % images.length;
+            updateImage();
+        };
+        
+        // Клик по боковым сторонам изображения для навигации
+        imageContainer.addEventListener('click', (e) => {
+            const rect = imageContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const containerWidth = rect.width;
+            
+            if (clickX < containerWidth / 2) {
+                // Клик по левой стороне - предыдущее изображение
+                prevBtn.click();
+            } else {
+                // Клик по правой стороне - следующее изображение
+                nextBtn.click();
+            }
+        });
+
+        // Поддержка свайпов на мобильных устройствах
+        let startX = 0;
+        let startY = 0;
+        
+        imageContainer.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+        
+        imageContainer.addEventListener('touchend', (e) => {
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            const diffX = startX - endX;
+            const diffY = startY - endY;
+            
+            // Проверяем, что это горизонтальный свайп
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                if (diffX > 0) {
+                    // Свайп влево - следующее изображение
+                    nextBtn.click();
+                } else {
+                    // Свайп вправо - предыдущее изображение
+                    prevBtn.click();
+                }
+            }
+        });
+        
+        // Инициализация
+        updateImage();
+    }
+
+    setupProductSizes(product) {
+        const sizesContainer = document.getElementById('product-detail-sizes');
+        const sizeSelect = document.getElementById('product-size-select');
+        
+        if (product.sizes && product.sizes.length > 0) {
+            sizesContainer.style.display = 'block';
+            sizeSelect.innerHTML = '<option value="">Выберите размер</option>';
+            product.sizes.forEach(size => {
+                const option = document.createElement('option');
+                option.value = size;
+                option.textContent = size;
+                sizeSelect.appendChild(option);
+            });
+        } else {
+            sizesContainer.style.display = 'none';
+        }
+    }
+
+    setupAddToCartButton(product) {
+        const addBtn = document.getElementById('add-to-cart-btn');
+        const qtyDisplay = document.getElementById('qty-display');
+        const sizeSelect = document.getElementById('product-size-select');
+        
+        // Кнопки количества
+        document.getElementById('qty-decrease').onclick = () => {
+            let qty = parseInt(qtyDisplay.textContent) || 1;
+            qty = Math.max(1, qty - 1);
+            qtyDisplay.textContent = qty;
+        };
+        
+        document.getElementById('qty-increase').onclick = () => {
+            let qty = parseInt(qtyDisplay.textContent) || 1;
+            qtyDisplay.textContent = qty + 1;
+        };
+        
+        // Добавление в корзину
+        addBtn.onclick = () => {
+            const quantity = parseInt(qtyDisplay.textContent) || 1;
+            const size = sizeSelect.value;
+            
+            if (product.sizes && product.sizes.length > 0 && !size) {
+                this.showNotification('Выберите размер', 'warning');
+                return;
+            }
+            
+            this.addToCart(product.id, quantity, size);
+            this.showNotification('Товар добавлен в корзину!', 'success');
+            this.hideModal('product-detail-modal');
+        };
+    }
+
+    // ===== ФУНКЦИЯ "НАЗАД" =====
+    
+    updateBackButton() {
+        const backButtons = document.querySelectorAll('.btn-back');
+        backButtons.forEach(btn => {
+            // Показываем кнопку "Назад" только если есть история
+            if (this.pageHistory.length > 1) {
+                btn.style.display = 'flex';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+    }
+    
+    goBack() {
+        // Убираем текущую страницу из истории
+        if (this.pageHistory.length > 1) {
+            this.pageHistory.pop(); // Убираем текущую страницу
+            const previousPage = this.pageHistory[this.pageHistory.length - 1];
+            this.showPage(previousPage);
+        } else {
+            // Если истории нет, возвращаемся в каталог
+            this.showPage('catalog');
+        }
+    }
+
     destroy() {
         console.log('🧹 Очистка ресурсов приложения...');
         
@@ -1697,6 +1932,12 @@ class MobileShopApp {
 function showAddProductModal() {
     if (window.mobileShopApp) {
         window.mobileShopApp.showAddProductModal();
+    }
+}
+
+function goBack() {
+    if (window.mobileShopApp) {
+        window.mobileShopApp.goBack();
     }
 }
 
