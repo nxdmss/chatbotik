@@ -833,6 +833,8 @@ class MobileShopApp {
             // Получаем информацию о пользователе
             let userId = 'unknown';
             let userName = 'Клиент';
+            let userPhone = 'Не указан';
+            let userAddress = 'Не указан';
             
             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
                 const user = window.Telegram.WebApp.initDataUnsafe.user;
@@ -848,37 +850,66 @@ class MobileShopApp {
             const orderData = {
                 user_id: userId,
                 user_name: userName,
+                user_phone: userPhone,
+                user_address: userAddress,
                 items: this.cart,
                 total: this.getCartTotal()
             };
             
-            console.log('📦 Отправка заказа через API:', orderData);
+            console.log('📦 Отправка заказа:', orderData);
             
-            // НОВЫЙ ПОДХОД: Отправляем через API endpoint
-            const response = await fetch(`${this.API_BASE}/api/orders`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(orderData)
-            });
+            // ДВОЙНАЯ ОТПРАВКА: И через API, и через Telegram WebApp
+            let apiSuccess = false;
+            let telegramSuccess = false;
             
-            if (response.ok) {
-                const result = await response.json();
-                console.log('✅ Заказ принят:', result);
+            // 1. Отправляем через API (для веб-сервера)
+            try {
+                const response = await fetch(`${this.API_BASE}/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData)
+                });
+                
+                if (response.ok) {
+                    apiSuccess = true;
+                    console.log('✅ Заказ отправлен через API');
+                }
+            } catch (error) {
+                console.log('⚠️ API недоступен:', error);
+            }
+            
+            // 2. Отправляем через Telegram WebApp (для бота)
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    // Отправляем данные через WebApp
+                    window.Telegram.WebApp.sendData(JSON.stringify({
+                        action: 'order',
+                        data: orderData
+                    }));
+                    telegramSuccess = true;
+                    console.log('✅ Заказ отправлен через Telegram WebApp');
+                } catch (error) {
+                    console.log('⚠️ Telegram WebApp недоступен:', error);
+                }
+            }
+            
+            if (apiSuccess || telegramSuccess) {
+                console.log('✅ Заказ принят!');
                 
                 // Показываем уведомление
                 if (window.Telegram && window.Telegram.WebApp) {
                     window.Telegram.WebApp.showAlert('✅ Заказ оформлен! Менеджер свяжется с вами в течение 15 минут.');
                     window.Telegram.WebApp.close();
                 } else {
-                    alert('✅ Заказ оформлен! Номер: ' + result.order_id);
+                    alert('✅ Заказ оформлен! Менеджер свяжется с вами в течение 15 минут.');
                 }
                 
                 // Очищаем корзину
                 this.clearCart();
             } else {
-                throw new Error('Ошибка сервера');
+                throw new Error('Не удалось отправить заказ');
             }
             
         } catch (error) {

@@ -180,7 +180,7 @@ def send_message(user_id, text, parse_mode='HTML'):
 def send_message_with_keyboard(user_id, text, keyboard, parse_mode='HTML'):
     """Отправить сообщение с клавиатурой"""
     try:
-        url = f'{TELEGRAM_API_URL}/sendMessage'
+        url = f'{TELEgram_API_URL}/sendMessage'
         data = {
             'chat_id': user_id,
             'text': text,
