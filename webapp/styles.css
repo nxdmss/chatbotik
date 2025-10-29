@@ -93,6 +93,7 @@ body {
 
 .search-container {
     margin-bottom: 1rem;
+    position: relative;
 }
 
 .search-input {
@@ -105,6 +106,24 @@ body {
     color: #ffffff;
     outline: none;
     transition: all 0.2s ease;
+}
+
+/* Кнопка закрытия поиска */
+.search-close-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #888888;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.search-close-btn:hover {
+    color: #ffffff;
 }
 
 .search-input:focus {

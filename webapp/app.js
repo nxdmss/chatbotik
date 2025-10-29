@@ -30,6 +30,8 @@ class MobileShopApp {
         this.currentPage = 'catalog';
         this.editingProduct = null;
         this.pageHistory = ['catalog']; // История страниц для кнопки "Назад"
+        this.searchActive = false;
+        this.prevScrollTop = 0;
         
         // Определяем базовый URL для API
         this.API_BASE = this.getApiBase();
@@ -1294,9 +1296,41 @@ class MobileShopApp {
 
         // Поиск
         const searchInput = document.getElementById('search');
+        const searchCloseBtn = document.getElementById('search-close');
         if (searchInput) {
+            searchInput.addEventListener('focus', () => {
+                if (!this.searchActive) {
+                    this.prevScrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+                    this.searchActive = true;
+                }
+                if (searchCloseBtn) searchCloseBtn.style.display = 'block';
+            });
             searchInput.addEventListener('input', () => {
+                const value = searchInput.value.trim();
                 this.renderCatalogPage();
+                if (searchCloseBtn) searchCloseBtn.style.display = value ? 'block' : 'block';
+                if (value === '') {
+                    // При пустом поиске возвращаемся к исходной позиции и скрываем кнопку закрытия
+                    window.scrollTo({ top: this.prevScrollTop, behavior: 'instant' });
+                    if (searchCloseBtn) searchCloseBtn.style.display = 'none';
+                    this.searchActive = false;
+                }
+            });
+            searchInput.addEventListener('blur', () => {
+                if (!searchInput.value.trim() && searchCloseBtn) {
+                    searchCloseBtn.style.display = 'none';
+                    this.searchActive = false;
+                }
+            });
+        }
+        if (searchCloseBtn && searchInput) {
+            searchCloseBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                this.renderCatalogPage();
+                searchInput.blur();
+                window.scrollTo({ top: this.prevScrollTop, behavior: 'instant' });
+                searchCloseBtn.style.display = 'none';
+                this.searchActive = false;
             });
         }
 
@@ -1407,6 +1441,16 @@ class MobileShopApp {
                 }
                 
                 this.addToCart(productId, size);
+                // Сбрасываем UI выбора размера и количества после добавления
+                if (sizeSelect) {
+                    sizeSelect.value = '';
+                    sizeSelect.blur();
+                }
+                const qtyEl = document.querySelector(`[data-product-id="${productId}"].qty-display`);
+                if (qtyEl) {
+                    qtyEl.textContent = '0';
+                }
+                this.showNotification('Товар добавлен в корзину', 'success');
             });
         });
 
@@ -1914,7 +1958,10 @@ class MobileShopApp {
                 return;
             }
             
-            this.addToCart(product.id, quantity, size);
+            // Добавляем выбранное количество раз, чтобы не менять логику корзины
+            for (let i = 0; i < quantity; i++) {
+                this.addToCart(product.id, size);
+            }
             this.showNotification('Товар добавлен в корзину!', 'success');
             this.hideModal('product-detail-modal');
         };
