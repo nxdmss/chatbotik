@@ -5,6 +5,7 @@
     "description": "Удобные спортивные кроссовки с воздушной подушкой",
     "price": 5999,
     "photo": "/webapp/uploads/default.jpg",
+    "category": "обувь",
     "sizes": ["39", "40", "41", "42", "43", "44"],
     "is_active": true
   },
@@ -14,6 +15,7 @@
     "description": "Классическая спортивная футболка из хлопка",
     "price": 1999,
     "photo": "/webapp/uploads/default.jpg",
+    "category": "одежда",
     "sizes": ["S", "M", "L", "XL"],
     "is_active": true
   },
@@ -23,6 +25,7 @@
     "description": "Легендарные прямые джинсы",
     "price": 6999,
     "photo": "/webapp/uploads/default.jpg",
+    "category": "одежда",
     "sizes": ["30", "32", "34", "36"],
     "is_active": true
   },
@@ -32,6 +35,7 @@
     "description": "Теплая зимняя куртка с утеплителем",
     "price": 12999,
     "photo": "/webapp/uploads/default.jpg",
+    "category": "одежда",
     "sizes": ["S", "M", "L", "XL"],
     "is_active": true
   },
@@ -41,6 +45,7 @@
     "description": "Вместительный городской рюкзак",
     "price": 3499,
     "photo": "/webapp/uploads/default.jpg",
+    "category": "аксессуары",
     "is_active": true
   }
 ]

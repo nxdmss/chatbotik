@@ -33,6 +33,7 @@ class MobileShopApp {
         this.searchActive = false;
         this.prevScrollTop = 0;
         this.searchTimeout = null; // Для debounce поиска
+        this.selectedCategory = 'all'; // Выбранная категория
         
         // Определяем базовый URL для API
         this.API_BASE = this.getApiBase();
@@ -565,17 +566,26 @@ class MobileShopApp {
         container.style.gap = '0.75rem';
         
         const searchTerm = document.getElementById('search')?.value || '';
-        const filteredProducts = this.searchProducts(searchTerm);
+        let filteredProducts = this.searchProducts(searchTerm);
+        
+        // Фильтруем по выбранной категории
+        if (this.selectedCategory !== 'all') {
+            const normalizedCategory = this.normalizeText(this.selectedCategory);
+            filteredProducts = filteredProducts.filter(product => {
+                const productCategory = this.normalizeText(product.category);
+                return productCategory === normalizedCategory;
+            });
+        }
         
         console.log('🔍 Отфильтровано товаров:', filteredProducts.length);
         
         // Показываем сообщение если товаров нет
         if (filteredProducts.length === 0) {
-            if (searchTerm) {
+            if (searchTerm || this.selectedCategory !== 'all') {
                 container.innerHTML = `
                     <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
-                        <p>🔍 Товары по запросу "${searchTerm}" не найдены</p>
-                        <button class="btn btn-outline" onclick="document.getElementById('search').value=''; window.mobileShopApp.renderCatalogPage();">
+                        <p>🔍 Товары не найдены</p>
+                        <button class="btn btn-outline" onclick="document.getElementById('search').value=''; window.mobileShopApp.selectedCategory='all'; window.mobileShopApp.renderCatalogPage();">
                             Показать все товары
                         </button>
                     </div>
@@ -1082,6 +1092,7 @@ class MobileShopApp {
         document.getElementById('product-description').value = product.description || '';
         document.getElementById('product-price').value = product.price || '';
         document.getElementById('product-sizes').value = product.sizes ? product.sizes.join(', ') : '';
+        document.getElementById('product-category').value = product.category || '';
         
         // Показываем текущее фото если есть
         const photoPreview = document.getElementById('photo-preview');
@@ -1380,6 +1391,21 @@ class MobileShopApp {
             });
         });
 
+        // Фильтр категорий
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const category = e.currentTarget.dataset.category;
+                this.selectedCategory = category;
+                
+                // Обновляем активную кнопку
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                // Перерисовываем каталог
+                this.renderCatalogPage();
+            });
+        });
+        
         // Поиск с debounce
         const searchInput = document.getElementById('search');
         const searchCloseBtn = document.getElementById('search-close');
