@@ -34,6 +34,8 @@ class MobileShopApp {
         this.prevScrollTop = 0;
         this.searchTimeout = null; // Для debounce поиска
         this.selectedCategory = 'all'; // Выбранная категория
+        this.suggestionsTimeout = null; // Для debounce подсказок
+        this.selectedSuggestionIndex = -1; // Индекс выбранной подсказки
         
         // Определяем базовый URL для API
         this.API_BASE = this.getApiBase();
@@ -550,6 +552,115 @@ class MobileShopApp {
                 // Если релевантность одинаковая, сортируем по названию
                 return a.title.localeCompare(b.title, 'ru');
             });
+    }
+    
+    // Автодополнение поиска
+    generateSuggestions(searchTerm) {
+        if (!searchTerm || searchTerm.trim().length < 1) {
+            return [];
+        }
+        
+        const normalizedSearch = this.normalizeText(searchTerm);
+        const words = normalizedSearch.split(' ').filter(w => w.length > 0);
+        
+        // Получаем уникальные категории для подсказок
+        const categories = [...new Set(this.products.map(p => p.category).filter(Boolean))];
+        
+        const suggestions = [];
+        
+        // Добавляем категории в подсказки
+        categories.forEach(category => {
+            const normalizedCategory = this.normalizeText(category);
+            if (normalizedCategory.includes(normalizedSearch)) {
+                suggestions.push({
+                    type: 'category',
+                    title: this.getCategoryDisplayName(category),
+                    searchTerm: category,
+                    icon: this.getCategoryIcon(category)
+                });
+            }
+        });
+        
+        // Добавляем топ-5 товаров в подсказки
+        const productMatches = this.products
+            .filter(product => {
+                if (!product.is_active && product.is_active !== undefined) {
+                    return false;
+                }
+                
+                const normalizedTitle = this.normalizeText(product.title);
+                return normalizedTitle.includes(normalizedSearch);
+            })
+            .slice(0, 5);
+        
+        productMatches.forEach(product => {
+            suggestions.push({
+                type: 'product',
+                title: product.title,
+                searchTerm: product.title,
+                category: product.category,
+                icon: '🛍️'
+            });
+        });
+        
+        return suggestions.slice(0, 5); // Максимум 5 подсказок
+    }
+    
+    getCategoryDisplayName(category) {
+        const map = {
+            'одежда': '👕 Одежда',
+            'обувь': '👟 Кроссовки',
+            'аксессуары': '👜 Аксессуары'
+        };
+        return map[category] || category;
+    }
+    
+    getCategoryIcon(category) {
+        const map = {
+            'одежда': '👕',
+            'обувь': '👟',
+            'аксессуары': '👜'
+        };
+        return map[category] || '📦';
+    }
+    
+    renderSuggestions(searchTerm) {
+        const suggestionsContainer = document.getElementById('search-suggestions');
+        if (!suggestionsContainer) return;
+        
+        const suggestions = this.generateSuggestions(searchTerm);
+        
+        if (suggestions.length === 0) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+        
+        suggestionsContainer.innerHTML = suggestions.map((suggestion, index) => `
+            <div class="suggestion-item ${index === this.selectedSuggestionIndex ? 'selected' : ''}" 
+                 data-index="${index}" 
+                 data-value="${suggestion.searchTerm}">
+                <div class="suggestion-item-icon">${suggestion.icon}</div>
+                <div class="suggestion-item-text">
+                    <div class="suggestion-item-title">${suggestion.title}</div>
+                    ${suggestion.category ? `<div class="suggestion-item-category">${this.getCategoryDisplayName(suggestion.category)}</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        suggestionsContainer.style.display = 'block';
+        
+        // Добавляем обработчики кликов
+        suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const searchInput = document.getElementById('search');
+                if (searchInput) {
+                    searchInput.value = item.dataset.value;
+                    this.renderCatalogPage();
+                    suggestionsContainer.style.display = 'none';
+                    this.selectedSuggestionIndex = -1;
+                }
+            });
+        });
     }
     
     renderCatalogPage() {
@@ -1417,14 +1528,23 @@ class MobileShopApp {
                 }
                 if (searchCloseBtn) searchCloseBtn.style.display = 'block';
             });
-            searchInput.addEventListener('input', () => {
-                // Debounce: ждем 300ms перед запуском поиска
+            searchInput.addEventListener('input', (e) => {
+                const value = searchInput.value.trim();
+                
+                // Показываем подсказки с меньшим debounce (150ms)
+                if (this.suggestionsTimeout) {
+                    clearTimeout(this.suggestionsTimeout);
+                }
+                this.suggestionsTimeout = setTimeout(() => {
+                    this.renderSuggestions(value);
+                }, 150);
+                
+                // Debounce для основного поиска: ждем 300ms перед запуском поиска
                 if (this.searchTimeout) {
                     clearTimeout(this.searchTimeout);
                 }
                 
                 this.searchTimeout = setTimeout(() => {
-                    const value = searchInput.value.trim();
                     const shouldRestoreScroll = value === '' && this.searchActive;
                     
                     this.renderCatalogPage();
@@ -1442,7 +1562,50 @@ class MobileShopApp {
                     }
                 }, 300); // 300ms debounce
             });
+            
+            // Навигация по подсказкам с клавиатуры
+            searchInput.addEventListener('keydown', (e) => {
+                const suggestionsContainer = document.getElementById('search-suggestions');
+                if (!suggestionsContainer || suggestionsContainer.style.display === 'none') {
+                    return;
+                }
+                
+                const suggestions = suggestionsContainer.querySelectorAll('.suggestion-item');
+                if (suggestions.length === 0) return;
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.selectedSuggestionIndex = Math.min(this.selectedSuggestionIndex + 1, suggestions.length - 1);
+                    this.renderSuggestions(searchInput.value);
+                    suggestions[this.selectedSuggestionIndex]?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, -1);
+                    this.renderSuggestions(searchInput.value);
+                } else if (e.key === 'Enter' && this.selectedSuggestionIndex >= 0) {
+                    e.preventDefault();
+                    const selectedItem = suggestions[this.selectedSuggestionIndex];
+                    if (selectedItem) {
+                        searchInput.value = selectedItem.dataset.value;
+                        this.renderCatalogPage();
+                        suggestionsContainer.style.display = 'none';
+                        this.selectedSuggestionIndex = -1;
+                    }
+                } else if (e.key === 'Escape') {
+                    suggestionsContainer.style.display = 'none';
+                    this.selectedSuggestionIndex = -1;
+                }
+            });
             searchInput.addEventListener('blur', () => {
+                // Скрываем подсказки при потере фокуса (с небольшой задержкой для обработки кликов)
+                setTimeout(() => {
+                    const suggestionsContainer = document.getElementById('search-suggestions');
+                    if (suggestionsContainer) {
+                        suggestionsContainer.style.display = 'none';
+                    }
+                    this.selectedSuggestionIndex = -1;
+                }, 200);
+                
                 if (!searchInput.value.trim() && searchCloseBtn) {
                     searchCloseBtn.style.display = 'none';
                     this.searchActive = false;
@@ -1454,6 +1617,13 @@ class MobileShopApp {
                 searchInput.value = '';
                 this.renderCatalogPage();
                 searchInput.blur();
+                
+                // Скрываем подсказки
+                const suggestionsContainer = document.getElementById('search-suggestions');
+                if (suggestionsContainer) {
+                    suggestionsContainer.style.display = 'none';
+                }
+                this.selectedSuggestionIndex = -1;
                 
                 // Возвращаемся к исходной позиции
                 setTimeout(() => {

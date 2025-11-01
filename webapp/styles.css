@@ -131,6 +131,72 @@ body {
     background: #222222;
 }
 
+/* Автодополнение поиска */
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid #333333;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.search-suggestions::-webkit-scrollbar {
+    width: 8px;
+}
+
+.search-suggestions::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.suggestion-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: background 0.2s ease;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+    background: #222222;
+}
+
+.suggestion-item-icon {
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+
+.suggestion-item-text {
+    flex: 1;
+}
+
+.suggestion-item-title {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 0.95rem;
+}
+
+.suggestion-item-category {
+    font-size: 0.8rem;
+    color: #888888;
+    margin-top: 0.25rem;
+}
+
 /* ===== ФИЛЬТР КАТЕГОРИЙ ===== */
 
 .category-filter {
