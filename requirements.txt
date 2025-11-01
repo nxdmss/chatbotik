@@ -1,7 +1,2 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-pillow==10.1.0
-python-telegram-bot==20.7
-pydantic==2.5.0
-requests==2.31.0
+requests>=2.25.1
+Pillow>=8.0.0
