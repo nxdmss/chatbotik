@@ -10,9 +10,19 @@ import os
 import sqlite3
 import logging
 import json
-import requests
 import time
 from datetime import datetime
+
+# Устанавливаем requests если не установлен
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    print("📦 Устанавливаем requests...")
+    import subprocess
+    subprocess.check_call(['pip', 'install', '--quiet', 'requests'])
+    import requests
+    REQUESTS_AVAILABLE = True
 
 # Настройка логирования
 logging.basicConfig(
