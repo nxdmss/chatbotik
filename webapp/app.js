@@ -1425,16 +1425,20 @@ class MobileShopApp {
                 
                 this.searchTimeout = setTimeout(() => {
                     const value = searchInput.value.trim();
+                    const shouldRestoreScroll = value === '' && this.searchActive;
+                    
                     this.renderCatalogPage();
                     
                     if (searchCloseBtn) {
                         searchCloseBtn.style.display = value ? 'block' : 'none';
                     }
                     
-                    if (value === '') {
-                        // При пустом поиске возвращаемся к исходной позиции и скрываем кнопку закрытия
-                        window.scrollTo({ top: this.prevScrollTop, behavior: 'smooth' });
-                        this.searchActive = false;
+                    if (shouldRestoreScroll) {
+                        // При пустом поиске возвращаемся к исходной позиции
+                        setTimeout(() => {
+                            window.scrollTo({ top: this.prevScrollTop, behavior: 'instant' });
+                            this.searchActive = false;
+                        }, 10); // Даем время на отрисовку
                     }
                 }, 300); // 300ms debounce
             });
@@ -1450,9 +1454,14 @@ class MobileShopApp {
                 searchInput.value = '';
                 this.renderCatalogPage();
                 searchInput.blur();
-                window.scrollTo({ top: this.prevScrollTop, behavior: 'smooth' });
+                
+                // Возвращаемся к исходной позиции
+                setTimeout(() => {
+                    window.scrollTo({ top: this.prevScrollTop, behavior: 'instant' });
+                    this.searchActive = false;
+                }, 10); // Даем время на отрисовку
+                
                 searchCloseBtn.style.display = 'none';
-                this.searchActive = false;
             });
         }
 
