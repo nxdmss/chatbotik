@@ -32,6 +32,7 @@ class MobileShopApp {
         this.pageHistory = ['catalog']; // История страниц для кнопки "Назад"
         this.searchActive = false;
         this.prevScrollTop = 0;
+        this.searchTimeout = null; // Для debounce поиска
         
         // Определяем базовый URL для API
         this.API_BASE = this.getApiBase();
@@ -452,6 +453,104 @@ class MobileShopApp {
 
     // ===== КАТАЛОГ =====
 
+    // ===== УЛУЧШЕННЫЙ ПОИСК =====
+    
+    normalizeText(text) {
+        // Нормализация текста для поиска: убираем лишние символы, приводим к нижнему регистру
+        if (!text) return '';
+        return text.toString()
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\sа-яё]/gi, ' ') // Заменяем спецсимволы на пробелы
+            .replace(/\s+/g, ' '); // Множественные пробелы в один
+    }
+    
+    calculateSearchScore(product, searchTerm) {
+        // Рассчитываем релевантность товара по запросу
+        // Большее значение = более релевантный результат
+        
+        const normalizedSearch = this.normalizeText(searchTerm);
+        const normalizedTitle = this.normalizeText(product.title);
+        const normalizedDescription = this.normalizeText(product.description);
+        const normalizedCategory = this.normalizeText(product.category);
+        
+        let score = 0;
+        const words = normalizedSearch.split(' ').filter(w => w.length > 0);
+        
+        for (const word of words) {
+            // Полное совпадение в названии (самый высокий приоритет)
+            if (normalizedTitle === word) {
+                score += 100;
+            }
+            // Начало названия
+            else if (normalizedTitle.startsWith(word)) {
+                score += 80;
+            }
+            // Название содержит слово
+            else if (normalizedTitle.includes(word)) {
+                score += 50;
+            }
+            
+            // Категория
+            if (normalizedCategory.includes(word)) {
+                score += 30;
+            }
+            
+            // Описание
+            if (normalizedDescription.includes(word)) {
+                score += 10;
+            }
+        }
+        
+        return score;
+    }
+    
+    searchProducts(searchTerm) {
+        if (!searchTerm || searchTerm.trim().length === 0) {
+            return this.products;
+        }
+        
+        const normalizedSearch = this.normalizeText(searchTerm);
+        const words = normalizedSearch.split(' ').filter(w => w.length > 1);
+        
+        // Если запрос слишком короткий (меньше 1 символа в словах), возвращаем пустой результат
+        if (words.length === 0) {
+            return [];
+        }
+        
+        return this.products
+            .filter(product => {
+                // Фильтруем только активные товары
+                if (!product.is_active && product.is_active !== undefined) {
+                    return false;
+                }
+                
+                // Быстрая проверка на совпадение
+                const normalizedTitle = this.normalizeText(product.title);
+                const normalizedDescription = this.normalizeText(product.description);
+                const normalizedCategory = this.normalizeText(product.category);
+                
+                // Проверяем, что все слова запроса найдены в товаре
+                return words.every(word =>
+                    normalizedTitle.includes(word) ||
+                    normalizedDescription.includes(word) ||
+                    normalizedCategory.includes(word)
+                );
+            })
+            .map(product => ({
+                ...product,
+                _searchScore: this.calculateSearchScore(product, searchTerm)
+            }))
+            .sort((a, b) => {
+                // Сортируем по релевантности (больший score = выше)
+                if (b._searchScore !== a._searchScore) {
+                    return b._searchScore - a._searchScore;
+                }
+                // Если релевантность одинаковая, сортируем по названию
+                return a.title.localeCompare(b.title, 'ru');
+            });
+    }
+    
     renderCatalogPage() {
         console.log('🎨 Рендерим каталог, товаров:', this.products.length);
         const container = document.getElementById('products-grid');
@@ -465,21 +564,8 @@ class MobileShopApp {
         container.style.gridTemplateColumns = 'repeat(2, 1fr)';
         container.style.gap = '0.75rem';
         
-        const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
-        const filteredProducts = this.products.filter(product => {
-            // Фильтруем только активные товары
-            if (!product.is_active && product.is_active !== undefined) {
-                return false;
-            }
-            
-            // Поиск по названию и описанию
-            if (searchTerm) {
-                return product.title.toLowerCase().includes(searchTerm) ||
-                       product.description.toLowerCase().includes(searchTerm);
-            }
-            
-            return true;
-        });
+        const searchTerm = document.getElementById('search')?.value || '';
+        const filteredProducts = this.searchProducts(searchTerm);
         
         console.log('🔍 Отфильтровано товаров:', filteredProducts.length);
         
@@ -1294,7 +1380,7 @@ class MobileShopApp {
             });
         });
 
-        // Поиск
+        // Поиск с debounce
         const searchInput = document.getElementById('search');
         const searchCloseBtn = document.getElementById('search-close');
         if (searchInput) {
@@ -1306,15 +1392,25 @@ class MobileShopApp {
                 if (searchCloseBtn) searchCloseBtn.style.display = 'block';
             });
             searchInput.addEventListener('input', () => {
-                const value = searchInput.value.trim();
-                this.renderCatalogPage();
-                if (searchCloseBtn) searchCloseBtn.style.display = value ? 'block' : 'block';
-                if (value === '') {
-                    // При пустом поиске возвращаемся к исходной позиции и скрываем кнопку закрытия
-                    window.scrollTo({ top: this.prevScrollTop, behavior: 'instant' });
-                    if (searchCloseBtn) searchCloseBtn.style.display = 'none';
-                    this.searchActive = false;
+                // Debounce: ждем 300ms перед запуском поиска
+                if (this.searchTimeout) {
+                    clearTimeout(this.searchTimeout);
                 }
+                
+                this.searchTimeout = setTimeout(() => {
+                    const value = searchInput.value.trim();
+                    this.renderCatalogPage();
+                    
+                    if (searchCloseBtn) {
+                        searchCloseBtn.style.display = value ? 'block' : 'none';
+                    }
+                    
+                    if (value === '') {
+                        // При пустом поиске возвращаемся к исходной позиции и скрываем кнопку закрытия
+                        window.scrollTo({ top: this.prevScrollTop, behavior: 'smooth' });
+                        this.searchActive = false;
+                    }
+                }, 300); // 300ms debounce
             });
             searchInput.addEventListener('blur', () => {
                 if (!searchInput.value.trim() && searchCloseBtn) {
@@ -1328,7 +1424,7 @@ class MobileShopApp {
                 searchInput.value = '';
                 this.renderCatalogPage();
                 searchInput.blur();
-                window.scrollTo({ top: this.prevScrollTop, behavior: 'instant' });
+                window.scrollTo({ top: this.prevScrollTop, behavior: 'smooth' });
                 searchCloseBtn.style.display = 'none';
                 this.searchActive = false;
             });
