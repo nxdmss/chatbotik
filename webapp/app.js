@@ -167,60 +167,8 @@ class MobileShopApp {
         }
     }
 
-    addDebugAdminButton() {
-        // Добавляем отладочную кнопку для принудительного включения админ панели
-        const debugButton = document.createElement('button');
-        debugButton.textContent = '🔧 ВКЛЮЧИТЬ АДМИН ПАНЕЛЬ';
-        debugButton.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 20px 30px;
-            border-radius: 10px;
-            cursor: pointer;
-            z-index: 9999;
-            font-size: 16px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-            animation: pulse 2s infinite;
-        `;
-        
-        // Добавляем анимацию
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: translate(-50%, -50%) scale(1); }
-                50% { transform: translate(-50%, -50%) scale(1.05); }
-                100% { transform: translate(-50%, -50%) scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        debugButton.onclick = () => {
-            this.isAdmin = true;
-            this.showAdminPanel();
-            debugButton.remove();
-            style.remove();
-            console.log('🔧 Админ панель принудительно включена');
-            
-            // Показываем уведомление
-            this.showNotification('✅ Админ панель включена!', 'success');
-        };
-        
-        document.body.appendChild(debugButton);
-        
-        // Автоматически скрываем кнопку через 10 секунд
-        setTimeout(() => {
-            if (debugButton.parentNode) {
-                debugButton.remove();
-                style.remove();
-            }
-        }, 10000);
-    }
+    // ОТЛАДОЧНАЯ КНОПКА УДАЛЕНА ДЛЯ БЕЗОПАСНОСТИ
+    // Админские права проверяются только на сервере
 
     async checkAdminStatus() {
         try {
@@ -347,17 +295,11 @@ class MobileShopApp {
                 this.isAdmin = true;
             }
             
-            // Кнопка для принудительного включения админ панели (всегда показываем)
-            if (!this.isAdmin) {
-                console.log('🔧 Добавляем кнопку принудительного админа');
-                this.addDebugAdminButton();
-            }
-            
             console.log('Результат проверки админ-статуса:', this.isAdmin);
             
             if (this.isAdmin) {
                 this.showAdminPanel();
-                console.log('👑 Единственный администратор обнаружен, ID:', userId);
+                console.log('👑 Администратор обнаружен, ID:', userId);
             } else {
                 console.log('👤 Обычный пользователь, ID:', userId);
             }
@@ -367,6 +309,9 @@ class MobileShopApp {
             this.isAdmin = false;
             console.log('🔒 Админские права НЕ предоставлены из-за ошибки проверки');
         }
+        
+        // ВАЖНО: Все админские операции должны валидироваться на сервере!
+        // Проверка на клиенте - только для UI
     }
 
     showAdminPanel() {

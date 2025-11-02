@@ -1,2 +1,8 @@
-requests>=2.25.1
-Pillow>=8.0.0
+# Core dependencies
+requests>=2.31.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# Optional dependencies
+Flask>=3.0.0  # Если используете Flask вместо встроенного HTTP сервера
