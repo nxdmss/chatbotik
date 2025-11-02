@@ -49,15 +49,28 @@ PGDATA_DIR="$HOME/.postgresql"
 mkdir -p "$PGDATA_DIR"
 
 # Находим путь к PostgreSQL бинарникам
+PG_BIN=""
 if command -v initdb &> /dev/null; then
-    PG_BIN=""
-elif [ -d "/nix/store" ]; then
-    # Ищем PostgreSQL в Nix store
-    PG_PATH=$(find /nix/store -name "postgresql-*" -type d 2>/dev/null | grep -v "dev\|doc\|man" | head -n 1)
-    if [ -n "$PG_PATH" ]; then
-        PG_BIN="$PG_PATH/bin/"
-        export PATH="$PG_BIN:$PATH"
-        echo -e "${GREEN}✅ Найден PostgreSQL: $PG_PATH${NC}"
+    echo -e "${GREEN}✅ PostgreSQL найден в PATH${NC}"
+else
+    echo -e "${YELLOW}🔍 Поиск PostgreSQL в Nix...${NC}"
+    # Ищем быстрее: сначала в PATH, потом в стандартных местах
+    for path in /nix/store/*postgresql*/bin; do
+        if [ -f "$path/initdb" ]; then
+            PG_BIN="$path/"
+            export PATH="$PG_BIN:$PATH"
+            echo -e "${GREEN}✅ Найден PostgreSQL: $(dirname $path)${NC}"
+            break
+        fi
+    done
+    
+    if [ -z "$PG_BIN" ]; then
+        echo -e "${RED}❌ PostgreSQL не найден!${NC}"
+        echo -e "${YELLOW}💡 Добавьте модуль 'postgresql-15' в Replit:${NC}"
+        echo -e "   1. Откройте Tools → Packages"
+        echo -e "   2. Найдите 'postgresql-15'"
+        echo -e "   3. Нажмите 'Add'"
+        exit 1
     fi
 fi
 
@@ -65,10 +78,10 @@ fi
 if [ ! -f "$PGDATA_DIR/PG_VERSION" ]; then
     echo -e "${YELLOW}⚙️  Инициализация PostgreSQL...${NC}"
     if command -v initdb &> /dev/null; then
-        ${PG_BIN}initdb -D "$PGDATA_DIR" -U postgres --locale=C --encoding=UTF8
+        initdb -D "$PGDATA_DIR" -U postgres --locale=C --encoding=UTF8 2>&1 | grep -v "^$"
         echo -e "${GREEN}✅ PostgreSQL инициализирован${NC}"
     else
-        echo -e "${RED}❌ initdb не найден. Убедитесь, что PostgreSQL установлен через Nix.${NC}"
+        echo -e "${RED}❌ initdb не найден!${NC}"
         exit 1
     fi
 else
@@ -76,9 +89,9 @@ else
 fi
 
 # Запускаем PostgreSQL
-if ! ${PG_BIN}pg_ctl -D "$PGDATA_DIR" status > /dev/null 2>&1; then
+if ! pg_ctl -D "$PGDATA_DIR" status > /dev/null 2>&1; then
     echo -e "${YELLOW}🚀 Запуск PostgreSQL...${NC}"
-    ${PG_BIN}pg_ctl -D "$PGDATA_DIR" -l "$PGDATA_DIR/logfile" -o "-k $PGDATA_DIR" start
+    pg_ctl -D "$PGDATA_DIR" -l "$PGDATA_DIR/logfile" -o "-k $PGDATA_DIR" start > /dev/null 2>&1
     sleep 3
     echo -e "${GREEN}✅ PostgreSQL запущен${NC}"
 else
@@ -90,11 +103,11 @@ echo ""
 echo -e "${BLUE}💾 Шаг 3: Создание базы данных...${NC}"
 
 # Проверяем, существует ли база
-if ${PG_BIN}psql -h "$PGDATA_DIR" -U postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw shop_db; then
+if psql -h "$PGDATA_DIR" -U postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw shop_db; then
     echo -e "${GREEN}✅ База данных shop_db уже существует${NC}"
 else
     echo -e "${YELLOW}⚙️  Создание базы данных и пользователя...${NC}"
-    ${PG_BIN}psql -h "$PGDATA_DIR" -U postgres <<EOF
+    psql -h "$PGDATA_DIR" -U postgres > /dev/null 2>&1 <<EOF
 CREATE USER shopbot WITH PASSWORD 'shopbot_pass';
 CREATE DATABASE shop_db OWNER shopbot;
 GRANT ALL PRIVILEGES ON DATABASE shop_db TO shopbot;
@@ -160,7 +173,7 @@ echo ""
 echo -e "${BLUE}🔍 Шаг 8: Финальная проверка...${NC}"
 
 # Проверка PostgreSQL
-if ${PG_BIN}psql -h "$PGDATA_DIR" -U shopbot -d shop_db -c "SELECT 1" > /dev/null 2>&1; then
+if psql -h "$PGDATA_DIR" -U shopbot -d shop_db -c "SELECT 1" > /dev/null 2>&1; then
     echo -e "${GREEN}✅ PostgreSQL подключение работает${NC}"
 else
     echo -e "${RED}❌ Ошибка подключения к PostgreSQL${NC}"
@@ -191,7 +204,7 @@ echo -e "${YELLOW}🚀 Запустите бота:${NC}"
 echo -e "   ${BLUE}python main.py${NC}"
 echo ""
 echo -e "${YELLOW}💡 Полезные команды:${NC}"
-echo -e "   Проверить PostgreSQL: ${BLUE}${PG_BIN}psql -h $PGDATA_DIR -U shopbot -d shop_db${NC}"
+echo -e "   Проверить PostgreSQL: ${BLUE}psql -h $PGDATA_DIR -U shopbot -d shop_db${NC}"
 echo -e "   Проверить Redis: ${BLUE}redis-cli ping${NC}"
 echo -e "   Посмотреть логи: ${BLUE}tail -f logs/bot.log${NC}"
 echo ""
