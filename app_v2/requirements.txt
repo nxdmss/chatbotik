@@ -1,5 +1,5 @@
 # Core
-python>=3.11
+# Python 3.11+ required (check with: python --version)
 
 # Web Framework
 fastapi==0.104.1
