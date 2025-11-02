@@ -1560,7 +1560,12 @@ class MobileShopApp {
         if (searchCloseBtn && searchInput) {
             searchCloseBtn.addEventListener('click', () => {
                 searchInput.value = '';
-                this.renderCatalogPage();
+                
+                // Рендерим только если мы на странице каталога
+                if (this.currentPage === 'catalog') {
+                    this.renderCatalogPage();
+                }
+                
                 searchInput.blur();
                 
                 // Скрываем подсказки
