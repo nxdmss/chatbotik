@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -71,8 +71,8 @@ class Settings(BaseSettings):
     WEBHOOK_PATH: str = Field(default="/webhook", description="Webhook path")
     
     # Database
-    DATABASE_URL: PostgresDsn = Field(
-        default="postgresql+asyncpg://user:password@localhost:5432/shopbot",
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/shopbot",
         description="PostgreSQL connection URL"
     )
     DATABASE_ECHO: bool = Field(default=False, description="Echo SQL queries")
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW: int = Field(default=20, ge=0, le=100)
     
     # Redis
-    REDIS_URL: RedisDsn = Field(
+    REDIS_URL: str = Field(
         default="redis://localhost:6379/0",
         description="Redis connection URL"
     )
