@@ -1,10 +1,12 @@
-modules = ["python-3.11"]
+modules = ["python-3.11", "postgresql-15", "redis-7"]
+
+run = "cd app_v2 && chmod +x setup_replit.sh && ./setup_replit.sh && python main.py"
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "python3 main.py"]
+run = ["sh", "-c", "cd app_v2 && ./setup_replit.sh && python main.py"]
 
 [[ports]]
 localPort = 8000
